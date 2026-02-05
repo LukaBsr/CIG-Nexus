@@ -117,6 +117,18 @@ Error response sent when a message cannot be processed or connection is rejected
 | `code` | string | Machine-readable error code |
 | `message` | string | Human-readable error description |
 
+**Error codes (v0.1)**
+
+The following error codes may be returned by the server in v0.1:
+
+| Code | Description |
+|------|-------------|
+| `UNSUPPORTED_VERSION` | The client requested a protocol version not supported by the server. |
+| `PROTOCOL_VIOLATION` | The client sent a message that violates the protocol (e.g., wrong type, invalid sequence). |
+| `MALFORMED_MESSAGE` | The client sent a message that could not be parsed (e.g., invalid JSON, missing required fields). |
+| `ABUSIVE_BEHAVIOR` | The client exhibited abusive or disallowed behavior and the server rejected the request. |
+| `INACTIVITY_TIMEOUT` | The client was inactive for too long and the server timed out the connection. |
+| `INTERNAL_ERROR` | The server encountered an unexpected internal error while processing the request. |
 ## Connection Termination
 
 The server may close the connection in the following cases:
