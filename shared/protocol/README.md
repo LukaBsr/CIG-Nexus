@@ -44,7 +44,7 @@ Each message follows a simple length-prefixed frame format:
 ### Example Frame
 
 ```
-00 00 00 3A
+00 00 00 3C
 { "type": "HELLO", "version": "0.1", "client": "desktop" }
 ```
 
