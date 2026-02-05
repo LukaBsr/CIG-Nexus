@@ -19,7 +19,7 @@ CIG Nexus is composed of three primary components:
 └──────────┬──────────────────────┬───────────┘
            │                      │
       TCP Protocol             TCP Protocol
-    (Custom Binary)           (Custom Binary)
+    (Binary Framing + JSON)   (Binary Framing + JSON)
            │                      │
     ┌──────▼────────┐      ┌──────▼──────────┐
     │  Web Client   │      │ Desktop Client  │
