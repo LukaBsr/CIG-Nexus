@@ -79,7 +79,7 @@ Initial handshake message sent by the client after connecting.
 |-------|------|-------------|
 | `type` | string | Always `"HELLO"` |
 | `version` | string | Protocol version (MAJOR.MINOR) |
-| `client` | string | Client type: `web`, `desktop`, or `bot` |
+| `client` | string | Client type: `web` or `desktop`. `bot` is reserved for future use and not supported in protocol version `0.1`. |
 
 ### WELCOME (Server → Client)
 
