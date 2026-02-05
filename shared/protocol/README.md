@@ -32,9 +32,15 @@ Each message follows a simple length-prefixed frame format:
 
 | Component | Details |
 |-----------|---------|
-| **Size** | 32-bit unsigned integer, network byte order (big-endian), exact size of JSON payload in bytes |
+| **Size** | 32-bit unsigned integer, network byte order (big-endian), exact size of JSON payload in bytes (minimum 1, maximum `MAX_FRAME_SIZE`) |
 | **Payload** | UTF-8 encoded JSON, no delimiter or terminator, exactly one message per frame |
 
+#### Size Constraints and Validation
+
+- **Minimum size**: `size` MUST be at least `1`. A frame with `size == 0` is invalid and MUST be rejected.
+- **Maximum size**: Implementations MUST enforce a configured `MAX_FRAME_SIZE` (recommended default: 1 MiB). Frames with `size > MAX_FRAME_SIZE` MUST be treated as a protocol error and SHOULD cause the connection to be closed.
+- **Truncated frames**: If fewer than `size` bytes are received for the payload (e.g., the peer closes the connection or a read timeout occurs), the frame is invalid and MUST NOT be processed. The connection SHOULD be closed.
+- **Overlong payloads**: If more than `size` bytes are received before processing, only the first `size` bytes belong to the current frame; any additional bytes belong to subsequent frames and MUST NOT be consumed as part of the current payload.
 ### Example Frame
 
 ```
