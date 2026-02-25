@@ -42,3 +42,5 @@
 
 # Build directories
 build/
+node_modules/
+dist/
