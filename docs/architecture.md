@@ -14,17 +14,32 @@ CIG Nexus is composed of three primary components:
 ┌─────────────────────────────────────────────┐
 │           C++ Server (Authoritative)        │
 │  • Connection Management                    │
-│  • State Synchronization                    │
+│  • State Synchronization                    │  
 │  • Message Broadcasting                     │
-└──────────┬──────────────────────┬───────────┘
-           │                      │
-      TCP Protocol             TCP Protocol
-    (Binary Framing + JSON)   (Binary Framing + JSON)
-           │                      │
-    ┌──────▼────────┐      ┌──────▼──────────┐
-    │  Web Client   │      │ Desktop Client  │
-    │   (Next.js)   │      │  (Electron)     │
-    └───────────────┘      └─────────────────┘
+└──────────┬─────────────────────┬────────────┘
+           │                     │
+     TCP Protocol                │
+ (Binary Framing + JSON)         │
+           │                     │
+┌──────────▼──────────┐          │
+│ WebSocket Gateway   │          │
+│  • WS ↔ TCP bridge  │          │
+│  • Protocol framing │          │
+└──────────┬──────────┘          │
+           │                     │
+     WebSocket (JSON)            │
+           │                     │
+┌──────────▼──────────┐          │
+│  Web Client         │          │
+│  (Next.js)          │          │
+└─────────────────────┘          │
+                                 │
+┌────────────────────────────────▼────────────┐
+│ Desktop Client (Electron)                   │
+│  • Direct TCP connection                    │
+│  • Binary framing + JSON                    │
+└─────────────────────────────────────────────┘
+
 ```
 
 ## Server Responsibilities
@@ -79,11 +94,11 @@ Clients follow a simple, independent model:
 
 ### Client Types
 
-| Client | Technology | Role |
-|--------|-----------|------|
-| **Web** | Next.js | Browser-based interface |
-| **Desktop** | Electron | Cross-platform application |
-| **Bot** | Custom | Programmatic access (future) |
+| Client | Technology | Connection | Role |
+|--------|------------|------------|------|
+| **Web** | Next.js | WebSocket (via gateway) | Browser-based interface |
+| **Desktop** | Electron | Direct TCP | Cross-platform application |
+| **Bot** | Custom | Direct TCP | Programmatic access (future) |
 
 ## Scalability & Future Work
 
@@ -91,7 +106,8 @@ The current v0.1 release focuses on core functionality. Future versions will add
 
 - **Horizontal Scaling** (v1.0+) - Multiple server instances
 - **Sharding** (v1.0+) - Data partitioning across servers
-- **WebSocket Gateway** (v1.0+) - Browser clients without raw TCP
+- **WebSocket Gateway** (v0.1) - Browser connectivity via WS ↔ TCP bridge
+- **Native WebSocket Transport** (post-v0.1) - Direct browser connections
 - **Load Balancing** (v1.0+) - Distributed traffic handling
 - **Clustering** (v1.0+) - Server-to-server coordination
 
@@ -179,6 +195,49 @@ Security roadmap:
 - Version changes carefully
 - Support multiple protocol versions for compatibility
 
+## Web Client Connectivity
+
+### Browser Constraints
+
+Web browsers cannot open raw TCP connections. They are limited to
+HTTP-based transports such as WebSocket.
+
+As a result, web clients cannot directly connect to the CIG Nexus
+TCP server.
+
+### v0.1 Solution: WebSocket Gateway
+
+For v0.1, browser clients connect through a lightweight WebSocket
+gateway.
+
+The gateway acts as a transport bridge:
+
+- WebSocket (browser) ↔ TCP (server)
+- JSON messages over WebSocket
+- Binary-framed JSON messages over TCP
+
+This approach allows:
+- Reuse of the same protocol and handlers
+- No changes to the core C++ server
+- Simple and fast web client iteration
+
+### Future Plan: Native WebSocket Support (Post-v0.1)
+
+Native WebSocket support may be integrated directly into the C++
+server in a future version.
+
+This would allow:
+- Direct browser connections
+- Removal of the external gateway
+- Unified transport handling inside the server
+
+This feature is intentionally deferred to keep the initial server
+architecture simple, focused, and testable.
+
 ## Conclusion
 
 CIG Nexus is architected as a modern, extensible real-time communication platform with a strong foundation for growth. The authoritative server model, custom protocol, and clear separation of concerns provide both immediate functionality and a clear path to sophisticated features in future releases.
+
+Transport concerns are intentionally isolated from protocol and
+business logic, allowing the system to evolve from a TCP-only model
+to multiple transport layers without refactoring core components.
