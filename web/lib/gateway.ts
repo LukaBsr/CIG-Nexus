@@ -34,3 +34,17 @@ export function connect(
     onStatus("error");
   };
 }
+
+export function sendChatMessage(content: string): void {
+  if (!ws || ws.readyState !== WebSocket.OPEN) {
+    console.error("WebSocket not connected");
+    return;
+  }
+
+  ws.send(
+    JSON.stringify({
+      type: "CHAT_MESSAGE",
+      content: content
+    })
+  );
+}
