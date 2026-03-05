@@ -1,11 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { connect } from "../lib/gateway";
+import { connect, sendChatMessage } from "../lib/gateway";
 
 export default function Home() {
   const [status, setStatus] = useState<string>("disconnected");
   const [messages, setMessages] = useState<any[]>([]);
+  const [input, setInput] = useState<string>("");
 
   useEffect(() => {
     connect(
@@ -17,6 +18,19 @@ export default function Home() {
       }
     );
   }, []);
+
+  const handleSend = () => {
+    if (input.trim()) {
+      sendChatMessage(input);
+      setInput("");
+    }
+  };
+
+  const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter") {
+      handleSend();
+    }
+  };
 
   return (
     <main style={{ padding: "2rem", fontFamily: "monospace" }}>
@@ -31,6 +45,41 @@ export default function Home() {
         >
           {status}
         </span>
+      </div>
+
+      <div style={{ marginTop: "2rem" }}>
+        <h2>Chat</h2>
+        <div style={{ display: "flex", gap: "0.5rem", marginBottom: "1rem" }}>
+          <input
+            type="text"
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyPress={handleKeyPress}
+            placeholder="Type a message..."
+            style={{
+              flex: 1,
+              padding: "0.5rem",
+              borderRadius: "4px",
+              border: "1px solid #ccc",
+              fontFamily: "monospace"
+            }}
+          />
+          <button
+            onClick={handleSend}
+            disabled={status !== "connected"}
+            style={{
+              padding: "0.5rem 1rem",
+              borderRadius: "4px",
+              border: "1px solid #ccc",
+              background: status === "connected" ? "#007bff" : "#ccc",
+              color: "white",
+              cursor: status === "connected" ? "pointer" : "not-allowed",
+              fontFamily: "monospace"
+            }}
+          >
+            Send
+          </button>
+        </div>
       </div>
 
       <div style={{ marginTop: "2rem" }}>

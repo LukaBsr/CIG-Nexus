@@ -3,6 +3,7 @@
 
 #include "Connection.hpp"
 #include "TcpListener.hpp"
+#include "protocol/handlers/ChatHandler.hpp"
 #include "protocol/handlers/HelloHandler.hpp"
 #include "protocol/MessageDispatcher.hpp"
 #include <cstdint>
@@ -20,11 +21,13 @@ public:
     void stop();
 
 private:
+    void broadcast(const protocol::Message& message);
     uint16_t port_;
     bool running_;
     TcpListener listener_;
     protocol::MessageDispatcher dispatcher_;
     protocol::HelloHandler hello_handler_;
+    protocol::ChatHandler chat_handler_;
     std::unordered_map<int, std::unique_ptr<Connection>> connections_;
 };
 
