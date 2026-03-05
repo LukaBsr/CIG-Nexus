@@ -70,7 +70,7 @@ Message HelloHandler::handle(const Message& message) const {
 
     Message response;
     response.type = "WELCOME";
-    response.payload = make_welcome("", "0.1");
+    response.payload = make_welcome("", "0.3");
     return response;
 }
 

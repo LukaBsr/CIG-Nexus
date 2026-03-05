@@ -27,7 +27,7 @@ TEST_CASE("HelloHandler returns WELCOME for valid HELLO") {
 
     REQUIRE(response.type == "WELCOME");
     REQUIRE(response.payload["type"] == "WELCOME");
-    REQUIRE(response.payload["server_version"] == "0.1");
+    REQUIRE(response.payload["server_version"] == "0.3");
 }
 
 TEST_CASE("HelloHandler rejects unsupported protocol version") {
