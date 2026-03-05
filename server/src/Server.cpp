@@ -16,6 +16,12 @@ Server::Server(uint16_t port)
             return hello_handler_.handle(msg);
         }
     );
+
+    dispatcher_.registerHandler("CHAT_MESSAGE",
+        [this](const protocol::Message& msg) {
+            return chat_handler_.handle(msg);
+        }
+    );
 }
 
 void Server::start() {
@@ -50,11 +56,16 @@ void Server::start() {
             for (const auto& frame : frames) {
                 auto message = protocol::parse_message(frame);
                 auto response = dispatcher_.dispatch(message);
-                std::string response_json = response.payload.dump();
 
-                uint32_t size = htonl(static_cast<uint32_t>(response_json.size()));
-                ::send(fd, &size, 4, 0);
-                ::send(fd, response_json.data(), response_json.size(), 0);
+                if (response.type == "CHAT_MESSAGE") {
+                    broadcast(response);
+                } else {
+                    std::string response_json = response.payload.dump();
+
+                    uint32_t size = htonl(static_cast<uint32_t>(response_json.size()));
+                    ::send(fd, &size, 4, 0);
+                    ::send(fd, response_json.data(), response_json.size(), 0);
+                }
             }
 
             ++it;
@@ -64,6 +75,16 @@ void Server::start() {
     }
 
     std::cout << "CIG Nexus Server stopped" << std::endl;
+}
+
+void Server::broadcast(const protocol::Message& message) {
+    std::string message_json = message.payload.dump();
+    uint32_t size = htonl(static_cast<uint32_t>(message_json.size()));
+
+    for (const auto& [fd, conn] : connections_) {
+        ::send(fd, &size, 4, 0);
+        ::send(fd, message_json.data(), message_json.size(), 0);
+    }
 }
 
 void Server::stop() {
