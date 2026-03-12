@@ -1,243 +1,150 @@
 # CIG Nexus Architecture
 
-A real-time communication platform architected for clarity, control, and extensibility.
+This document describes the architecture as it exists today in the repository.
 
 ## System Overview
 
-CIG Nexus is composed of three primary components:
+The application is currently composed of three active runtime pieces:
 
-- **C++ Server** - Central authoritative service for state management and coordination
-- **Web Application** - Next.js-based frontend for browser clients
-- **Desktop Application** - Electron-based cross-platform client
+- **Web client** built with Next.js
+- **Gateway** built with Node.js and TypeScript
+- **Authoritative server** built with C++
 
-```
-┌─────────────────────────────────────────────┐
-│           C++ Server (Authoritative)        │
-│  • Connection Management                    │
-│  • State Synchronization                    │  
-│  • Message Broadcasting                     │
-└──────────┬─────────────────────┬────────────┘
-           │                     │
-     TCP Protocol                │
- (Binary Framing + JSON)         │
-           │                     │
-┌──────────▼──────────┐          │
-│ WebSocket Gateway   │          │
-│  • WS ↔ TCP bridge  │          │
-│  • Protocol framing │          │
-└──────────┬──────────┘          │
-           │                     │
-     WebSocket (JSON)            │
-           │                     │
-┌──────────▼──────────┐          │
-│  Web Client         │          │
-│  (Next.js)          │          │
-└─────────────────────┘          │
-                                 │
-┌────────────────────────────────▼────────────┐
-│ Desktop Client (Electron)                   │
-│  • Direct TCP connection                    │
-│  • Binary framing + JSON                    │
-└─────────────────────────────────────────────┘
-
+```text
+Browser (Next.js)
+      |
+      | WebSocket / JSON strings
+      v
+Gateway (Node.js + TypeScript)
+      |
+      | TCP / 4-byte big-endian framed JSON
+      v
+Authoritative Server (C++)
 ```
 
-## Server Responsibilities
+## Current Separation of Concerns
 
-The server is the authoritative source of truth and is responsible for:
+### Web Client
 
-- **Connection Management** - Establishing and maintaining TCP connections with clients
-- **Authentication** - Verifying client identity (planned for v0.2)
-- **Session Management** - Tracking user sessions and maintaining connection state
-- **State Synchronization** - Ensuring all clients reflect the current server state
-- **Message Broadcasting** - Distributing messages to relevant clients
-- **Validation & Authorization** - All critical decisions and state changes validated server-side
+Responsible for:
 
-### Server Design Principles
+- opening a browser WebSocket connection
+- sending `HELLO` on connect
+- sending `CHAT_MESSAGE` payloads from the UI
+- displaying connection status and received messages
 
-- **Authoritative**: Single source of truth for all application state
-- **Stateless on Startup**: State reconstructed from persistent storage
-- **Non-blocking I/O**: Handles multiple concurrent connections efficiently
+Not responsible for:
 
-## Network Communication
+- protocol validation
+- authentication
+- message routing
+- server-side state decisions
 
-### Why a Custom TCP Protocol
+### Gateway
 
-Rather than using existing solutions like WebSockets or gRPC, we implement a custom TCP protocol for:
+Responsible for:
 
-- **Full Control**: Complete ownership of protocol behavior and evolution
-- **Predictable Performance**: Optimized framing without feature bloat
-- **Learning Goals**: Deep networking and low-level systems integration
-- **C++ Integration**: Seamless integration with C++ networking libraries
+- WebSocket termination for browsers
+- one WebSocket to one TCP connection mapping
+- TCP frame encoding and decoding
+- forwarding messages without modifying their meaning
 
-### Message Framing Strategy
+Not responsible for:
 
-Binary framing provides:
+- business logic
+- protocol validation
+- session management
+- authorization
 
-- **Clear Boundaries**: Unambiguous message separation
-- **Resilience**: Handles partial reads and network delays gracefully
-- **Separation of Concerns**: Transport layer independent from application logic
-- **Efficiency**: Minimal overhead for high-frequency messages
+### Server
 
-For protocol details, see [../shared/protocol/README.md](../shared/protocol/README.md).
+Responsible for:
 
-## Client Architecture
+- accepting TCP clients
+- tracking active connections
+- parsing framed JSON messages
+- validating protocol payloads
+- dispatching handlers
+- broadcasting valid chat messages to all connected clients
 
-### Design Philosophy
+## Current Implemented Flow
 
-Clients follow a simple, independent model:
+### Handshake
 
-- **No Critical Decisions**: Clients do not validate state or make authoritative decisions
-- **Intent-Based**: Clients send intentions to the server; the server decides execution
-- **State Reflection**: Clients display and interact with server state
-- **Stateless Operations**: Each client operates independently without awareness of others
+1. The web client connects to the gateway.
+2. The gateway opens a TCP connection to the server.
+3. The web client sends `HELLO`.
+4. The server validates it.
+5. The server returns `WELCOME` or `ERROR`.
 
-### Client Types
+### Chat
 
-| Client | Technology | Connection | Role |
-|--------|------------|------------|------|
-| **Web** | Next.js | WebSocket (via gateway) | Browser-based interface |
-| **Desktop** | Electron | Direct TCP | Cross-platform application |
-| **Bot** | Custom | Direct TCP | Programmatic access (future) |
+1. The web client sends `CHAT_MESSAGE` with `content`.
+2. The gateway forwards it unchanged apart from transport framing.
+3. The server validates the payload.
+4. The server creates a normalized chat message with metadata.
+5. The server broadcasts that message to every active connection.
+6. The gateway forwards the resulting JSON message back to browsers.
 
-## Scalability & Future Work
+## Protocol Transport
 
-The current v0.1 release focuses on core functionality. Future versions will address scalability:
+TCP framing is shared across all non-browser server communication:
 
-- **Horizontal Scaling** (v1.0+) - Multiple server instances
-- **Sharding** (v1.0+) - Data partitioning across servers
-- **WebSocket Gateway** (v0.1) - Browser connectivity via WS ↔ TCP bridge
-- **Native WebSocket Transport** (post-v0.1) - Direct browser connections
-- **Load Balancing** (v1.0+) - Distributed traffic handling
-- **Clustering** (v1.0+) - Server-to-server coordination
+- 4-byte big-endian unsigned payload size
+- JSON payload bytes immediately after the size prefix
+- maximum frame size currently enforced at `1 MiB`
 
-These features are intentionally deferred to ensure core stability first.
+The browser side uses plain WebSocket text messages carrying JSON.
 
-## Protocol Roadmap
+## Runtime Topology
 
-| Version | Focus | Status |
-|---------|-------|--------|
-| **v0.1** | Framing & Handshake | In Progress |
-| **v0.2** | Authentication | Planned |
-| **v0.3** | Messaging System | Planned |
-| **v1.0** | Stability & Security | Planned |
+In local development, the expected stack is:
 
-## Directory Structure
+- web client on port `3000`
+- gateway on port `8080`
+- TCP server on port `4242`
 
-```
-CIG-Nexus/
-├── server/              # C++ server implementation
-│   ├── src/            # Server source code
-│   ├── include/        # Header files
-│   ├── tests/          # Server tests
-│   └── CMakeLists.txt  # CMake configuration
-├── web/                # Next.js web application
-│   ├── app/            # Application code
-│   └── public/         # Static assets
-├── desktop/            # Electron desktop application
-│   └── src/            # Application source
-├── shared/             # Shared resources
-│   └── protocol/       # Protocol documentation
-└── docs/               # Documentation
-```
+This topology is also represented in the root `docker-compose.yml`.
+
+## Current Project Status
+
+Implemented:
+
+- browser chat UI
+- gateway transport bridge
+- TCP server connection tracking
+- `HELLO` / `WELCOME`
+- `CHAT_MESSAGE` validation and normalization
+- broadcast to connected clients
+
+Not implemented yet:
+
+- authentication
+- persistent sessions
+- named users
+- persistence layer
+- native WebSocket support in the C++ server
+- production-grade scalability and hardening
+
+## Desktop Client Status
+
+The repository contains a `desktop/` area, but the current documented and working end-to-end flow is centered on:
+
+- Next.js web client
+- gateway
+- C++ server
+
+Desktop integration is not the primary active path at this stage.
 
 ## Design Principles
 
-The CIG Nexus architecture is built on four core principles:
+- **Explicit transport boundaries**: browser transport and TCP transport are separated cleanly
+- **Authoritative backend**: validation and routing decisions happen in the server
+- **Minimal gateway**: the gateway remains disposable and transport-only
+- **Incremental evolution**: features are added without collapsing transport and protocol responsibilities together
 
-### 1. Simplicity
-- Minimalist protocol design
-- Clear separation of concerns
-- Easy to understand and extend
+## Related Documentation
 
-### 2. Robustness
-- Authoritative server model prevents inconsistency
-- Binary framing handles edge cases
-- Explicit error handling
-
-### 3. Extensibility
-- Protocol versioning for evolution
-- Message types easily added without breaking clients
-- Modular server design
-
-### 4. Future-Proof
-- TCP foundation for long-term viability
-- Migration path to binary payloads
-- Scalability considerations baked in
-
-## Security Considerations
-
-**Current Release (v0.1)**: Unencrypted, unauthenticated communication
-
-Security roadmap:
-
-- **v0.2**: Authentication layer
-- **v1.0**: TLS/SSL encryption
-- **Post-v1.0**: Advanced security features
-
-⚠️ Do not use this system for production without proper security measures.
-
-## Development Guidelines
-
-### Server Development
-- Implement in C++ with focus on performance and reliability
-- Use non-blocking I/O patterns
-- Validate all client input
-
-### Client Development
-- Never trust local client state
-- Always request server validation
-- Handle connection failures gracefully
-- Implement exponential backoff for reconnection
-
-### Protocol Changes
-- Never remove message fields (only add)
-- Version changes carefully
-- Support multiple protocol versions for compatibility
-
-## Web Client Connectivity
-
-### Browser Constraints
-
-Web browsers cannot open raw TCP connections. They are limited to
-HTTP-based transports such as WebSocket.
-
-As a result, web clients cannot directly connect to the CIG Nexus
-TCP server.
-
-### v0.1 Solution: WebSocket Gateway
-
-For v0.1, browser clients connect through a lightweight WebSocket
-gateway.
-
-The gateway acts as a transport bridge:
-
-- WebSocket (browser) ↔ TCP (server)
-- JSON messages over WebSocket
-- Binary-framed JSON messages over TCP
-
-This approach allows:
-- Reuse of the same protocol and handlers
-- No changes to the core C++ server
-- Simple and fast web client iteration
-
-### Future Plan: Native WebSocket Support (Post-v0.1)
-
-Native WebSocket support may be integrated directly into the C++
-server in a future version.
-
-This would allow:
-- Direct browser connections
-- Removal of the external gateway
-- Unified transport handling inside the server
-
-This feature is intentionally deferred to keep the initial server
-architecture simple, focused, and testable.
-
-## Conclusion
-
-CIG Nexus is architected as a modern, extensible real-time communication platform with a strong foundation for growth. The authoritative server model, custom protocol, and clear separation of concerns provide both immediate functionality and a clear path to sophisticated features in future releases.
-
-Transport concerns are intentionally isolated from protocol and
-business logic, allowing the system to evolve from a TCP-only model
-to multiple transport layers without refactoring core components.
+- See [../shared/protocol/README.md](../shared/protocol/README.md) for wire-level protocol behavior.
+- See [../gateway/README.md](../gateway/README.md) for gateway implementation notes.
+- See [../server/README.md](../server/README.md) for backend implementation details.

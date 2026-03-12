@@ -1,90 +1,36 @@
-# CIG Nexus WebSocket Gateway API
+# CIG Nexus Gateway API
 
-This document defines the API and responsibilities of the WebSocket gateway
-used to connect browser clients to the CIG Nexus C++ server.
-
-The gateway is a transport bridge only. It does not implement protocol logic
-or business rules.
-
----
+This document describes the current transport contract of the WebSocket gateway used by browser clients.
 
 ## Purpose
 
-Web browsers cannot open raw TCP connections.  
-The WebSocket gateway enables browser clients to communicate with the CIG Nexus
-server by translating between WebSocket and the custom TCP protocol.
+Browsers cannot open raw TCP sockets, so the gateway provides a WebSocket entry point and forwards those messages to the TCP server.
 
-The gateway exists to:
-- Enable web clients without modifying the C++ server
-- Preserve the existing TCP protocol and handlers
-- Keep transport concerns isolated from business logic
+The gateway remains transport-only:
 
----
+- no business logic
+- no protocol validation
+- no authentication
+- no session management
+- no message transformation
 
-## Scope (v0.1)
+## Connection Model
 
-### In Scope
-- WebSocket ↔ TCP transport bridging
-- Binary framing on the TCP side
-- JSON messages on the WebSocket side
-- One WebSocket connection mapped to one TCP connection
-- Transparent message forwarding
+- one WebSocket connection maps to one TCP connection
+- the TCP connection is opened when the WebSocket client connects
+- if either side closes, the gateway closes the other side
 
-### Out of Scope
-- Protocol validation
-- Authentication
-- Authorization
-- Session management
-- Message routing or handling
-- Business logic of any kind
+## WebSocket Side
 
----
+Client-facing transport:
 
-## Architecture Overview
+- protocol: WebSocket
+- payload type: JSON string
+- expected browser endpoint: `ws://localhost:8080`
 
-```
-    Browser (Next.js)
-           │   
-           │  WebSocket (JSON)
-           │
-           ▼
-    WebSocket Gateway
-           │  
-           │  TCP (Binary Framing
-           │         + JSON)
-           ▼
-  CIG Nexus C++ Server
-```
+Examples:
 
----
-
-## Connection Lifecycle
-
-For each WebSocket client:
-
-1. Browser establishes a WebSocket connection to the gateway
-2. Gateway opens a TCP connection to the CIG Nexus server
-3. Browser sends protocol messages as JSON over WebSocket
-4. Gateway frames and forwards messages to the TCP server
-5. Server responses are unframed and forwarded to the browser
-6. If either side closes the connection, the gateway closes the other side
-
-### Connection Mapping
-
-- **1 WebSocket connection = 1 TCP connection**
-- No multiplexing in v0.1
-
----
-
-## Message Format
-
-### WebSocket Messages
-
-- One WebSocket message corresponds to one protocol message
-- Payload is a UTF-8 encoded JSON string
-- No additional envelope or metadata
-
-#### Example (Browser → Gateway)
+Handshake request:
 
 ```json
 {
@@ -93,72 +39,48 @@ For each WebSocket client:
   "client": "web"
 }
 ```
----
 
-### TCP Messages
+Chat request:
 
-Messages are framed using the existing binary framing protocol:
-
-- 4-byte big-endian unsigned integer size
-- Followed by the JSON payload bytes
-
-The gateway applies framing before sending messages to the server and removes
-framing when receiving messages from the server.
-
-### Message Forwarding Rules
-
-- Messages are forwarded as-is
-- The gateway does not modify message contents
-- The gateway does not inspect or validate protocol fields
-- Message ordering is preserved
-
-### Server Responses
-
-Responses from the CIG Nexus server are forwarded directly to the browser.
-
-### Example (Server → Gateway → Browser)
 ```json
 {
-  "type": "WELCOME",
-  "session_id": "abc123",
-  "server_version": "0.1"
+  "type": "CHAT_MESSAGE",
+  "content": "hello"
 }
 ```
 
-## Error Handling
+## TCP Side
 
-The gateway distinguishes between protocol errors and gateway errors.
+Server-facing transport:
 
-### Protocol Errors
+- protocol: TCP
+- framing: 4-byte big-endian payload size prefix
+- payload type: JSON bytes
+- default server endpoint: `localhost:4242`
 
-Originating from the CIG Nexus server
+The gateway encodes outgoing frames and extracts incoming frames using the same framing rules documented in the shared protocol README.
 
-Represented by ERROR messages
+## Forwarding Rules
 
-Forwarded directly to the browser without modification
+- WebSocket text messages are forwarded to TCP as framed bytes
+- TCP framed payloads are forwarded to WebSocket as text
+- payload contents are not modified by the gateway
+- message ordering is preserved
 
-### Example
-```json
-{
-  "type": "ERROR",
-  "code": "UNSUPPORTED_VERSION",
-  "message": "Protocol version not supported"
-}
-```
+## Lifecycle
 
-### Gateway Errors
+For each browser connection:
 
-Errors caused by transport or infrastructure issues, such as:
+1. WebSocket client connects.
+2. Gateway opens a TCP connection to the backend server.
+3. Browser messages are forwarded to TCP.
+4. TCP responses are forwarded back to the browser.
+5. If one side closes or errors, the gateway closes the other side.
 
-- TCP server unreachable
-- TCP connection closed unexpectedly
-- Invalid framing
-- Internal gateway failures
+## Gateway Error Message
 
-Gateway errors use a distinct message type to avoid confusion with protocol
-errors.
+If the gateway cannot connect to the TCP server, it sends:
 
-### Gateway Error Format
 ```json
 {
   "type": "GATEWAY_ERROR",
@@ -166,50 +88,16 @@ errors.
 }
 ```
 
-## Connection Failure Behavior
+After that, it closes the WebSocket connection.
 
-- If the TCP connection fails during WebSocket lifetime:
-    - Send a GATEWAY_ERROR to the browser
-    - Close the WebSocket connection
+## Current Limits
 
-- If the WebSocket connection closes:
-    - Immediately close the TCP connection
+- no reconnection logic
+- no multiplexing
+- no gateway-side rate limiting
+- no TLS termination
+- no structured retry or buffering strategy beyond in-memory partial frame accumulation
 
-## Security Considerations (v0.1)
+## Design Intent
 
-- The gateway performs no authentication or authorization
-- Communication is unencrypted
-- The gateway must not expose internal server details in error messages
-
-⚠️ This setup is intended for development and testing only.
-
-## Future Evolution
-
-### Native WebSocket Support
-
-In a future version, WebSocket support may be integrated directly into the
-CIG Nexus C++ server.
-
-This would allow:
-
-- Direct browser connections
-- Removal of the external gateway
-- Unified transport handling
-
-The current design intentionally keeps transport abstraction isolated so that
-this evolution can occur without refactoring protocol or business logic.
-
-## Design Principles
-
-- **Transport-only**: No business logic
-- **Transparent**: Forward messages without modification
-- **Minimal**: Small surface area, easy to reason about
-- **Disposable**: Can be replaced by native WebSocket support later
-
-## Summary
-
-The WebSocket gateway is a thin, intentional bridge between browser clients and
-the CIG Nexus TCP server.
-
-By isolating transport concerns, it enables rapid web development while
-preserving the integrity, simplicity, and testability of the core server.
+The gateway is intentionally thin so the server owns protocol semantics and the browser can still participate in the system using standard WebSocket APIs.

@@ -1,122 +1,194 @@
-# CIG-Nexus
+<h1 align="center">CIG-Nexus</h1>
 
-A real-time communication platform with a WebSocket gateway, TCP server backend, and multi-client support.
+<p align="center">
+	Real-time chat platform with a Next.js web client, a transport-only WebSocket gateway, and a C++ TCP server.
+</p>
+
+<p align="center">
+	<img alt="Web" src="https://img.shields.io/badge/Web-Next.js%2016-111111" />
+	<img alt="Gateway" src="https://img.shields.io/badge/Gateway-Node.js%20%2B%20TypeScript-3178C6" />
+	<img alt="Server" src="https://img.shields.io/badge/Server-C%2B%2B-00599C" />
+	<img alt="Protocol" src="https://img.shields.io/badge/Protocol-WebSocket%20%E2%86%94%20TCP-0F766E" />
+	<img alt="Status" src="https://img.shields.io/badge/Status-v0.3%20-D97706" />
+</p>
+
+## Vision
+
+**CIG-Nexus** is a lightweight real-time messaging platform built to keep transport concerns, protocol handling, and client UI clearly separated.
+
+Current focus:
+
+- Deliver a working end-to-end chat flow from browser to TCP backend
+- Keep the gateway transport-only with no business logic
+- Keep protocol handling explicit and testable in the server
+- Make local development simple with Docker Compose and isolated services
 
 ## Architecture
 
+```text
+Next.js Web Client
+        |
+        | WebSocket / JSON strings
+        v
+Gateway (Node.js + TypeScript)
+        |
+        | TCP / 4-byte big-endian framed JSON
+        v
+CIG Nexus Server (C++)
 ```
-Clients (Web, Desktop)
-       ↓
-   WebSocket Gateway (WsServer v0.1)
-       ↓
-   CIG Nexus Server (TCP backend)
-```
 
-## Components
+## Stack
 
-### Gateway (WebSocket ↔ TCP Bridge)
-Transport layer gateway that bridges WebSocket clients to the TCP backend server.
-- **Version:** v0.1
-- **Language:** TypeScript (Node.js)
-- **Technology:** `ws` library for WebSocket server
-- **Port:** 8080 (configurable via `WS_PORT`)
-- **Features:**
-  - 1 WebSocket connection = 1 TCP connection (1:1 mapping)
-  - JSON string messages over WebSocket
-  - Binary framing (4-byte big-endian size prefix) for TCP
-  - Automatic connection management and error handling
-  - No protocol validation or business logic
+| Domain | Technology |
+|---|---|
+| Web client | Next.js 16, React 19, TypeScript |
+| Gateway | Node.js, TypeScript, ws |
+| Backend server | C++, CMake |
+| Tests | Catch2 |
+| Local orchestration | Docker Compose |
 
-See [gateway/README.md](gateway/README.md) for details.
+## Features
 
-### Server (TCP Backend)
-Authoritative backend server that owns state and coordinates message flow.
-- **Language:** C++
-- **Storage:** In-memory message state
-- **Protocol:** Binary-framed JSON messages
-- **Port:** 4242 (default)
+### Web
 
-See [server/README.md](server/README.md) for details.
+- Next.js App Router client
+- Browser-only WebSocket connection
+- Automatic `HELLO` on connect
+- Simple chat UI with live message list
 
-### Shared Protocol
-Common protocol definitions and message types.
+### Gateway
 
-See [shared/protocol/README.md](shared/protocol/README.md) for specification.
+- One WebSocket connection maps to one TCP connection
+- WebSocket messages are JSON strings
+- TCP messages use 4-byte big-endian framing
+- No business logic, no validation, no auth, no session management
+
+### Server
+
+- TCP listener and connection tracking
+- Frame decoding and message parsing
+- `HELLO` / `WELCOME` handshake
+- `CHAT_MESSAGE` handling and broadcast routing
+- Protocol handlers covered by Catch2 tests
 
 ## Quick Start
 
-### Start Server
+### 1. Prerequisites
+
+- Docker
+- Docker Compose
+
+### 2. Start the stack
+
 ```bash
-cd server/build
-./cig-nexus-server
-# Server listening on port 4242
+docker compose up --build
 ```
 
-### Start Gateway
+Available services:
+
+- Web: `http://localhost:3000`
+- Gateway WebSocket: `ws://localhost:8080`
+- Server TCP: `localhost:4242`
+
+## Local Development
+
+### Server
+
+```bash
+cd server
+mkdir -p build
+cd build
+cmake ..
+cmake --build .
+./cig-nexus-server
+```
+
+### Gateway
+
 ```bash
 cd gateway
 npm install
 npm run build
 WS_PORT=8080 TCP_HOST=localhost TCP_PORT=4242 npm start
-# WebSocket gateway listening on port 8080
 ```
 
-### Connect Client
-```javascript
-const ws = new WebSocket("ws://localhost:8080");
+### Web
 
-ws.onopen = () => {
-  ws.send(JSON.stringify({
-    type: "HELLO",
-    version: "0.1",
-    client: "web"
-  }));
-};
-
-ws.onmessage = (msg) => {
-  console.log("Received:", msg.data);
-};
+```bash
+cd web
+npm install
+npm run dev
 ```
 
-## Project Structure
+## Example Flow
 
+The browser connects to the gateway and sends:
+
+```json
+{
+  "type": "HELLO",
+  "version": "0.1",
+  "client": "web"
+}
 ```
+
+Then chat messages are sent as:
+
+```json
+{
+  "type": "CHAT_MESSAGE",
+  "content": "hello"
+}
+```
+
+Successful chat responses currently include metadata such as:
+
+```json
+{
+  "type": "CHAT_MESSAGE",
+  "message_id": 1,
+  "timestamp": 1741104000,
+  "from": "anonymous",
+  "content": "hello"
+}
+```
+
+## Structure
+
+```text
 .
-├── gateway/           # WebSocket gateway (TypeScript)
-│   ├── src/
-│   │   ├── index.ts  # Entry point
-│   │   ├── ws/       # WebSocket server
-│   │   ├── tcp/      # TCP client wrapper
-│   │   ├── protocol/ # Binary framing
-│   │   └── types.ts  # TypeScript types
-│   ├── package.json
-│   └── tsconfig.json
-├── server/            # TCP backend (C++)
-│   ├── src/           # Implementation
-│   ├── include/       # Headers
-│   ├── tests/         # Unit tests
-│   └── CMakeLists.txt
-├── shared/            # Shared protocol definitions
-│   └── protocol/
-├── web/               # Web client (placeholder)
-├── desktop/           # Desktop client (placeholder)
-└── docs/              # Architecture documentation
+├── web/                # Next.js web client
+├── gateway/            # WebSocket <-> TCP gateway
+├── server/             # C++ TCP server and protocol handlers
+├── shared/             # Shared protocol documentation
+├── docs/               # Architecture notes
+└── docker-compose.yml  # Local orchestration
 ```
 
-## Development Status
+## Documentation
 
-**Gateway v0.1:** ✓ Complete
-- WebSocket server
-- TCP client with framing
-- 1:1 connection mapping
-- Error handling and graceful shutdown
+- See [gateway/README.md](gateway/README.md) for gateway details.
+- See [server/README.md](server/README.md) for server details.
+- See [shared/protocol/README.md](shared/protocol/README.md) for shared protocol documentation.
 
-**Server:** In development
-- [x] TCP listener
-- [ ] Message processing pipeline
-- [ ] Protocol handlers
-- [ ] Session management
+## Status
 
-**Clients:** Placeholder
-- [ ] Web client
-- [ ] Desktop client
+Current project state:
+
+- Web client is functional and can send chat messages
+- Gateway is functional as a transport bridge
+- Server handles `HELLO` and `CHAT_MESSAGE`
+- Broadcast flow is implemented for chat messages
+- Dockerized local stack is available
+
+Still pending or intentionally out of scope:
+
+- Authentication and authorization
+- Persistent sessions and user identities
+- Database persistence
+- Production-grade event loop / scaling concerns
+- TLS and deployment hardening
+
+---
+
+Project CIG-Nexus - an experimental real-time chat platform with a clear separation between client, gateway, and server.
