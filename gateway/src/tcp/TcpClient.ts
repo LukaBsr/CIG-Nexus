@@ -47,10 +47,6 @@ export class TcpClient {
 				}
 			});
 
-			socket.on("error", () => {
-				socket.destroy();
-			});
-
 			socket.connect(this.port, this.host);
 		});
 	}

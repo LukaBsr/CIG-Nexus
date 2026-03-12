@@ -1,170 +1,161 @@
-# CIG Nexus TCP Protocol
+# CIG Nexus Protocol
 
-A custom TCP-based protocol designed for real-time communication with full control over framing, parsing, and evolution.
+This document describes the protocol currently used between clients and the CIG Nexus TCP server.
 
 ## Overview
 
-The CIG Nexus protocol provides a lightweight, frame-based messaging system built on:
+The protocol is based on:
 
-- **TCP transport** for reliable delivery
-- **Binary framing** for robust message boundaries
-- **JSON payloads** for flexibility and debugging
-- **Authoritative server model** for single source of truth
+- TCP transport
+- 4-byte big-endian binary framing
+- JSON payloads
+- server-side validation and dispatch
 
-## Transport
+Browser clients do not speak TCP directly. They reach the server through the WebSocket gateway, but the payloads remain the same JSON messages.
 
-- **Protocol**: TCP
-- **Connection**: One persistent connection per client
-- **I/O Model**: Non-blocking on the server side
-- **Reliability**: TCP's built-in reliability guarantees
+## Transport and Framing
 
-## Message Framing
+Each TCP message is sent as:
 
-Each message follows a simple length-prefixed frame format:
-
-```
+```text
 +--------------------+----------------------+
 | uint32_t size (4B) | JSON payload (size) |
 +--------------------+----------------------+
 ```
 
-### Frame Structure
+Framing rules:
 
-| Component | Details |
-|-----------|---------|
-| **Size** | 32-bit unsigned integer, network byte order (big-endian), exact size of JSON payload in bytes (minimum 1, maximum `MAX_FRAME_SIZE`) |
-| **Payload** | UTF-8 encoded JSON, no delimiter or terminator, exactly one message per frame |
-
-#### Size Constraints and Validation
-
-- **Minimum size**: `size` MUST be at least `1`. A frame with `size == 0` is invalid and MUST be rejected.
-- **Maximum size**: Implementations MUST enforce a configured `MAX_FRAME_SIZE` (recommended default: 1 MiB). Frames with `size > MAX_FRAME_SIZE` MUST be treated as a protocol error and SHOULD cause the connection to be closed.
-- **Truncated frames**: If fewer than `size` bytes are received for the payload (e.g., the peer closes the connection or a read timeout occurs), the frame is invalid and MUST NOT be processed. The connection SHOULD be closed.
-- **Overlong payloads**: If more than `size` bytes are received before processing, only the first `size` bytes belong to the current frame; any additional bytes belong to subsequent frames and MUST NOT be consumed as part of the current payload.
-### Example Frame
-
-```
-00 00 00 3C
-{ "type": "HELLO", "version": "0.1", "client": "desktop" }
-```
-
-## Design Philosophy
-
-- **Server Authority**: The server is the authoritative source of truth
-- **Client Intentions**: Clients only send intentions; the server validates and executes
-- **Centralized Logic**: All validation and state changes are handled server-side
+- size is a 32-bit unsigned big-endian integer
+- size must be greater than `0`
+- size must be less than or equal to `1 MiB`
+- payload bytes are UTF-8 JSON
+- multiple frames may arrive in a single socket read
+- partial frames must remain buffered until complete
 
 ## Connection Lifecycle
 
-1. TCP connection is established
-2. Client sends `HELLO` message
-3. Server responds with `WELCOME` or `ERROR`
-4. Session becomes active
+1. Client opens a TCP connection.
+2. Client sends a `HELLO` message.
+3. Server returns `WELCOME` or `ERROR`.
+4. Client may send `CHAT_MESSAGE` messages.
+5. Valid chat messages are broadcast to all active connections.
 
-## Common Messages
+## Message Types
 
-### HELLO (Client → Server)
+### HELLO
 
-Initial handshake message sent by the client after connecting.
+Client to server:
 
 ```json
 {
   "type": "HELLO",
   "version": "0.1",
-  "client": "desktop"
+  "client": "web"
 }
 ```
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `type` | string | Always `"HELLO"` |
-| `version` | string | Protocol version (MAJOR.MINOR) |
-| `client` | string | Client type: `web` or `desktop`. `bot` is reserved for future use and not supported in protocol version `0.1`. |
+Validation:
 
-### WELCOME (Server → Client)
+- `type` must be `"HELLO"`
+- `version` must be `"0.1"`
+- `client` must be `"web"` or `"desktop"`
 
-Positive response to a valid `HELLO` message.
+### WELCOME
+
+Server to client:
 
 ```json
 {
   "type": "WELCOME",
-  "session_id": "abc123",
-  "server_version": "0.1"
+  "session_id": "",
+  "server_version": "0.3"
 }
 ```
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `type` | string | Always `"WELCOME"` |
-| `session_id` | string | Unique session identifier for this connection |
-| `server_version` | string | Protocol version supported by the server |
+Notes:
 
-### ERROR (Server → Client)
+- `session_id` is currently present but empty
+- `server_version` currently reflects the server/application version, not the client protocol version field
 
-Error response sent when a message cannot be processed or connection is rejected.
+### CHAT_MESSAGE
+
+Client to server:
+
+```json
+{
+  "type": "CHAT_MESSAGE",
+  "content": "hello"
+}
+```
+
+Validation:
+
+- payload must be an object
+- `type` must exist, be a string, and equal `"CHAT_MESSAGE"`
+- `content` must exist
+- `content` must be a string
+- `content` must not be empty
+- `content` length must be at most `500`
+
+On success, the server emits and broadcasts:
+
+```json
+{
+  "type": "CHAT_MESSAGE",
+  "message_id": 1,
+  "timestamp": 1741104000,
+  "from": "anonymous",
+  "content": "hello"
+}
+```
+
+Field meanings:
+
+- `message_id`: generated server-side
+- `timestamp`: UNIX timestamp in seconds
+- `from`: currently always `"anonymous"`
+- `content`: validated chat message content
+
+### ERROR
+
+Server to client:
 
 ```json
 {
   "type": "ERROR",
-  "code": "UNSUPPORTED_VERSION",
-  "message": "Protocol version not supported"
+  "code": "MALFORMED_MESSAGE",
+  "message": "CHAT_MESSAGE content must not be empty"
 }
 ```
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `type` | string | Always `"ERROR"` |
-| `code` | string | Machine-readable error code |
-| `message` | string | Human-readable error description |
+Current error codes used by the implementation:
 
-**Error codes (v0.1)**
+| Code | Meaning |
+|---|---|
+| `UNSUPPORTED_VERSION` | `HELLO.version` is not supported |
+| `PROTOCOL_VIOLATION` | message type or sequencing is invalid |
+| `MALFORMED_MESSAGE` | required fields are missing or invalid |
 
-The following error codes may be returned by the server in v0.1:
+## Behavior Notes
 
-| Code | Description |
-|------|-------------|
-| `UNSUPPORTED_VERSION` | The client requested a protocol version not supported by the server. |
-| `PROTOCOL_VIOLATION` | The client sent a message that violates the protocol (e.g., wrong type, invalid sequence). |
-| `MALFORMED_MESSAGE` | The client sent a message that could not be parsed (e.g., invalid JSON, missing required fields). |
-| `ABUSIVE_BEHAVIOR` | The client exhibited abusive or disallowed behavior and the server rejected the request. |
-| `INACTIVITY_TIMEOUT` | The client was inactive for too long and the server timed out the connection. |
-| `INTERNAL_ERROR` | The server encountered an unexpected internal error while processing the request. |
-## Connection Termination
+- The server is authoritative.
+- The gateway is transport-only and does not validate protocol payloads.
+- Valid `CHAT_MESSAGE` responses are broadcast to all connected clients.
+- Non-chat responses are returned only to the originating client.
 
-The server may close the connection in the following cases:
+## Security and Limits
 
-- Protocol violations detected
-- Malformed messages received
-- Client version is unsupported
-- Abusive behavior detected
-- Inactivity timeout (if configured)
+Current implementation limitations:
 
-## Versioning
+- no authentication
+- no authorization
+- no TLS
+- no rate limiting
+- no persistent identity
 
-- **Format**: `MAJOR.MINOR`
-- **Incompatibility**: Incompatible versions are rejected during the handshake
-- **Backward Compatibility**: Optional and explicit; not guaranteed between versions
-- **Evolution**: New message types and fields can be added with version increments
+Do not treat the current protocol as production-ready for untrusted environments.
 
-## Security (v0.1)
+## Related Documentation
 
-⚠️ **Current implementation is unencrypted and unauthenticated**
-
-- ❌ No authentication
-- ❌ No encryption
-- ❌ No rate limiting
-
-**Security features will be added in later versions.** Do not use this protocol for sensitive data in production without additional security measures.
-
-## Future Roadmap
-
-- **v0.2+**: Authentication and authorization
-- **v1.0**: TLS/SSL encryption
-- **Post-v1.0**: Binary payload format migration for performance
-
-## Notes
-
-- JSON is intentionally used for readability and debugging in early versions
-- Each connection is independent; no state is shared between clients
-- The protocol is designed to be easily extended with new message types
-- Migration to a binary payload format is planned for later versions to improve performance
+- See [../../gateway/README.md](../../gateway/README.md) for gateway transport behavior.
+- See [../../server/README.md](../../server/README.md) for current server implementation details.

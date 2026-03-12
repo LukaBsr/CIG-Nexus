@@ -4,7 +4,10 @@ export function connect(
   onMessage: (msg: any) => void,
   onStatus: (status: string) => void
 ): void {
-  ws = new WebSocket("ws://localhost:8080");
+  const url =
+    process.env.NEXT_PUBLIC_GATEWAY_URL || "ws://localhost:8080"
+
+  ws = new WebSocket(url);
 
   ws.onopen = () => {
     onStatus("connected");
