@@ -19,9 +19,11 @@ export class WsServer {
 		const server = new WebSocketServer({ port: this.options.wsPort });
 		console.log(`WebSocket gateway listening on port ${this.options.wsPort}`);
         
-		server.on("connection", (ws) => {
+		server.on("connection", (ws, req) => {
 			const tcp = new TcpClient(this.options.tcpHost, this.options.tcpPort);
 			let closed = false;
+
+			console.log("Ws connection from:", req.url);
 
 			const closeBoth = () => {
 				if (closed) {
