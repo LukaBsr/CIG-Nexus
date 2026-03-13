@@ -6,6 +6,7 @@ The web client is a Next.js App Router application that connects to the CIG Nexu
 
 - client-side WebSocket connection to the gateway
 - automatic `HELLO` message on connect
+- automatic `IDENTIFY` after `WELCOME` (default username: `web_user`)
 - live connection status display
 - simple chat input with send button
 - live list of received messages rendered as formatted JSON
@@ -34,6 +35,15 @@ Flow:
 {
 	"type": "CHAT_MESSAGE",
 	"content": "hello"
+}
+```
+
+Before chat, the client also sends:
+
+```json
+{
+	"type": "IDENTIFY",
+	"username": "web_user"
 }
 ```
 
@@ -88,7 +98,7 @@ The current UI is intentionally minimal:
 ## Current Limitations
 
 - no authentication
-- no username selection
+- no custom username selection yet (hardcoded `web_user`)
 - no message history persistence
 - no reconnection logic
 - no optimistic UI state
