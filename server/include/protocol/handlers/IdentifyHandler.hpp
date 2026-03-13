@@ -1,5 +1,5 @@
-#ifndef CIG_NEXUS_PROTOCOL_HANDLERS_CHAT_HANDLER_HPP
-#define CIG_NEXUS_PROTOCOL_HANDLERS_CHAT_HANDLER_HPP
+#ifndef CIG_NEXUS_PROTOCOL_HANDLERS_IDENTIFY_HANDLER_HPP
+#define CIG_NEXUS_PROTOCOL_HANDLERS_IDENTIFY_HANDLER_HPP
 
 #include "protocol/Message.hpp"
 
@@ -9,10 +9,10 @@ namespace session {
 
 namespace protocol {
 
-class ChatHandler {
+class IdentifyHandler {
 public:
     void setSessionManager(session::SessionManager* session_manager);
-    Message handle(const Message& message, int fd) const;
+    Message handle(const Message& message, int fd);
 
 private:
     session::SessionManager* session_manager_ = nullptr;
@@ -20,4 +20,4 @@ private:
 
 } // namespace protocol
 
-#endif // CIG_NEXUS_PROTOCOL_HANDLERS_CHAT_HANDLER_HPP
+#endif // CIG_NEXUS_PROTOCOL_HANDLERS_IDENTIFY_HANDLER_HPP
