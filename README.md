@@ -9,7 +9,7 @@
 	<img alt="Gateway" src="https://img.shields.io/badge/Gateway-Node.js%20%2B%20TypeScript-3178C6" />
 	<img alt="Server" src="https://img.shields.io/badge/Server-C%2B%2B-00599C" />
 	<img alt="Protocol" src="https://img.shields.io/badge/Protocol-WebSocket%20%E2%86%94%20TCP-0F766E" />
-	<img alt="Status" src="https://img.shields.io/badge/Status-v0.3%20-D97706" />
+  <img alt="Status" src="https://img.shields.io/badge/Status-v0.4%20-D97706" />
 </p>
 
 ## Vision
@@ -54,6 +54,7 @@ CIG Nexus Server (C++)
 - Next.js App Router client
 - Browser-only WebSocket connection
 - Automatic `HELLO` on connect
+- Automatic `IDENTIFY` on `WELCOME` (default username: `web_user`)
 - Simple chat UI with live message list
 
 ### Gateway
@@ -68,7 +69,9 @@ CIG Nexus Server (C++)
 - TCP listener and connection tracking
 - Frame decoding and message parsing
 - `HELLO` / `WELCOME` handshake
-- `CHAT_MESSAGE` handling and broadcast routing
+- `IDENTIFY` / `IDENTIFIED` identity flow
+- Session creation on `IDENTIFY` (not on raw connect)
+- `CHAT_MESSAGE` handling and scope-based broadcast routing
 - Protocol handlers covered by Catch2 tests
 
 ## Quick Start
@@ -132,6 +135,15 @@ The browser connects to the gateway and sends:
 }
 ```
 
+After `WELCOME`, the web client automatically identifies:
+
+```json
+{
+  "type": "IDENTIFY",
+  "username": "web_user"
+}
+```
+
 Then chat messages are sent as:
 
 ```json
@@ -148,7 +160,8 @@ Successful chat responses currently include metadata such as:
   "type": "CHAT_MESSAGE",
   "message_id": 1,
   "timestamp": 1741104000,
-  "from": "anonymous",
+  "user_id": "u_1",
+  "username": "web_user",
   "content": "hello"
 }
 ```
@@ -177,14 +190,14 @@ Current project state:
 
 - Web client is functional and can send chat messages
 - Gateway is functional as a transport bridge
-- Server handles `HELLO` and `CHAT_MESSAGE`
-- Broadcast flow is implemented for chat messages
+- Server handles `HELLO`, `IDENTIFY`, and `CHAT_MESSAGE`
+- Broadcast flow is implemented through `Message.scope`
 - Dockerized local stack is available
 
 Still pending or intentionally out of scope:
 
 - Authentication and authorization
-- Persistent sessions and user identities
+- Persistent sessions and identities across restarts
 - Database persistence
 - Production-grade event loop / scaling concerns
 - TLS and deployment hardening

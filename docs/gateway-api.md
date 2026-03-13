@@ -40,6 +40,15 @@ Handshake request:
 }
 ```
 
+Identify request:
+
+```json
+{
+  "type": "IDENTIFY",
+  "username": "web_user"
+}
+```
+
 Chat request:
 
 ```json
@@ -73,9 +82,10 @@ For each browser connection:
 
 1. WebSocket client connects.
 2. Gateway opens a TCP connection to the backend server.
-3. Browser messages are forwarded to TCP.
-4. TCP responses are forwarded back to the browser.
-5. If one side closes or errors, the gateway closes the other side.
+3. Browser sends `HELLO` then `IDENTIFY`.
+4. Browser chat messages are forwarded to TCP.
+5. TCP responses (`WELCOME`, `IDENTIFIED`, `CHAT_MESSAGE`, `ERROR`) are forwarded back to the browser.
+6. If one side closes or errors, the gateway closes the other side.
 
 ## Gateway Error Message
 

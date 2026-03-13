@@ -37,8 +37,10 @@ Framing rules:
 1. Client opens a TCP connection.
 2. Client sends a `HELLO` message.
 3. Server returns `WELCOME` or `ERROR`.
-4. Client may send `CHAT_MESSAGE` messages.
-5. Valid chat messages are broadcast to all active connections.
+4. Client sends `IDENTIFY` with a username.
+5. Server returns `IDENTIFIED` or `ERROR`.
+6. Identified clients may send `CHAT_MESSAGE` messages.
+7. Valid chat messages are broadcast to all active connections.
 
 ## Message Types
 
@@ -67,15 +69,42 @@ Server to client:
 ```json
 {
   "type": "WELCOME",
-  "session_id": "",
   "server_version": "0.3"
 }
 ```
 
 Notes:
 
-- `session_id` is currently present but empty
 - `server_version` currently reflects the server/application version, not the client protocol version field
+
+### IDENTIFY
+
+Client to server:
+
+```json
+{
+  "type": "IDENTIFY",
+  "username": "web_user"
+}
+```
+
+Validation:
+
+- payload must be an object
+- `username` must exist
+- `username` must be a string
+- `username` must not be empty
+- `username` length must be at most `32`
+
+On success, the server creates a session for that socket and returns:
+
+```json
+{
+  "type": "IDENTIFIED",
+  "user_id": "u_1",
+  "username": "web_user"
+}
+```
 
 ### CHAT_MESSAGE
 
@@ -104,7 +133,8 @@ On success, the server emits and broadcasts:
   "type": "CHAT_MESSAGE",
   "message_id": 1,
   "timestamp": 1741104000,
-  "from": "anonymous",
+  "user_id": "u_1",
+  "username": "web_user",
   "content": "hello"
 }
 ```
@@ -113,8 +143,11 @@ Field meanings:
 
 - `message_id`: generated server-side
 - `timestamp`: UNIX timestamp in seconds
-- `from`: currently always `"anonymous"`
+- `user_id`: server-assigned per identified connection
+- `username`: current username for the identified connection
 - `content`: validated chat message content
+
+If a non-identified client sends `CHAT_MESSAGE`, server returns `ERROR` with code `NOT_IDENTIFIED`.
 
 ### ERROR
 
@@ -135,6 +168,8 @@ Current error codes used by the implementation:
 | `UNSUPPORTED_VERSION` | `HELLO.version` is not supported |
 | `PROTOCOL_VIOLATION` | message type or sequencing is invalid |
 | `MALFORMED_MESSAGE` | required fields are missing or invalid |
+| `NOT_IDENTIFIED` | client attempted chat before successful `IDENTIFY` |
+| `INTERNAL_ERROR` | missing internal context for request processing |
 
 ## Behavior Notes
 
