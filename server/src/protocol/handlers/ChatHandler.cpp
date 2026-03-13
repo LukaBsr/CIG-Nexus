@@ -1,13 +1,18 @@
 #include "protocol/handlers/ChatHandler.hpp"
 
 #include "protocol/MessageBuilders.hpp"
+#include "session/SessionManager.hpp"
 
 #include <ctime>
 #include <string>
 
 namespace protocol {
 
-Message ChatHandler::handle(const Message& message) const {
+void ChatHandler::setSessionManager(session::SessionManager* session_manager) {
+    session_manager_ = session_manager;
+}
+
+Message ChatHandler::handle(const Message& message, int fd) const {
     auto makeError = [](const std::string& code, const std::string& msg) {
         Message response;
         response.type = "ERROR";
@@ -57,13 +62,38 @@ Message ChatHandler::handle(const Message& message) const {
     const int message_id = ++message_counter;
     const std::time_t timestamp = std::time(nullptr);
 
+    if (!session_manager_) {
+        Message response;
+        response.type = "CHAT_MESSAGE";
+        response.scope = Scope::BROADCAST;
+        response.payload = nlohmann::json{
+            {"type", "CHAT_MESSAGE"},
+            {"message_id", message_id},
+            {"timestamp", static_cast<long>(timestamp)},
+            {"from", "anonymous"},
+            {"content", content}
+        };
+        return response;
+    }
+
+    const session::Session* session = session_manager_->getSession(fd);
+    if (!session) {
+        return makeError("NOT_IDENTIFIED", "Client must IDENTIFY before sending chat messages");
+    }
+
+    if (session->username.empty()) {
+        return makeError("NOT_IDENTIFIED", "Client must IDENTIFY before sending chat messages");
+    }
+
     Message response;
     response.type = "CHAT_MESSAGE";
+    response.scope = Scope::BROADCAST;
     response.payload = nlohmann::json{
         {"type", "CHAT_MESSAGE"},
         {"message_id", message_id},
         {"timestamp", static_cast<long>(timestamp)},
-        {"from", "anonymous"},
+        {"user_id", session->user_id},
+        {"username", session->username},
         {"content", content}
     };
     return response;

@@ -30,6 +30,7 @@ Responsible for:
 
 - opening a browser WebSocket connection
 - sending `HELLO` on connect
+- sending `IDENTIFY` after `WELCOME` (currently default username)
 - sending `CHAT_MESSAGE` payloads from the UI
 - displaying connection status and received messages
 
@@ -65,6 +66,8 @@ Responsible for:
 - parsing framed JSON messages
 - validating protocol payloads
 - dispatching handlers
+- creating in-memory identity sessions on `IDENTIFY`
+- routing responses by semantic scope (`DIRECT` vs `BROADCAST`)
 - broadcasting valid chat messages to all connected clients
 
 ## Current Implemented Flow
@@ -77,14 +80,22 @@ Responsible for:
 4. The server validates it.
 5. The server returns `WELCOME` or `ERROR`.
 
+### Identity
+
+1. After `WELCOME`, the client sends `IDENTIFY` with a username.
+2. The server validates username constraints.
+3. The server creates a session for that socket.
+4. The server returns `IDENTIFIED` with `user_id` and `username`.
+
 ### Chat
 
 1. The web client sends `CHAT_MESSAGE` with `content`.
 2. The gateway forwards it unchanged apart from transport framing.
-3. The server validates the payload.
-4. The server creates a normalized chat message with metadata.
-5. The server broadcasts that message to every active connection.
-6. The gateway forwards the resulting JSON message back to browsers.
+3. The server validates payload and identity state.
+4. The server creates a normalized chat message with identity metadata.
+5. The message is marked `Scope::BROADCAST`.
+6. The server broadcasts that message to every active connection.
+7. The gateway forwards the resulting JSON message back to browsers.
 
 ## Protocol Transport
 
@@ -114,14 +125,15 @@ Implemented:
 - gateway transport bridge
 - TCP server connection tracking
 - `HELLO` / `WELCOME`
+- `IDENTIFY` / `IDENTIFIED`
 - `CHAT_MESSAGE` validation and normalization
+- in-memory session manager keyed by socket fd
 - broadcast to connected clients
 
 Not implemented yet:
 
 - authentication
-- persistent sessions
-- named users
+- persistence for sessions/users across process restarts
 - persistence layer
 - native WebSocket support in the C++ server
 - production-grade scalability and hardening

@@ -1,6 +1,8 @@
 #include "Server.hpp"
 #include "protocol/MessageParser.hpp"
+
 #include <arpa/inet.h>
+#include <cstddef>
 #include <chrono>
 #include <iostream>
 #include <stdexcept>
@@ -8,18 +10,47 @@
 #include <thread>
 #include <vector>
 
+namespace {
+
+bool send_all(int fd, const void* data, size_t size) {
+    const char* bytes = static_cast<const char*>(data);
+    size_t total_sent = 0;
+
+    while (total_sent < size) {
+        const ssize_t sent = ::send(fd, bytes + total_sent, size - total_sent, 0);
+        if (sent <= 0) {
+            return false;
+        }
+
+        total_sent += static_cast<size_t>(sent);
+    }
+
+    return true;
+}
+
+} // namespace
+
 Server::Server(uint16_t port)
     : port_(port), running_(false), listener_(port) {
 
+    chat_handler_.setSessionManager(&session_manager_);
+    identify_handler_.setSessionManager(&session_manager_);
+
     dispatcher_.registerHandler("HELLO",
-        [this](const protocol::Message& msg) {
+        [this](const protocol::Message& msg, int /*fd*/) {
             return hello_handler_.handle(msg);
         }
     );
 
     dispatcher_.registerHandler("CHAT_MESSAGE",
-        [this](const protocol::Message& msg) {
-            return chat_handler_.handle(msg);
+        [this](const protocol::Message& msg, int fd) {
+            return chat_handler_.handle(msg, fd);
+        }
+    );
+
+    dispatcher_.registerHandler("IDENTIFY",
+        [this](const protocol::Message& msg, int fd) {
+            return identify_handler_.handle(msg, fd);
         }
     );
 }
@@ -48,26 +79,34 @@ void Server::start() {
 
             if (!conn->readFromSocket()) {
                 std::cout << "Client disconnected (fd=" << fd << ")" << std::endl;
+                session_manager_.removeSession(fd);
                 it = connections_.erase(it);
                 continue;
             }
 
             auto frames = conn->pollFrames();
             for (const auto& frame : frames) {
-                auto message = protocol::parse_message(frame);
-                auto response = dispatcher_.dispatch(message);
+                protocol::Message message;
 
-                if (response.type == "CHAT_MESSAGE") {
-                    broadcast(response);
-                } else {
-                    std::string response_json = response.payload.dump();
+                try {
+                    message = protocol::parse_message(frame);
+                } catch (const std::exception& e) {
+                    std::cerr << "Protocol error: " << e.what() << std::endl;
+                    continue;
+                }
 
-                    uint32_t size = htonl(static_cast<uint32_t>(response_json.size()));
-                    ::send(fd, &size, 4, 0);
-                    ::send(fd, response_json.data(), response_json.size(), 0);
+                const auto response = dispatcher_.dispatch(message, fd);
+
+                switch (response.scope) {
+                    case protocol::Scope::BROADCAST:
+                        broadcast(response);
+                        break;
+
+                    case protocol::Scope::DIRECT:
+                        sendMessage(fd, response);
+                        break;
                 }
             }
-
             ++it;
         }
 
@@ -77,13 +116,25 @@ void Server::start() {
     std::cout << "CIG Nexus Server stopped" << std::endl;
 }
 
-void Server::broadcast(const protocol::Message& message) {
-    std::string message_json = message.payload.dump();
-    uint32_t size = htonl(static_cast<uint32_t>(message_json.size()));
+bool Server::sendMessage(int fd, const protocol::Message& message) {
+    const std::string payload = message.payload.dump();
+    const uint32_t frame_size = htonl(static_cast<uint32_t>(payload.size()));
 
+    if (!send_all(fd, &frame_size, sizeof(frame_size))) {
+        return false;
+    }
+
+    if (!send_all(fd, payload.data(), payload.size())) {
+        return false;
+    }
+
+    return true;
+}
+
+void Server::broadcast(const protocol::Message& message) {
     for (const auto& [fd, conn] : connections_) {
-        ::send(fd, &size, 4, 0);
-        ::send(fd, message_json.data(), message_json.size(), 0);
+        (void)conn;
+        (void)sendMessage(fd, message);
     }
 }
 

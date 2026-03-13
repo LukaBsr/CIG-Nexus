@@ -25,12 +25,45 @@ It does not:
 
 ## Runtime Behavior
 
+Typical browser flow through the gateway:
+
+1. Browser sends `HELLO`.
+2. Server replies `WELCOME`.
+3. Browser sends `IDENTIFY`.
+4. Server replies `IDENTIFIED`.
+5. Browser sends `CHAT_MESSAGE` messages.
+6. Server broadcasts normalized chat payloads.
+
 ### Browser to Server
 
 1. Browser sends a JSON string over WebSocket.
 2. The gateway converts it to a `Buffer`.
 3. The gateway prefixes it with a 4-byte big-endian payload size.
 4. The framed message is written to the TCP socket.
+
+Common forwarded browser payloads include:
+
+```json
+{
+    "type": "HELLO",
+    "version": "0.1",
+    "client": "web"
+}
+```
+
+```json
+{
+    "type": "IDENTIFY",
+    "username": "web_user"
+}
+```
+
+```json
+{
+    "type": "CHAT_MESSAGE",
+    "content": "hello"
+}
+```
 
 ### Server to Browser
 

@@ -7,11 +7,9 @@
 
 namespace protocol {
 
-inline nlohmann::json make_welcome(const std::string& session_id,
-                                   const std::string& server_version) {
+inline nlohmann::json make_welcome(const std::string& server_version) {
     return nlohmann::json{
         {"type", "WELCOME"},
-        {"session_id", session_id},
         {"server_version", server_version}
     };
 }

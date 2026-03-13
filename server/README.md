@@ -8,9 +8,10 @@ The CIG Nexus Server is the authoritative TCP backend for the platform. It accep
 - Track active client connections
 - Decode 4-byte big-endian framed messages
 - Parse JSON protocol messages
-- Dispatch `HELLO` and `CHAT_MESSAGE` handlers
+- Dispatch `HELLO`, `IDENTIFY`, and `CHAT_MESSAGE` handlers
+- Manage in-memory sessions keyed by socket fd
 - Return direct responses for handshake and validation errors
-- Broadcast valid chat messages to all connected clients
+- Broadcast valid chat messages to all connected clients using `Message.scope`
 
 ## Implemented Protocol Features
 
@@ -26,9 +27,35 @@ The server validates:
 
 On success, the server returns a `WELCOME` message.
 
+`WELCOME` currently includes:
+
+- `type`
+- `server_version`
+
+`WELCOME` no longer includes `session_id` because sessions are created on `IDENTIFY`.
+
+### IDENTIFY
+
+Clients identify after receiving `WELCOME`.
+
+The server validates:
+
+- payload is a JSON object
+- `username` exists
+- `username` is a string
+- `username` is not empty
+- `username` length is at most `32` characters
+- connection is not already identified
+
+On success:
+
+- the server creates a new in-memory session for the socket
+- the session is assigned `session_id` and `user_id`
+- the server returns `IDENTIFIED` with `user_id` and `username`
+
 ### CHAT_MESSAGE
 
-Clients can send chat messages after connection.
+Clients can send chat messages after successful `IDENTIFY`.
 
 The server validates:
 
@@ -46,8 +73,14 @@ Current chat payloads include:
 - `type`
 - `message_id`
 - `timestamp`
-- `from`
+- `user_id`
+- `username`
 - `content`
+
+If a client sends `CHAT_MESSAGE` before identify, the server returns:
+
+- `type = "ERROR"`
+- `code = "NOT_IDENTIFIED"`
 
 ## Architecture Notes
 
@@ -56,6 +89,9 @@ Current chat payloads include:
 - **Payload format**: JSON
 - **Connection model**: one socket per client
 - **I/O approach**: accept loop plus per-connection polling in the main loop
+- **Routing model**: `Message.scope` drives response behavior:
+	- `Scope::DIRECT`: response sent only to sender
+	- `Scope::BROADCAST`: response sent to all active connections
 
 ## Directory Layout
 
@@ -98,14 +134,16 @@ Implemented now:
 - JSON message parsing
 - dispatcher-based protocol handling
 - `HELLO` / `WELCOME`
+- `IDENTIFY` / `IDENTIFIED`
 - `CHAT_MESSAGE` validation
 - server-side broadcast for valid chat messages
-- Catch2 coverage for framing and chat handler behavior
+- deferred session creation on `IDENTIFY`
+- Catch2 coverage for framing, dispatcher, handlers, and session manager
 
 Not implemented yet:
 
 - authentication and authorization
-- persistent sessions and named users
+- persistent sessions and named users across restarts
 - database or message history persistence
 - production-grade event loop and backpressure handling
 - TLS or encryption

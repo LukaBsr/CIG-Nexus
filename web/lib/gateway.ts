@@ -23,6 +23,16 @@ export function connect(
   ws.onmessage = (event) => {
     try {
       const message = JSON.parse(event.data);
+
+      if (message.type === "WELCOME") {
+        ws?.send(
+          JSON.stringify({
+            type: "IDENTIFY",
+            username: "web_user"
+          })
+        );
+      }
+
       onMessage(message);
     } catch (error) {
       console.error("Failed to parse message:", error);

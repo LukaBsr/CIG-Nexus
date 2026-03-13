@@ -7,9 +7,15 @@
 
 namespace protocol {
 
+enum class Scope {
+    DIRECT,
+    BROADCAST
+};
+
 struct Message {
     std::string type;
     nlohmann::json payload;
+    Scope scope = Scope::DIRECT;
 };
 
 } // namespace protocol
