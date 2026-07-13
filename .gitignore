@@ -44,3 +44,10 @@
 build/
 node_modules/
 dist/
+
+# TypeScript incremental build info
+*.tsbuildinfo
+
+# Local AI assistant files
+CLAUDE.md
+ARCHITECTURE.md
