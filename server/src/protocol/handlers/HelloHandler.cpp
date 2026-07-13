@@ -43,13 +43,6 @@ Message HelloHandler::handle(const Message& message) const {
         return response;
     }
 
-    if (message.payload["type"].get<std::string>() != "HELLO") {
-        Message response;
-        response.type = "ERROR";
-        response.payload = make_error("PROTOCOL_VIOLATION", "HELLO type mismatch");
-        return response;
-    }
-
     const std::string version = message.payload["version"].get<std::string>();
     if (version != "0.1") {
         Message response;
