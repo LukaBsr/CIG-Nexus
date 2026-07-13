@@ -58,21 +58,18 @@ Message ChatHandler::handle(const Message& message, int fd) const {
         return makeError("MALFORMED_MESSAGE", "CHAT_MESSAGE content must be <= 500 characters");
     }
 
-    static int message_counter = 0;
-    const int message_id = ++message_counter;
+    const int message_id = ++message_counter_;
     const std::time_t timestamp = std::time(nullptr);
 
     if (!session_manager_) {
         Message response;
         response.type = "CHAT_MESSAGE";
         response.scope = Scope::BROADCAST;
-        response.payload = nlohmann::json{
-            {"type", "CHAT_MESSAGE"},
-            {"message_id", message_id},
-            {"timestamp", static_cast<long>(timestamp)},
-            {"from", "anonymous"},
-            {"content", content}
-        };
+        response.payload = nlohmann::json{{"type", "CHAT_MESSAGE"},
+                                          {"message_id", message_id},
+                                          {"timestamp", static_cast<long>(timestamp)},
+                                          {"from", "anonymous"},
+                                          {"content", content}};
         return response;
     }
 
@@ -88,14 +85,12 @@ Message ChatHandler::handle(const Message& message, int fd) const {
     Message response;
     response.type = "CHAT_MESSAGE";
     response.scope = Scope::BROADCAST;
-    response.payload = nlohmann::json{
-        {"type", "CHAT_MESSAGE"},
-        {"message_id", message_id},
-        {"timestamp", static_cast<long>(timestamp)},
-        {"user_id", session->user_id},
-        {"username", session->username},
-        {"content", content}
-    };
+    response.payload = nlohmann::json{{"type", "CHAT_MESSAGE"},
+                                      {"message_id", message_id},
+                                      {"timestamp", static_cast<long>(timestamp)},
+                                      {"user_id", session->user_id},
+                                      {"username", session->username},
+                                      {"content", content}};
     return response;
 }
 

@@ -6,17 +6,11 @@ namespace session {
 Session& SessionManager::createSession(int socket_fd) {
     const auto now = std::chrono::system_clock::now();
     const auto timestamp =
-        std::chrono::duration_cast<std::chrono::seconds>(
-            now.time_since_epoch()
-        ).count();
+        std::chrono::duration_cast<std::chrono::seconds>(now.time_since_epoch()).count();
 
-    Session session{
-        "s_" + std::to_string(next_session_id_++),
-        "u_" + std::to_string(next_user_id_++),
-        "",
-        static_cast<uint64_t>(timestamp),
-        socket_fd
-    };
+    Session session{"s_" + std::to_string(next_session_id_++),
+                    "u_" + std::to_string(next_user_id_++), "", static_cast<uint64_t>(timestamp),
+                    socket_fd};
 
     auto [it, inserted] = sessions_.insert_or_assign(socket_fd, session);
 

@@ -3,19 +3,22 @@
 
 #include "protocol/Message.hpp"
 
+#include <atomic>
+
 namespace session {
-    class SessionManager;
+class SessionManager;
 }
 
 namespace protocol {
 
 class ChatHandler {
-public:
+  public:
     void setSessionManager(session::SessionManager* session_manager);
     Message handle(const Message& message, int fd) const;
 
-private:
+  private:
     session::SessionManager* session_manager_ = nullptr;
+    mutable std::atomic<int> message_counter_{0};
 };
 
 } // namespace protocol

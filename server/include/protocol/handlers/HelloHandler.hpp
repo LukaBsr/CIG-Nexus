@@ -8,7 +8,7 @@
 namespace protocol {
 
 class HelloHandler {
-public:
+  public:
     Message handle(const Message& message) const;
 };
 

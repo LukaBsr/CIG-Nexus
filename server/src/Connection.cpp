@@ -9,8 +9,7 @@
 
 static constexpr std::size_t READ_BUFFER_SIZE = 4096;
 
-Connection::Connection(int socket_fd)
-    : socket_fd_(socket_fd), buffer_() {}
+Connection::Connection(int socket_fd) : socket_fd_(socket_fd), buffer_() {}
 
 Connection::~Connection() {
     if (socket_fd_ >= 0) {
@@ -42,9 +41,7 @@ bool Connection::readFromSocket() {
             return true;
         }
 
-        throw std::runtime_error(
-            std::string("Failed to read from socket: ") + strerror(errno)
-        );
+        throw std::runtime_error(std::string("Failed to read from socket: ") + strerror(errno));
     }
 }
 

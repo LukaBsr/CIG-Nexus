@@ -4,17 +4,17 @@
 #include "protocol/Message.hpp"
 
 namespace session {
-    class SessionManager;
+class SessionManager;
 }
 
 namespace protocol {
 
 class IdentifyHandler {
-public:
+  public:
     void setSessionManager(session::SessionManager* session_manager);
     Message handle(const Message& message, int fd);
 
-private:
+  private:
     session::SessionManager* session_manager_ = nullptr;
 };
 

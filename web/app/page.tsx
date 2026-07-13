@@ -26,7 +26,7 @@ export default function Home() {
     }
   };
 
-  const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter") {
       handleSend();
     }
@@ -54,7 +54,7 @@ export default function Home() {
             type="text"
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            onKeyPress={handleKeyPress}
+            onKeyDown={handleKeyDown}
             placeholder="Type a message..."
             style={{
               flex: 1,
@@ -88,19 +88,23 @@ export default function Home() {
           <p>No messages received yet...</p>
         ) : (
           <ul style={{ listStyle: "none", padding: 0 }}>
-            {messages.map((msg, index) => (
-              <li
-                key={index}
-                style={{
-                  background: "#f5f5f5",
-                  padding: "0.5rem",
-                  marginBottom: "0.5rem",
-                  borderRadius: "4px"
-                }}
-              >
-                <pre style={{ margin: 0, color: "#000000" }}>{JSON.stringify(msg, null, 2)}</pre>
-              </li>
-            ))}
+            {messages.map((msg, index) =>
+              msg.type === "CHAT_MESSAGE" ? (
+                <li key={index} className="mb-2 rounded bg-gray-100 px-3 py-2 text-black">
+                  <div className="flex items-baseline gap-2">
+                    <span className="font-semibold">{msg.username ?? msg.from ?? "anonymous"}</span>
+                    <span className="text-xs text-gray-500">
+                      {new Date(msg.timestamp * 1000).toLocaleTimeString()}
+                    </span>
+                  </div>
+                  <div>{msg.content}</div>
+                </li>
+              ) : (
+                <li key={index} className="mb-2 rounded bg-gray-100 px-3 py-2 text-xs text-gray-500">
+                  {msg.type}
+                </li>
+              )
+            )}
           </ul>
         )}
       </div>

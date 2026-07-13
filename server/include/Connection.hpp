@@ -7,7 +7,7 @@
 class FrameDecoder;
 
 class Connection {
-public:
+  public:
     explicit Connection(int socket_fd);
     ~Connection();
 
@@ -18,7 +18,7 @@ public:
     bool readFromSocket();
     std::vector<std::vector<uint8_t>> pollFrames();
 
-private:
+  private:
     int socket_fd_;
     std::vector<uint8_t> buffer_;
 };
