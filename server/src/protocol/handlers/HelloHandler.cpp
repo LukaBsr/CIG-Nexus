@@ -27,8 +27,7 @@ Message HelloHandler::handle(const Message& message) const {
         return response;
     }
 
-    if (!message.payload.contains("type") ||
-        !message.payload.contains("version") ||
+    if (!message.payload.contains("type") || !message.payload.contains("version") ||
         !message.payload.contains("client")) {
         Message response;
         response.type = "ERROR";
@@ -36,8 +35,7 @@ Message HelloHandler::handle(const Message& message) const {
         return response;
     }
 
-    if (!message.payload["type"].is_string() ||
-        !message.payload["version"].is_string() ||
+    if (!message.payload["type"].is_string() || !message.payload["version"].is_string() ||
         !message.payload["client"].is_string()) {
         Message response;
         response.type = "ERROR";
@@ -70,7 +68,7 @@ Message HelloHandler::handle(const Message& message) const {
 
     Message response;
     response.type = "WELCOME";
-    response.payload = make_welcome("0.3");
+    response.payload = make_welcome("0.4");
     return response;
 }
 
