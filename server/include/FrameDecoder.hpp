@@ -7,11 +7,10 @@
 #include <vector>
 
 class FrameDecoder {
-public:
+  public:
     static constexpr std::size_t MAX_FRAME_SIZE = 1024 * 1024;
 
-    explicit FrameDecoder(std::vector<uint8_t>& buffer)
-        : buffer_(buffer) {}
+    explicit FrameDecoder(std::vector<uint8_t>& buffer) : buffer_(buffer) {}
 
     std::vector<std::vector<uint8_t>> extract_frames() {
         std::vector<std::vector<uint8_t>> frames;
@@ -41,7 +40,7 @@ public:
         return frames;
     }
 
-private:
+  private:
     static constexpr std::size_t kHeaderSize = 4;
 
     std::uint32_t read_size_be() const {

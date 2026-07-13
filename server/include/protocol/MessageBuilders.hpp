@@ -8,19 +8,11 @@
 namespace protocol {
 
 inline nlohmann::json make_welcome(const std::string& server_version) {
-    return nlohmann::json{
-        {"type", "WELCOME"},
-        {"server_version", server_version}
-    };
+    return nlohmann::json{{"type", "WELCOME"}, {"server_version", server_version}};
 }
 
-inline nlohmann::json make_error(const std::string& code,
-                                 const std::string& message) {
-    return nlohmann::json{
-        {"type", "ERROR"},
-        {"code", code},
-        {"message", message}
-    };
+inline nlohmann::json make_error(const std::string& code, const std::string& message) {
+    return nlohmann::json{{"type", "ERROR"}, {"code", code}, {"message", message}};
 }
 
 } // namespace protocol

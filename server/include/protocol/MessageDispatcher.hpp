@@ -10,13 +10,13 @@
 namespace protocol {
 
 class MessageDispatcher {
-public:
+  public:
     using Handler = std::function<Message(const Message&, int)>;
 
     void registerHandler(const std::string& type, Handler handler);
     Message dispatch(const Message& message, int fd) const;
 
-private:
+  private:
     std::unordered_map<std::string, Handler> handlers_;
 };
 

@@ -7,10 +7,7 @@
 
 namespace protocol {
 
-enum class Scope {
-    DIRECT,
-    BROADCAST
-};
+enum class Scope { DIRECT, BROADCAST };
 
 struct Message {
     std::string type;
