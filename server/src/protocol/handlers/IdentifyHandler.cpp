@@ -58,6 +58,7 @@ Message IdentifyHandler::handle(const Message& message, int fd) {
     Message response;
     response.type = "IDENTIFIED";
     response.payload = nlohmann::json{
+        {"type", "IDENTIFIED"},
         {"user_id", session.user_id},
         {"username", session.username}
     };

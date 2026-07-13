@@ -25,6 +25,7 @@ TEST_CASE("IdentifyHandler creates session and returns IDENTIFIED") {
     const auto response = handler.handle(make_identify("web_user"), 10);
 
     REQUIRE(response.type == "IDENTIFIED");
+    REQUIRE(response.payload["type"] == "IDENTIFIED");
     REQUIRE(response.payload["username"] == "web_user");
     REQUIRE(response.payload.contains("user_id"));
     REQUIRE(sessions.hasSession(10));
