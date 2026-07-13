@@ -3,6 +3,8 @@
 
 #include "protocol/Message.hpp"
 
+#include <atomic>
+
 namespace session {
 class SessionManager;
 }
@@ -16,6 +18,7 @@ class ChatHandler {
 
   private:
     session::SessionManager* session_manager_ = nullptr;
+    mutable std::atomic<int> message_counter_{0};
 };
 
 } // namespace protocol

@@ -112,6 +112,25 @@ TEST_CASE("ChatHandler rejects CHAT_MESSAGE with empty content") {
     REQUIRE(response.payload["code"] == "MALFORMED_MESSAGE");
 }
 
+TEST_CASE("ChatHandler message_id increments across calls") {
+    protocol::ChatHandler handler;
+
+    protocol::Message message;
+    message.type = "CHAT_MESSAGE";
+    message.payload = {{"type", "CHAT_MESSAGE"}, {"content", "a"}};
+
+    const auto r1 = handler.handle(message, -1);
+    const auto r2 = handler.handle(message, -1);
+    const auto r3 = handler.handle(message, -1);
+
+    const int id1 = r1.payload["message_id"].get<int>();
+    const int id2 = r2.payload["message_id"].get<int>();
+    const int id3 = r3.payload["message_id"].get<int>();
+
+    REQUIRE(id2 == id1 + 1);
+    REQUIRE(id3 == id2 + 1);
+}
+
 TEST_CASE("ChatHandler rejects CHAT_MESSAGE with oversized content") {
     protocol::ChatHandler handler;
     

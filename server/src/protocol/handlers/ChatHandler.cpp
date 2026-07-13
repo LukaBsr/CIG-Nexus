@@ -58,8 +58,7 @@ Message ChatHandler::handle(const Message& message, int fd) const {
         return makeError("MALFORMED_MESSAGE", "CHAT_MESSAGE content must be <= 500 characters");
     }
 
-    static int message_counter = 0;
-    const int message_id = ++message_counter;
+    const int message_id = ++message_counter_;
     const std::time_t timestamp = std::time(nullptr);
 
     if (!session_manager_) {
