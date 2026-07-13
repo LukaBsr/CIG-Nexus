@@ -4,7 +4,7 @@
 #include <cstdint>
 
 class TcpListener {
-public:
+  public:
     explicit TcpListener(uint16_t port);
     ~TcpListener();
 
@@ -13,8 +13,9 @@ public:
 
     void start();
     int accept();
+    uint16_t bound_port() const;
 
-private:
+  private:
     uint16_t port_;
     int socket_fd_;
 };

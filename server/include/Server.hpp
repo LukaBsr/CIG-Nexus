@@ -4,19 +4,20 @@
 #include "Connection.hpp"
 #include "TcpListener.hpp"
 
-#include "protocol/handlers/ChatHandler.hpp"
-#include "protocol/handlers/IdentifyHandler.hpp"
-#include "protocol/handlers/HelloHandler.hpp"
 #include "protocol/MessageDispatcher.hpp"
+#include "protocol/handlers/ChatHandler.hpp"
+#include "protocol/handlers/HelloHandler.hpp"
+#include "protocol/handlers/IdentifyHandler.hpp"
 
 #include "session/SessionManager.hpp"
 
+#include <atomic>
 #include <cstdint>
 #include <memory>
 #include <unordered_map>
 
 class Server {
-public:
+  public:
     explicit Server(uint16_t port);
 
     Server(const Server&) = delete;
@@ -24,15 +25,16 @@ public:
 
     void start();
     void stop();
+    uint16_t bound_port() const;
 
-private:
+  private:
     // Network send helpers
     bool sendMessage(int fd, const protocol::Message& message);
     void broadcast(const protocol::Message& message);
 
     // Server runtime state
     uint16_t port_;
-    bool running_;
+    std::atomic<bool> running_;
     TcpListener listener_;
 
     // Protocol dispatch and handlers
