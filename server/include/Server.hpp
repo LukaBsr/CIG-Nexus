@@ -25,6 +25,7 @@ class Server {
 
     void start();
     void stop();
+    uint16_t bound_port() const;
 
   private:
     // Network send helpers

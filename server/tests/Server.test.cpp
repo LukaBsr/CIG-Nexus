@@ -17,9 +17,6 @@
 
 namespace {
 
-constexpr uint16_t PORT_STOP_TEST = 19242;
-constexpr uint16_t PORT_PROTOCOL_VIOLATION_TEST = 19243;
-
 int tcp_connect(uint16_t port) {
     int fd = ::socket(AF_INET, SOCK_STREAM, 0);
     if (fd < 0)
@@ -65,7 +62,7 @@ std::string recv_framed(int fd) {
 // ----------------------------------------------------------------------------
 
 TEST_CASE("Server exits start() when stop() is called externally") {
-    Server server(PORT_STOP_TEST);
+    Server server(0); // port 0: OS assigns a free ephemeral port
     std::thread t([&server] { server.start(); });
 
     std::this_thread::sleep_for(std::chrono::milliseconds(50));
@@ -80,11 +77,11 @@ TEST_CASE("Server exits start() when stop() is called externally") {
 // ----------------------------------------------------------------------------
 
 TEST_CASE("Server returns PROTOCOL_VIOLATION for unknown message type") {
-    Server server(PORT_PROTOCOL_VIOLATION_TEST);
+    Server server(0); // port 0: OS assigns a free ephemeral port
     std::thread t([&server] { server.start(); });
     std::this_thread::sleep_for(std::chrono::milliseconds(50));
 
-    int fd = tcp_connect(PORT_PROTOCOL_VIOLATION_TEST);
+    int fd = tcp_connect(server.bound_port());
     REQUIRE(fd >= 0);
 
     // Complete the HELLO handshake so the server is in a normal state

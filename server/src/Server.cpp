@@ -145,3 +145,7 @@ void Server::broadcast(const protocol::Message& message) {
 void Server::stop() {
     running_ = false;
 }
+
+uint16_t Server::bound_port() const {
+    return listener_.bound_port();
+}

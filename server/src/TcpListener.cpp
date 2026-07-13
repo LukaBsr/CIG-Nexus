@@ -1,15 +1,14 @@
 #include "TcpListener.hpp"
-#include <sys/socket.h>
-#include <netinet/in.h>
 #include <arpa/inet.h>
-#include <fcntl.h>
-#include <unistd.h>
 #include <cerrno>
 #include <cstring>
+#include <fcntl.h>
+#include <netinet/in.h>
 #include <stdexcept>
+#include <sys/socket.h>
+#include <unistd.h>
 
-TcpListener::TcpListener(uint16_t port)
-    : port_(port), socket_fd_(-1) {}
+TcpListener::TcpListener(uint16_t port) : port_(port), socket_fd_(-1) {}
 
 TcpListener::~TcpListener() {
     if (socket_fd_ != -1) {
@@ -72,11 +71,21 @@ void TcpListener::start() {
     }
 }
 
+uint16_t TcpListener::bound_port() const {
+    if (socket_fd_ < 0)
+        return 0;
+    sockaddr_in addr{};
+    socklen_t len = sizeof(addr);
+    if (getsockname(socket_fd_, reinterpret_cast<sockaddr*>(&addr), &len) < 0)
+        return 0;
+    return ntohs(addr.sin_port);
+}
+
 int TcpListener::accept() {
     int client_fd = ::accept(socket_fd_, nullptr, nullptr);
     if (client_fd == -1) {
         if (errno == EAGAIN || errno == EWOULDBLOCK) {
-            return -1;  // No pending connections (non-blocking)
+            return -1; // No pending connections (non-blocking)
         }
         throw std::runtime_error(std::string("Failed to accept connection: ") + strerror(errno));
     }
@@ -90,7 +99,8 @@ int TcpListener::accept() {
 
     if (fcntl(client_fd, F_SETFL, flags | O_NONBLOCK) == -1) {
         close(client_fd);
-        throw std::runtime_error(std::string("Failed to set client non-blocking: ") + strerror(errno));
+        throw std::runtime_error(std::string("Failed to set client non-blocking: ") +
+                                 strerror(errno));
     }
 
     return client_fd;
