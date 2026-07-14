@@ -94,9 +94,8 @@ void Server::start() {
                     protocol::Message error;
                     error.type = "ERROR";
                     error.scope = protocol::Scope::DIRECT;
-                    error.payload =
-                        protocol::make_error("PROTOCOL_VIOLATION",
-                                             "Unknown message type: " + message.type);
+                    error.payload = protocol::make_error("PROTOCOL_VIOLATION",
+                                                         "Unknown message type: " + message.type);
                     sendMessage(fd, error);
                     continue;
                 }
@@ -108,6 +107,12 @@ void Server::start() {
 
                 case protocol::Scope::DIRECT:
                     sendMessage(fd, response);
+                    break;
+
+                case protocol::Scope::TARGETED:
+                    for (int target_fd : response.target_fds) {
+                        sendMessage(target_fd, response);
+                    }
                     break;
                 }
             }
