@@ -7,13 +7,9 @@ import {
   createGuild,
   listGuilds,
   joinGuild,
-  leaveGuild,
-  deleteGuild,
   listChannels,
   createChannel,
-  deleteChannel,
   joinChannel,
-  leaveChannel,
   sendChannelMessage
 } from "../lib/gateway";
 
@@ -279,61 +275,297 @@ export default function Home() {
         </span>
       </div>
 
-      <div style={{ marginTop: "2rem" }}>
-        <h2>Chat</h2>
-        <div style={{ display: "flex", gap: "0.5rem", marginBottom: "1rem" }}>
-          <input
-            type="text"
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder="Type a message..."
-            style={{
-              flex: 1,
-              padding: "0.5rem",
-              borderRadius: "4px",
-              border: "1px solid #ccc",
-              fontFamily: "monospace"
-            }}
-          />
-          <button
-            onClick={handleSend}
-            disabled={status !== "connected"}
-            style={{
-              padding: "0.5rem 1rem",
-              borderRadius: "4px",
-              border: "1px solid #ccc",
-              background: status === "connected" ? "#007bff" : "#ccc",
-              color: "white",
-              cursor: status === "connected" ? "pointer" : "not-allowed",
-              fontFamily: "monospace"
-            }}
-          >
-            Send
+      {lastError && (
+        <div className="mt-4 flex items-center justify-between rounded bg-red-100 px-3 py-2 text-red-800">
+          <span>{lastError}</span>
+          <button onClick={() => setLastError(null)} className="ml-4 font-semibold">
+            &times;
           </button>
         </div>
+      )}
+
+      <div style={{ marginTop: "2rem", display: "flex", gap: "0.5rem" }}>
+        <button
+          onClick={() => setView("chat")}
+          style={{
+            padding: "0.5rem 1rem",
+            borderRadius: "4px",
+            border: "1px solid #ccc",
+            background: view === "chat" ? "#007bff" : "#eee",
+            color: view === "chat" ? "white" : "black",
+            cursor: "pointer",
+            fontFamily: "monospace"
+          }}
+        >
+          Global Chat
+        </button>
+        <button
+          onClick={() => setView("guilds")}
+          style={{
+            padding: "0.5rem 1rem",
+            borderRadius: "4px",
+            border: "1px solid #ccc",
+            background: view === "guilds" ? "#007bff" : "#eee",
+            color: view === "guilds" ? "white" : "black",
+            cursor: "pointer",
+            fontFamily: "monospace"
+          }}
+        >
+          Guilds
+        </button>
       </div>
 
-      <div style={{ marginTop: "2rem" }}>
-        <h2>Messages</h2>
-        {chatMessages.length === 0 ? (
-          <p>No messages received yet...</p>
-        ) : (
-          <ul style={{ listStyle: "none", padding: 0 }}>
-            {chatMessages.map((msg, index) => (
-              <li key={index} className="mb-2 rounded bg-gray-100 px-3 py-2 text-black">
-                <div className="flex items-baseline gap-2">
-                  <span className="font-semibold">{msg.username ?? msg.from ?? "anonymous"}</span>
-                  <span className="text-xs text-gray-500">
-                    {new Date(msg.timestamp * 1000).toLocaleTimeString()}
-                  </span>
+      {view === "chat" && (
+        <>
+          <div style={{ marginTop: "2rem" }}>
+            <h2>Chat</h2>
+            <div style={{ display: "flex", gap: "0.5rem", marginBottom: "1rem" }}>
+              <input
+                type="text"
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyDown={handleKeyDown}
+                placeholder="Type a message..."
+                style={{
+                  flex: 1,
+                  padding: "0.5rem",
+                  borderRadius: "4px",
+                  border: "1px solid #ccc",
+                  fontFamily: "monospace"
+                }}
+              />
+              <button
+                onClick={handleSend}
+                disabled={status !== "connected"}
+                style={{
+                  padding: "0.5rem 1rem",
+                  borderRadius: "4px",
+                  border: "1px solid #ccc",
+                  background: status === "connected" ? "#007bff" : "#ccc",
+                  color: "white",
+                  cursor: status === "connected" ? "pointer" : "not-allowed",
+                  fontFamily: "monospace"
+                }}
+              >
+                Send
+              </button>
+            </div>
+          </div>
+
+          <div style={{ marginTop: "2rem" }}>
+            <h2>Messages</h2>
+            {chatMessages.length === 0 ? (
+              <p>No messages received yet...</p>
+            ) : (
+              <ul style={{ listStyle: "none", padding: 0 }}>
+                {chatMessages.map((msg, index) => (
+                  <li key={index} className="mb-2 rounded bg-gray-100 px-3 py-2 text-black">
+                    <div className="flex items-baseline gap-2">
+                      <span className="font-semibold">
+                        {msg.username ?? msg.from ?? "anonymous"}
+                      </span>
+                      <span className="text-xs text-gray-500">
+                        {new Date(msg.timestamp * 1000).toLocaleTimeString()}
+                      </span>
+                    </div>
+                    <div>{msg.content}</div>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        </>
+      )}
+
+      {view === "guilds" && (
+        <div style={{ marginTop: "2rem", display: "flex", gap: "2rem" }}>
+          <div style={{ minWidth: "200px" }}>
+            <h2>Guilds</h2>
+            <ul style={{ listStyle: "none", padding: 0 }}>
+              {guilds.map((g) => {
+                const isMember = myGuildIds.has(g.guild_id);
+                return (
+                  <li
+                    key={g.guild_id}
+                    className="mb-2 flex items-center justify-between gap-2 rounded bg-gray-100 px-3 py-2 text-black"
+                  >
+                    {isMember ? (
+                      <button
+                        onClick={() => handleSelectGuild(g.guild_id)}
+                        className={g.guild_id === activeGuildId ? "font-semibold" : ""}
+                      >
+                        {g.name}
+                      </button>
+                    ) : (
+                      <>
+                        <span>{g.name}</span>
+                        <button
+                          onClick={() => handleJoinGuild(g.guild_id)}
+                          className="rounded bg-blue-600 px-2 py-1 text-xs text-white"
+                        >
+                          Join
+                        </button>
+                      </>
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
+
+            <div style={{ display: "flex", gap: "0.5rem", marginTop: "1rem" }}>
+              <input
+                type="text"
+                value={guildNameInput}
+                onChange={(e) => setGuildNameInput(e.target.value)}
+                placeholder="New guild name..."
+                style={{
+                  flex: 1,
+                  padding: "0.5rem",
+                  borderRadius: "4px",
+                  border: "1px solid #ccc",
+                  fontFamily: "monospace"
+                }}
+              />
+              <button
+                onClick={handleCreateGuild}
+                style={{
+                  padding: "0.5rem 1rem",
+                  borderRadius: "4px",
+                  border: "1px solid #ccc",
+                  background: "#007bff",
+                  color: "white",
+                  cursor: "pointer",
+                  fontFamily: "monospace"
+                }}
+              >
+                Create Guild
+              </button>
+            </div>
+          </div>
+
+          <div style={{ flex: 1 }}>
+            {!activeGuild ? (
+              <p>Select or create a guild to get started.</p>
+            ) : (
+              <>
+                <h2>{activeGuild.name}</h2>
+
+                <div style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem", marginTop: "0.5rem" }}>
+                  {channels.map((c) => (
+                    <button
+                      key={c.channel_id}
+                      onClick={() => handleJoinChannel(c.channel_id)}
+                      className={
+                        c.channel_id === activeChannelId
+                          ? "rounded bg-blue-600 px-2 py-1 text-xs text-white"
+                          : "rounded bg-gray-200 px-2 py-1 text-xs text-black"
+                      }
+                    >
+                      #{c.name}
+                    </button>
+                  ))}
                 </div>
-                <div>{msg.content}</div>
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
+
+                {isOwner && (
+                  <div style={{ display: "flex", gap: "0.5rem", marginTop: "0.5rem" }}>
+                    <input
+                      type="text"
+                      value={channelNameInput}
+                      onChange={(e) => setChannelNameInput(e.target.value)}
+                      placeholder="New channel name..."
+                      style={{
+                        flex: 1,
+                        padding: "0.5rem",
+                        borderRadius: "4px",
+                        border: "1px solid #ccc",
+                        fontFamily: "monospace"
+                      }}
+                    />
+                    <button
+                      onClick={handleCreateChannel}
+                      style={{
+                        padding: "0.5rem 1rem",
+                        borderRadius: "4px",
+                        border: "1px solid #ccc",
+                        background: "#007bff",
+                        color: "white",
+                        cursor: "pointer",
+                        fontFamily: "monospace"
+                      }}
+                    >
+                      Create Channel
+                    </button>
+                  </div>
+                )}
+
+                <div style={{ marginTop: "1.5rem" }}>
+                  {!activeChannelId ? (
+                    <p>Select a channel to start chatting.</p>
+                  ) : (
+                    <>
+                      <div style={{ display: "flex", gap: "0.5rem", marginBottom: "1rem" }}>
+                        <input
+                          type="text"
+                          value={channelMessageInput}
+                          onChange={(e) => setChannelMessageInput(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                              handleSendChannelMessage();
+                            }
+                          }}
+                          placeholder="Type a message..."
+                          style={{
+                            flex: 1,
+                            padding: "0.5rem",
+                            borderRadius: "4px",
+                            border: "1px solid #ccc",
+                            fontFamily: "monospace"
+                          }}
+                        />
+                        <button
+                          onClick={handleSendChannelMessage}
+                          style={{
+                            padding: "0.5rem 1rem",
+                            borderRadius: "4px",
+                            border: "1px solid #ccc",
+                            background: "#007bff",
+                            color: "white",
+                            cursor: "pointer",
+                            fontFamily: "monospace"
+                          }}
+                        >
+                          Send
+                        </button>
+                      </div>
+
+                      {channelMessages.length === 0 ? (
+                        <p>No messages in this channel yet...</p>
+                      ) : (
+                        <ul style={{ listStyle: "none", padding: 0 }}>
+                          {channelMessages.map((msg, index) => (
+                            <li
+                              key={index}
+                              className="mb-2 rounded bg-gray-100 px-3 py-2 text-black"
+                            >
+                              <div className="flex items-baseline gap-2">
+                                <span className="font-semibold">{msg.username}</span>
+                                <span className="text-xs text-gray-500">
+                                  {new Date(msg.timestamp * 1000).toLocaleTimeString()}
+                                </span>
+                              </div>
+                              <div>{msg.content}</div>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </>
+                  )}
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
     </main>
   );
 }
