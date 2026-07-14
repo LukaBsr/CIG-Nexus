@@ -1,11 +1,11 @@
 {
 	"name": "cig-nexus-gateway",
-	"version": "0.1.0",
+	"version": "0.5.0",
 	"private": true,
-	"description": "CIG Nexus WebSocket Gateway v0.1",
+	"description": "CIG Nexus WebSocket Gateway v0.5",
 	"main": "dist/index.js",
-    "dev": "ts-node src/index.ts",
-    "ts-node": "^10.x",
+	"dev": "ts-node src/index.ts",
+	"ts-node": "^10.x",
 	"scripts": {
 		"build": "tsc -p tsconfig.json",
 		"start": "node dist/index.js"

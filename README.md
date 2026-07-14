@@ -9,7 +9,7 @@
 	<img alt="Gateway" src="https://img.shields.io/badge/Gateway-Node.js%20%2B%20TypeScript-3178C6" />
 	<img alt="Server" src="https://img.shields.io/badge/Server-C%2B%2B-00599C" />
 	<img alt="Protocol" src="https://img.shields.io/badge/Protocol-WebSocket%20%E2%86%94%20TCP-0F766E" />
-  <img alt="Status" src="https://img.shields.io/badge/Status-v0.4%20-D97706" />
+  <img alt="Status" src="https://img.shields.io/badge/Status-v0.5%20-D97706" />
 </p>
 
 ## Vision
