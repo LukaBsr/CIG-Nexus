@@ -4,6 +4,7 @@
 #include <cstdint>
 #include <string>
 #include <unordered_map>
+#include <vector>
 
 #include "session/Session.hpp"
 
@@ -25,6 +26,24 @@ class SessionManager {
     const Session* getSessionByUserId(const std::string& user_id) const;
 
     bool updateUsername(int socket_fd, const std::string& username);
+
+    // Guild/channel membership (see docs/rooms-spec.md). SessionManager owns
+    // this because it's per-connection state, the same way username is.
+    void addGuildMembership(int socket_fd, const std::string& guild_id);
+    void removeGuildMembership(int socket_fd, const std::string& guild_id);
+    bool isMemberOfGuild(int socket_fd, const std::string& guild_id) const;
+
+    void setActiveChannel(int socket_fd, const std::string& channel_id);
+    void clearActiveChannel(int socket_fd);
+
+    // Recipient lists for Scope::TARGETED delivery.
+    std::vector<int> getFdsInGuild(const std::string& guild_id) const;
+    std::vector<int> getFdsWithActiveChannel(const std::string& channel_id) const;
+
+    // Cascading cleanup for guild/channel deletion.
+    void purgeGuildMembership(const std::string& guild_id,
+                              const std::vector<std::string>& channel_ids);
+    void clearActiveChannelEverywhere(const std::string& channel_id);
 
   private:
     std::unordered_map<int, Session> sessions_;
