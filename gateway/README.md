@@ -33,6 +33,12 @@ Typical browser flow through the gateway:
 4. Server replies `IDENTIFIED`.
 5. Browser sends `CHAT_MESSAGE` messages.
 6. Server broadcasts normalized chat payloads.
+7. Browser may also send guild/channel messages (`CREATE_GUILD`,
+   `JOIN_CHANNEL`, `CHANNEL_MESSAGE`, etc.) at any point after `IDENTIFY` —
+   the gateway forwards these identically to chat messages, since it doesn't
+   inspect message type. See
+   [../shared/protocol/README.md](../shared/protocol/README.md) for the full
+   set.
 
 ### Browser to Server
 

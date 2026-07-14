@@ -58,6 +58,12 @@ Chat request:
 }
 ```
 
+Guild/channel messages (`CREATE_GUILD`, `JOIN_CHANNEL`, `CHANNEL_MESSAGE`,
+etc.) are forwarded the same way — the gateway doesn't special-case any
+message type. See
+[../shared/protocol/README.md](../shared/protocol/README.md) for the full
+set.
+
 ## TCP Side
 
 Server-facing transport:
@@ -83,8 +89,11 @@ For each browser connection:
 1. WebSocket client connects.
 2. Gateway opens a TCP connection to the backend server.
 3. Browser sends `HELLO` then `IDENTIFY`.
-4. Browser chat messages are forwarded to TCP.
-5. TCP responses (`WELCOME`, `IDENTIFIED`, `CHAT_MESSAGE`, `ERROR`) are forwarded back to the browser.
+4. Browser chat, guild, and channel messages are forwarded to TCP.
+5. TCP responses (`WELCOME`, `IDENTIFIED`, `CHAT_MESSAGE`, `ERROR`, and the
+   guild/channel response types — see
+   [../shared/protocol/README.md](../shared/protocol/README.md)) are
+   forwarded back to the browser.
 6. If one side closes or errors, the gateway closes the other side.
 
 ## Gateway Error Message

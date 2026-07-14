@@ -9,7 +9,8 @@ The web client is a Next.js App Router application that connects to the CIG Nexu
 - automatic `IDENTIFY` after `WELCOME` (default username: `web_user`)
 - live connection status display
 - simple chat input with send button
-- live list of received messages rendered as formatted JSON
+- readable chat message list (username, content, formatted timestamp)
+- Guilds/Channels tab: create/join guilds, owner-gated channel creation, and per-channel chat, alongside the existing global chat
 
 ## How It Works
 
@@ -47,7 +48,15 @@ Before chat, the client also sends:
 }
 ```
 
-5. Incoming server responses are parsed as JSON and appended to the on-screen message list.
+5. Incoming server responses are parsed as JSON and routed by `type` into the
+   relevant piece of UI state (chat messages, guild list, active channel
+   messages, etc.) rather than a single flat list.
+
+The same connection also supports the guild/channel flow (create/join
+guilds, create/join channels, channel messages) once identified — see the
+"Guilds/Channels tab" feature above and
+[../shared/protocol/README.md](../shared/protocol/README.md) for the full
+message set.
 
 ## Local Development
 
@@ -79,10 +88,10 @@ Default fallback:
 
 ```text
 app/
-└── page.tsx        # main chat UI
+└── page.tsx        # main chat UI: global chat + guilds/channels tab
 
 lib/
-└── gateway.ts      # browser WebSocket client helpers
+└── gateway.ts      # browser WebSocket client helpers (chat + guild/channel actions)
 ```
 
 ## UI Notes
@@ -102,7 +111,8 @@ The current UI is intentionally minimal:
 - no message history persistence
 - no reconnection logic
 - no optimistic UI state
-- no dedicated chat message styling beyond raw JSON rendering
+- no guild privacy or channel-creation permission delegation (server doesn't support them yet — see [../docs/rooms-spec.md](../docs/rooms-spec.md))
+- no leave/delete controls in the UI for guilds or channels (the underlying `gateway.ts` calls exist, just not wired into the UI yet)
 
 ## Docker
 
