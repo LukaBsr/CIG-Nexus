@@ -67,8 +67,9 @@ Responsible for:
 - validating protocol payloads
 - dispatching handlers
 - creating in-memory identity sessions on `IDENTIFY`
-- routing responses by semantic scope (`DIRECT` vs `BROADCAST`)
+- routing responses by semantic scope (`DIRECT`, `BROADCAST`, or `TARGETED`)
 - broadcasting valid chat messages to all connected clients
+- managing the guild/channel catalog (`GuildManager`) and per-connection guild membership / active channel state (`SessionManager`)
 
 ## Current Implemented Flow
 
@@ -96,6 +97,23 @@ Responsible for:
 5. The message is marked `Scope::BROADCAST`.
 6. The server broadcasts that message to every active connection.
 7. The gateway forwards the resulting JSON message back to browsers.
+
+### Guilds and Channels
+
+1. An identified client can create/list/join/leave a guild, and (owner only)
+   create/delete its channels — independent of the chat flow above.
+2. A connection joins at most one channel at a time; joining a new one
+   implicitly leaves the previous one.
+3. `CHANNEL_MESSAGE` targets the sender's own active channel rather than a
+   client-supplied id, and is delivered only to connections with that
+   channel active — this is `Scope::TARGETED`, not `Scope::BROADCAST`.
+4. Guild-wide notifications (a channel being created/deleted, a member
+   leaving, a guild being deleted) are also `Scope::TARGETED`, delivered to
+   every current member rather than every connection.
+
+See [../shared/protocol/README.md](../shared/protocol/README.md) for the
+full message-by-message protocol and [rooms-spec.md](rooms-spec.md) for
+the feature's design rationale.
 
 ## Protocol Transport
 
@@ -129,6 +147,7 @@ Implemented:
 - `CHAT_MESSAGE` validation and normalization
 - in-memory session manager keyed by socket fd
 - broadcast to connected clients
+- guild/channel lifecycle (create, list, join, leave, delete) and channel messaging, with `Scope::TARGETED` delivery
 
 Not implemented yet:
 
@@ -137,6 +156,7 @@ Not implemented yet:
 - persistence layer
 - native WebSocket support in the C++ server
 - production-grade scalability and hardening
+- guild privacy and channel-creation permission delegation (see [rooms-spec.md](rooms-spec.md), "Deferred: Guild Privacy" and "Future Permission Hook")
 
 ## Desktop Client Status
 
@@ -160,3 +180,5 @@ Desktop integration is not the primary active path at this stage.
 - See [../shared/protocol/README.md](../shared/protocol/README.md) for wire-level protocol behavior.
 - See [../gateway/README.md](../gateway/README.md) for gateway implementation notes.
 - See [../server/README.md](../server/README.md) for backend implementation details.
+- See [gateway-api.md](gateway-api.md) for the gateway's transport contract.
+- See [rooms-spec.md](rooms-spec.md) for the guilds/channels feature's design rationale.

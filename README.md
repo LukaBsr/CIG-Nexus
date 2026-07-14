@@ -56,6 +56,7 @@ CIG Nexus Server (C++)
 - Automatic `HELLO` on connect
 - Automatic `IDENTIFY` on `WELCOME` (default username: `web_user`)
 - Simple chat UI with live message list
+- Guilds/Channels tab: create/join guilds, owner-gated channel creation, per-channel chat, alongside the existing global chat
 
 ### Gateway
 
@@ -72,6 +73,7 @@ CIG Nexus Server (C++)
 - `IDENTIFY` / `IDENTIFIED` identity flow
 - Session creation on `IDENTIFY` (not on raw connect)
 - `CHAT_MESSAGE` handling and scope-based broadcast routing
+- Guild/channel lifecycle (create, join, leave, delete) and channel messaging, with `Scope::TARGETED` delivery for guild/channel-scoped responses
 - Protocol handlers covered by Catch2 tests
 
 ## Quick Start
@@ -183,15 +185,18 @@ Successful chat responses currently include metadata such as:
 - See [gateway/README.md](gateway/README.md) for gateway details.
 - See [server/README.md](server/README.md) for server details.
 - See [shared/protocol/README.md](shared/protocol/README.md) for shared protocol documentation.
+- See [docs/architecture.md](docs/architecture.md) for system-level architecture.
+- See [docs/gateway-api.md](docs/gateway-api.md) for the gateway's transport contract.
+- See [docs/rooms-spec.md](docs/rooms-spec.md) for the guilds/channels feature's design rationale.
 
 ## Status
 
 Current project state:
 
-- Web client is functional and can send chat messages
+- Web client is functional and can send chat messages, plus create/join guilds and channels
 - Gateway is functional as a transport bridge
-- Server handles `HELLO`, `IDENTIFY`, and `CHAT_MESSAGE`
-- Broadcast flow is implemented through `Message.scope`
+- Server handles `HELLO`, `IDENTIFY`, `CHAT_MESSAGE`, and the full guild/channel lifecycle
+- Broadcast flow is implemented through `Message.scope` (`DIRECT`, `BROADCAST`, `TARGETED`)
 - Dockerized local stack is available
 
 Still pending or intentionally out of scope:

@@ -4,15 +4,20 @@
 > settled on a Discord-shaped model (**Guild → Channel**), not flat "rooms."
 > See [Terminology](#terminology) for why "Guild" was chosen over "Server."
 
-Status: **planning only** — no implementation in this document's companion
-session. This is the design to hand to a fresh session for implementation.
+**Status: implemented.** Server-side protocol landed in
+[PR #11](https://github.com/LukaBsr/CIG-Nexus/pull/11); the web client landed
+in [PR #12](https://github.com/LukaBsr/CIG-Nexus/pull/12). Both are merged
+into `main`. The rest of this document is left in its original planning-time
+future tense — it's a design record of what was decided and why, not a
+changelog, so it isn't rewritten to describe the shipped state after the
+fact.
 
 ## Terminology
 
 | Term | Meaning |
 |---|---|
 | **Guild** | Top-level container, owned by its creator. Holds channels and a member list. Discord calls this a "server"; we don't, because `server/` and `Server.cpp` already mean the C++ TCP process in this codebase. Using "Guild" avoids that collision everywhere (code, protocol, docs). |
-| **Channel** | Belongs to exactly one guild. Has a `type` of `TEXT` or `VOICE`. Only `TEXT` is functional this iteration (see [Voice Channels](#voice-channels)). |
+| **Channel** | Belongs to exactly one guild. Has a `type` of `TEXT` or `VOICE`. Only `TEXT` is functional this iteration (see [Decisions From Requirements Interview](#decisions-from-requirements-interview), item 3). |
 | **Member** | A user who has joined a guild. Tracked per-connection (see [Session Changes](#sessionmanager-changes)). |
 | **Owner** | The user who created a guild. Currently the only one who can create/delete channels or delete the guild. |
 

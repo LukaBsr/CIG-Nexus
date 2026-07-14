@@ -8,10 +8,12 @@ The CIG Nexus Server is the authoritative TCP backend for the platform. It accep
 - Track active client connections
 - Decode 4-byte big-endian framed messages
 - Parse JSON protocol messages
-- Dispatch `HELLO`, `IDENTIFY`, and `CHAT_MESSAGE` handlers
-- Manage in-memory sessions keyed by socket fd
+- Dispatch `HELLO`, `IDENTIFY`, `CHAT_MESSAGE`, and the guild/channel handlers
+- Manage in-memory sessions keyed by socket fd, including guild membership and active-channel state
+- Manage the in-memory guild/channel catalog (`GuildManager`)
 - Return direct responses for handshake and validation errors
 - Broadcast valid chat messages to all connected clients using `Message.scope`
+- Deliver guild/channel responses to a targeted subset of connections (e.g. "current guild members") using `Scope::TARGETED`
 
 ## Implemented Protocol Features
 
@@ -82,6 +84,28 @@ If a client sends `CHAT_MESSAGE` before identify, the server returns:
 - `type = "ERROR"`
 - `code = "NOT_IDENTIFIED"`
 
+### Guilds and Channels
+
+Identified clients can create, list, join, leave, and (owner only) delete
+guilds, and — owner only — create/delete channels within a guild. A
+connection can be a member of multiple guilds but has at most one active
+channel at a time; `JOIN_CHANNEL` implicitly leaves whichever channel was
+previously active.
+
+Message types: `CREATE_GUILD`, `LIST_GUILDS`, `JOIN_GUILD`, `LEAVE_GUILD`,
+`DELETE_GUILD`, `LIST_CHANNELS`, `CREATE_CHANNEL`, `DELETE_CHANNEL`,
+`JOIN_CHANNEL`, `LEAVE_CHANNEL`, `CHANNEL_MESSAGE`. `CHANNEL_MESSAGE` targets
+the sender's own active channel rather than a client-supplied id.
+
+Guild-wide notifications (channel created/deleted, a member leaving, a guild
+being deleted) and `CHANNEL_MESSAGE` are delivered via `Scope::TARGETED` to
+the relevant subset of connections, not a full broadcast.
+
+See [../shared/protocol/README.md](../shared/protocol/README.md) for the
+full request/response shapes and validation rules, and
+[../docs/rooms-spec.md](../docs/rooms-spec.md) for the feature's design
+rationale.
+
 ## Architecture Notes
 
 - **Transport**: raw TCP
@@ -92,6 +116,7 @@ If a client sends `CHAT_MESSAGE` before identify, the server returns:
 - **Routing model**: `Message.scope` drives response behavior:
 	- `Scope::DIRECT`: response sent only to sender
 	- `Scope::BROADCAST`: response sent to all active connections
+	- `Scope::TARGETED`: response sent to an explicit fd list the handler computes (e.g. "current guild members")
 
 ## Directory Layout
 
@@ -138,16 +163,18 @@ Implemented now:
 - `CHAT_MESSAGE` validation
 - server-side broadcast for valid chat messages
 - deferred session creation on `IDENTIFY`
-- Catch2 coverage for framing, dispatcher, handlers, and session manager
+- guild/channel lifecycle and channel messaging, with `Scope::TARGETED` delivery
+- Catch2 coverage for framing, dispatcher, handlers, session manager, guild manager, and connection I/O (including a peer-reset regression test)
 
 Not implemented yet:
 
 - authentication and authorization
-- persistent sessions and named users across restarts
+- persistent sessions, guilds, channels, and named users across restarts
 - database or message history persistence
 - production-grade event loop and backpressure handling
 - TLS or encryption
 - reconnection or delivery guarantees above TCP
+- guild privacy and channel-creation permission delegation (see [../docs/rooms-spec.md](../docs/rooms-spec.md))
 
 ## Related Documentation
 
