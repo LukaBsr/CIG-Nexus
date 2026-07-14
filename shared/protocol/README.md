@@ -71,7 +71,7 @@ Server to client:
 ```json
 {
   "type": "WELCOME",
-  "server_version": "0.3"
+  "server_version": "0.5"
 }
 ```
 
