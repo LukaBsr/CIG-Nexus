@@ -18,7 +18,13 @@ bool send_all(int fd, const void* data, size_t size) {
     size_t total_sent = 0;
 
     while (total_sent < size) {
-        const ssize_t sent = ::send(fd, bytes + total_sent, size - total_sent, 0);
+        // MSG_NOSIGNAL: a peer that RST'd the connection would otherwise
+        // raise SIGPIPE on this send, and the process has no handler for
+        // it — default disposition is termination. Broadcast/targeted
+        // delivery routinely writes to fds that may have gone stale since
+        // their membership snapshot was taken, so this can't be "just
+        // don't do that"; the failure has to be a normal `false` return.
+        const ssize_t sent = ::send(fd, bytes + total_sent, size - total_sent, MSG_NOSIGNAL);
         if (sent <= 0) {
             return false;
         }
