@@ -41,6 +41,8 @@ Server::Server(uint16_t port) : port_(port), running_(false), listener_(port) {
 
     chat_handler_.setSessionManager(&session_manager_);
     identify_handler_.setSessionManager(&session_manager_);
+    guild_handler_.setSessionManager(&session_manager_);
+    guild_handler_.setGuildManager(&guild_manager_);
 
     dispatcher_.registerHandler("HELLO", [this](const protocol::Message& msg, int /*fd*/) {
         return hello_handler_.handle(msg);
@@ -52,6 +54,26 @@ Server::Server(uint16_t port) : port_(port), running_(false), listener_(port) {
 
     dispatcher_.registerHandler("IDENTIFY", [this](const protocol::Message& msg, int fd) {
         return identify_handler_.handle(msg, fd);
+    });
+
+    dispatcher_.registerHandler("CREATE_GUILD", [this](const protocol::Message& msg, int fd) {
+        return guild_handler_.handleCreateGuild(msg, fd);
+    });
+
+    dispatcher_.registerHandler("LIST_GUILDS", [this](const protocol::Message& msg, int fd) {
+        return guild_handler_.handleListGuilds(msg, fd);
+    });
+
+    dispatcher_.registerHandler("JOIN_GUILD", [this](const protocol::Message& msg, int fd) {
+        return guild_handler_.handleJoinGuild(msg, fd);
+    });
+
+    dispatcher_.registerHandler("LEAVE_GUILD", [this](const protocol::Message& msg, int fd) {
+        return guild_handler_.handleLeaveGuild(msg, fd);
+    });
+
+    dispatcher_.registerHandler("DELETE_GUILD", [this](const protocol::Message& msg, int fd) {
+        return guild_handler_.handleDeleteGuild(msg, fd);
     });
 }
 

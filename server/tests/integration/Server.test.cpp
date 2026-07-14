@@ -105,6 +105,40 @@ TEST_CASE("Server returns PROTOCOL_VIOLATION for unknown message type") {
 }
 
 // ----------------------------------------------------------------------------
+// GuildHandler is wired into Server's dispatcher. The GuildHandler unit
+// tests call its methods directly and never exercise this registration, so
+// this is the only coverage that CREATE_GUILD actually reaches it via a real
+// socket round trip.
+// ----------------------------------------------------------------------------
+
+TEST_CASE("Server handles CREATE_GUILD end-to-end") {
+    Server server(0);
+    std::thread t([&server] { server.start(); });
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+
+    int fd = tcp_connect(server.bound_port());
+    REQUIRE(fd >= 0);
+
+    send_framed(fd, R"({"type":"HELLO","version":"0.1","client":"web"})");
+    REQUIRE(!recv_framed(fd).empty());
+    send_framed(fd, R"({"type":"IDENTIFY","username":"alice"})");
+    REQUIRE(!recv_framed(fd).empty());
+
+    send_framed(fd, R"({"type":"CREATE_GUILD","name":"My Guild"})");
+    std::string response = recv_framed(fd);
+
+    ::close(fd);
+    server.stop();
+    t.join();
+
+    REQUIRE(!response.empty());
+    auto parsed = nlohmann::json::parse(response);
+    REQUIRE(parsed["type"] == "GUILD_CREATED");
+    REQUIRE(parsed["name"] == "My Guild");
+    REQUIRE(parsed["guild_id"] == "g_1");
+}
+
+// ----------------------------------------------------------------------------
 // SIGPIPE fix: send_all() writes with MSG_NOSIGNAL. Without it, broadcasting
 // to a connection whose peer already RST the socket would raise SIGPIPE and
 // kill the whole process (default disposition), not just fail that one send.
