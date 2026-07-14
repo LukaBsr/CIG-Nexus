@@ -13,7 +13,7 @@ WORKDIR /build
 COPY . .
 
 RUN mkdir -p build && cd build && \
-    cmake .. && \
+    cmake .. -DBUILD_TESTS=OFF && \
     cmake --build .
 
 # Runtime stage

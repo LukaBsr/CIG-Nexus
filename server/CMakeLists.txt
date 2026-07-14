@@ -10,6 +10,8 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
     add_compile_options(-Wall -Wextra -Wpedantic)
 endif()
 
+option(BUILD_TESTS "Build the test suite" ON)
+
 include(FetchContent)
 FetchContent_Declare(
     nlohmann_json
@@ -34,7 +36,9 @@ target_link_libraries(cig-nexus-server
         nlohmann_json::nlohmann_json
 )
 
-include(CTest)
-enable_testing()
+if(BUILD_TESTS)
+    include(CTest)
+    enable_testing()
 
-add_subdirectory(tests)
+    add_subdirectory(tests)
+endif()
