@@ -18,7 +18,13 @@ bool send_all(int fd, const void* data, size_t size) {
     size_t total_sent = 0;
 
     while (total_sent < size) {
-        const ssize_t sent = ::send(fd, bytes + total_sent, size - total_sent, 0);
+        // MSG_NOSIGNAL: a peer that RST'd the connection would otherwise
+        // raise SIGPIPE on this send, and the process has no handler for
+        // it — default disposition is termination. Broadcast/targeted
+        // delivery routinely writes to fds that may have gone stale since
+        // their membership snapshot was taken, so this can't be "just
+        // don't do that"; the failure has to be a normal `false` return.
+        const ssize_t sent = ::send(fd, bytes + total_sent, size - total_sent, MSG_NOSIGNAL);
         if (sent <= 0) {
             return false;
         }
@@ -35,6 +41,10 @@ Server::Server(uint16_t port) : port_(port), running_(false), listener_(port) {
 
     chat_handler_.setSessionManager(&session_manager_);
     identify_handler_.setSessionManager(&session_manager_);
+    guild_handler_.setSessionManager(&session_manager_);
+    guild_handler_.setGuildManager(&guild_manager_);
+    channel_handler_.setSessionManager(&session_manager_);
+    channel_handler_.setGuildManager(&guild_manager_);
 
     dispatcher_.registerHandler("HELLO", [this](const protocol::Message& msg, int /*fd*/) {
         return hello_handler_.handle(msg);
@@ -46,6 +56,50 @@ Server::Server(uint16_t port) : port_(port), running_(false), listener_(port) {
 
     dispatcher_.registerHandler("IDENTIFY", [this](const protocol::Message& msg, int fd) {
         return identify_handler_.handle(msg, fd);
+    });
+
+    dispatcher_.registerHandler("CREATE_GUILD", [this](const protocol::Message& msg, int fd) {
+        return guild_handler_.handleCreateGuild(msg, fd);
+    });
+
+    dispatcher_.registerHandler("LIST_GUILDS", [this](const protocol::Message& msg, int fd) {
+        return guild_handler_.handleListGuilds(msg, fd);
+    });
+
+    dispatcher_.registerHandler("JOIN_GUILD", [this](const protocol::Message& msg, int fd) {
+        return guild_handler_.handleJoinGuild(msg, fd);
+    });
+
+    dispatcher_.registerHandler("LEAVE_GUILD", [this](const protocol::Message& msg, int fd) {
+        return guild_handler_.handleLeaveGuild(msg, fd);
+    });
+
+    dispatcher_.registerHandler("DELETE_GUILD", [this](const protocol::Message& msg, int fd) {
+        return guild_handler_.handleDeleteGuild(msg, fd);
+    });
+
+    dispatcher_.registerHandler("LIST_CHANNELS", [this](const protocol::Message& msg, int fd) {
+        return channel_handler_.handleListChannels(msg, fd);
+    });
+
+    dispatcher_.registerHandler("CREATE_CHANNEL", [this](const protocol::Message& msg, int fd) {
+        return channel_handler_.handleCreateChannel(msg, fd);
+    });
+
+    dispatcher_.registerHandler("DELETE_CHANNEL", [this](const protocol::Message& msg, int fd) {
+        return channel_handler_.handleDeleteChannel(msg, fd);
+    });
+
+    dispatcher_.registerHandler("JOIN_CHANNEL", [this](const protocol::Message& msg, int fd) {
+        return channel_handler_.handleJoinChannel(msg, fd);
+    });
+
+    dispatcher_.registerHandler("LEAVE_CHANNEL", [this](const protocol::Message& msg, int fd) {
+        return channel_handler_.handleLeaveChannel(msg, fd);
+    });
+
+    dispatcher_.registerHandler("CHANNEL_MESSAGE", [this](const protocol::Message& msg, int fd) {
+        return channel_handler_.handleChannelMessage(msg, fd);
     });
 }
 
@@ -94,9 +148,8 @@ void Server::start() {
                     protocol::Message error;
                     error.type = "ERROR";
                     error.scope = protocol::Scope::DIRECT;
-                    error.payload =
-                        protocol::make_error("PROTOCOL_VIOLATION",
-                                             "Unknown message type: " + message.type);
+                    error.payload = protocol::make_error("PROTOCOL_VIOLATION",
+                                                         "Unknown message type: " + message.type);
                     sendMessage(fd, error);
                     continue;
                 }
@@ -108,6 +161,12 @@ void Server::start() {
 
                 case protocol::Scope::DIRECT:
                     sendMessage(fd, response);
+                    break;
+
+                case protocol::Scope::TARGETED:
+                    for (int target_fd : response.target_fds) {
+                        sendMessage(target_fd, response);
+                    }
                     break;
                 }
             }

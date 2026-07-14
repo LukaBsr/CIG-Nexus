@@ -2,6 +2,7 @@
 #define CIG_NEXUS_SESSION_SESSION_HPP
 
 #include <string>
+#include <vector>
 
 namespace session {
 
@@ -11,6 +12,8 @@ struct Session {
     std::string username;
     uint64_t connected_at;
     int socket_fd;
+    std::vector<std::string> guild_ids; // guilds this connection is a member of
+    std::string active_channel_id;      // "" means no active channel
 };
 
 } // namespace session

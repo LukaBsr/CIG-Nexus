@@ -2,8 +2,6 @@
 #include "FrameDecoder.hpp"
 
 #include <cerrno>
-#include <cstring>
-#include <stdexcept>
 #include <sys/socket.h>
 #include <unistd.h>
 
@@ -41,7 +39,13 @@ bool Connection::readFromSocket() {
             return true;
         }
 
-        throw std::runtime_error(std::string("Failed to read from socket: ") + strerror(errno));
+        // Any other recv() error (e.g. ECONNRESET from a peer that RST the
+        // connection rather than closing cleanly) is treated as a
+        // disconnect, not an exceptional condition: Server::start() already
+        // has a well-defined disconnect path (session/connection cleanup)
+        // that owns this. Throwing here used to escape uncaught out of
+        // Server::start() and terminate the process.
+        return false;
     }
 }
 

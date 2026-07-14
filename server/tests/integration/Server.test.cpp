@@ -103,3 +103,181 @@ TEST_CASE("Server returns PROTOCOL_VIOLATION for unknown message type") {
     REQUIRE(parsed["type"] == "ERROR");
     REQUIRE(parsed["code"] == "PROTOCOL_VIOLATION");
 }
+
+// ----------------------------------------------------------------------------
+// GuildHandler is wired into Server's dispatcher. The GuildHandler unit
+// tests call its methods directly and never exercise this registration, so
+// this is the only coverage that CREATE_GUILD actually reaches it via a real
+// socket round trip.
+// ----------------------------------------------------------------------------
+
+TEST_CASE("Server handles CREATE_GUILD end-to-end") {
+    Server server(0);
+    std::thread t([&server] { server.start(); });
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+
+    int fd = tcp_connect(server.bound_port());
+    REQUIRE(fd >= 0);
+
+    send_framed(fd, R"({"type":"HELLO","version":"0.1","client":"web"})");
+    REQUIRE(!recv_framed(fd).empty());
+    send_framed(fd, R"({"type":"IDENTIFY","username":"alice"})");
+    REQUIRE(!recv_framed(fd).empty());
+
+    send_framed(fd, R"({"type":"CREATE_GUILD","name":"My Guild"})");
+    std::string response = recv_framed(fd);
+
+    ::close(fd);
+    server.stop();
+    t.join();
+
+    REQUIRE(!response.empty());
+    auto parsed = nlohmann::json::parse(response);
+    REQUIRE(parsed["type"] == "GUILD_CREATED");
+    REQUIRE(parsed["name"] == "My Guild");
+    REQUIRE(parsed["guild_id"] == "g_1");
+}
+
+// ----------------------------------------------------------------------------
+// Scope::TARGETED end-to-end: CHANNEL_MESSAGE is the first handler that
+// actually emits it (see the Scope::TARGETED commit — this closes out the
+// "behavioral coverage lands with CHANNEL_MESSAGE" note from that step).
+// Three real connections, only two of them joined to the channel; only
+// those two may receive the broadcast.
+// ----------------------------------------------------------------------------
+
+TEST_CASE("Server delivers CHANNEL_MESSAGE only to connections with that channel active") {
+    Server server(0);
+    std::thread t([&server] { server.start(); });
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+
+    auto identify = [&](int fd, const std::string& username) {
+        send_framed(fd, R"({"type":"HELLO","version":"0.1","client":"web"})");
+        REQUIRE(!recv_framed(fd).empty());
+        send_framed(fd, R"({"type":"IDENTIFY","username":")" + username + R"("})");
+        REQUIRE(!recv_framed(fd).empty());
+    };
+
+    int fd_a = tcp_connect(server.bound_port());
+    REQUIRE(fd_a >= 0);
+    identify(fd_a, "alice");
+
+    int fd_b = tcp_connect(server.bound_port());
+    REQUIRE(fd_b >= 0);
+    identify(fd_b, "bob");
+
+    int fd_c = tcp_connect(server.bound_port());
+    REQUIRE(fd_c >= 0);
+    identify(fd_c, "carol");
+
+    // alice creates a guild and a channel in it.
+    send_framed(fd_a, R"({"type":"CREATE_GUILD","name":"My Guild"})");
+    auto guild_created = nlohmann::json::parse(recv_framed(fd_a));
+    const std::string guild_id = guild_created["guild_id"];
+
+    send_framed(fd_a, R"({"type":"CREATE_CHANNEL","guild_id":")" + guild_id +
+                          R"(","name":"general","channel_type":"TEXT"})");
+    auto channel_created = nlohmann::json::parse(recv_framed(fd_a));
+    const std::string channel_id = channel_created["channel_id"];
+
+    // bob and carol join the guild so they're eligible to join the channel.
+    send_framed(fd_b, R"({"type":"JOIN_GUILD","guild_id":")" + guild_id + R"("})");
+    REQUIRE(!recv_framed(fd_b).empty());
+    send_framed(fd_c, R"({"type":"JOIN_GUILD","guild_id":")" + guild_id + R"("})");
+    REQUIRE(!recv_framed(fd_c).empty());
+
+    // alice and bob join the channel; carol deliberately does not.
+    send_framed(fd_a, R"({"type":"JOIN_CHANNEL","channel_id":")" + channel_id + R"("})");
+    REQUIRE(!recv_framed(fd_a).empty());
+    send_framed(fd_b, R"({"type":"JOIN_CHANNEL","channel_id":")" + channel_id + R"("})");
+    REQUIRE(!recv_framed(fd_b).empty());
+
+    send_framed(fd_a, R"({"type":"CHANNEL_MESSAGE","content":"hello channel"})");
+
+    std::string a_response = recv_framed(fd_a);
+    std::string b_response = recv_framed(fd_b);
+
+    // Shorten carol's timeout for the negative check so this test doesn't
+    // eat the full 2s default SO_RCVTIMEO waiting for something that should
+    // never arrive.
+    struct timeval short_tv{0, 300000};
+    ::setsockopt(fd_c, SOL_SOCKET, SO_RCVTIMEO, &short_tv, sizeof(short_tv));
+    std::string c_response = recv_framed(fd_c);
+
+    ::close(fd_a);
+    ::close(fd_b);
+    ::close(fd_c);
+    server.stop();
+    t.join();
+
+    REQUIRE(!a_response.empty());
+    REQUIRE(!b_response.empty());
+    REQUIRE(c_response.empty());
+
+    auto parsed_a = nlohmann::json::parse(a_response);
+    REQUIRE(parsed_a["type"] == "CHANNEL_MESSAGE");
+    REQUIRE(parsed_a["channel_id"] == channel_id);
+    REQUIRE(parsed_a["content"] == "hello channel");
+
+    auto parsed_b = nlohmann::json::parse(b_response);
+    REQUIRE(parsed_b["type"] == "CHANNEL_MESSAGE");
+    REQUIRE(parsed_b["channel_id"] == channel_id);
+}
+
+// ----------------------------------------------------------------------------
+// SIGPIPE fix: send_all() writes with MSG_NOSIGNAL. Without it, broadcasting
+// to a connection whose peer already RST the socket would raise SIGPIPE and
+// kill the whole process (default disposition), not just fail that one send.
+// A clean close() (FIN) doesn't reproduce this — it has to be a reset.
+// ----------------------------------------------------------------------------
+
+TEST_CASE("Server survives broadcasting to a connection reset by its peer") {
+    Server server(0);
+    std::thread t([&server] { server.start(); });
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+
+    auto identify = [&](int fd, const std::string& username) {
+        send_framed(fd, R"({"type":"HELLO","version":"0.1","client":"web"})");
+        REQUIRE(!recv_framed(fd).empty()); // WELCOME
+        send_framed(fd, R"({"type":"IDENTIFY","username":")" + username + R"("})");
+        REQUIRE(!recv_framed(fd).empty()); // IDENTIFIED
+    };
+
+    // Connect fd_b first so it lands in an earlier unordered_map bucket than
+    // fd_a: Server iterates connections_ once per tick, checking
+    // readFromSocket() before processing each connection's frames, so
+    // whichever of the two is visited first this tick determines whether
+    // fd_a's own disconnect gets discovered (and it self-heals) before or
+    // after fd_b's CHAT_MESSAGE triggers a broadcast into it.
+    int fd_b = tcp_connect(server.bound_port());
+    REQUIRE(fd_b >= 0);
+    identify(fd_b, "bob");
+
+    int fd_a = tcp_connect(server.bound_port());
+    REQUIRE(fd_a >= 0);
+    identify(fd_a, "alice");
+
+    // Force an RST instead of a clean FIN. Server::start() checks every
+    // connection's readFromSocket() once per tick, so an RST on fd_a
+    // normally self-heals within a tick or two regardless of ordering —
+    // the bucket ordering above is what gets fd_b's broadcast to race
+    // ahead of that self-heal within the same tick, at least once.
+    struct linger sl {
+        1, 0
+    };
+    ::setsockopt(fd_a, SOL_SOCKET, SO_LINGER, &sl, sizeof(sl));
+    ::close(fd_a);
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+
+    send_framed(fd_b, R"({"type":"CHAT_MESSAGE","content":"still alive"})");
+    std::string response = recv_framed(fd_b);
+
+    ::close(fd_b);
+    server.stop();
+    t.join(); // would never be reached if send_all() crashed the process
+
+    REQUIRE(!response.empty());
+    auto parsed = nlohmann::json::parse(response);
+    REQUIRE(parsed["type"] == "CHAT_MESSAGE");
+    REQUIRE(parsed["content"] == "still alive");
+}

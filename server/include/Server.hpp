@@ -5,10 +5,13 @@
 #include "TcpListener.hpp"
 
 #include "protocol/MessageDispatcher.hpp"
+#include "protocol/handlers/ChannelHandler.hpp"
 #include "protocol/handlers/ChatHandler.hpp"
+#include "protocol/handlers/GuildHandler.hpp"
 #include "protocol/handlers/HelloHandler.hpp"
 #include "protocol/handlers/IdentifyHandler.hpp"
 
+#include "guild/GuildManager.hpp"
 #include "session/SessionManager.hpp"
 
 #include <atomic>
@@ -42,9 +45,12 @@ class Server {
     protocol::HelloHandler hello_handler_;
     protocol::ChatHandler chat_handler_;
     protocol::IdentifyHandler identify_handler_;
+    protocol::GuildHandler guild_handler_;
+    protocol::ChannelHandler channel_handler_;
 
-    // In-memory connection/session state
+    // In-memory connection/session/guild state
     session::SessionManager session_manager_;
+    guild::GuildManager guild_manager_;
     std::unordered_map<int, std::unique_ptr<Connection>> connections_;
 };
 
