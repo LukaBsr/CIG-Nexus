@@ -61,7 +61,7 @@ Message HelloHandler::handle(const Message& message) const {
 
     Message response;
     response.type = "WELCOME";
-    response.payload = make_welcome("0.4");
+    response.payload = make_welcome("0.5");
     return response;
 }
 

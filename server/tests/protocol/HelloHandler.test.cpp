@@ -9,11 +9,7 @@ namespace {
 protocol::Message make_hello(const std::string& version, const std::string& client) {
     protocol::Message message;
     message.type = "HELLO";
-    message.payload = {
-        {"type", "HELLO"},
-        {"version", version},
-        {"client", client}
-    };
+    message.payload = {{"type", "HELLO"}, {"version", version}, {"client", client}};
     return message;
 }
 
@@ -27,7 +23,7 @@ TEST_CASE("HelloHandler returns WELCOME for valid HELLO") {
 
     REQUIRE(response.type == "WELCOME");
     REQUIRE(response.payload["type"] == "WELCOME");
-    REQUIRE(response.payload["server_version"] == "0.4");
+    REQUIRE(response.payload["server_version"] == "0.5");
     REQUIRE_FALSE(response.payload.contains("session_id"));
 }
 
@@ -54,10 +50,7 @@ TEST_CASE("HelloHandler rejects missing fields") {
     protocol::HelloHandler handler;
     protocol::Message message;
     message.type = "HELLO";
-    message.payload = {
-        {"type", "HELLO"},
-        {"version", "0.1"}
-    };
+    message.payload = {{"type", "HELLO"}, {"version", "0.1"}};
 
     const auto response = handler.handle(message);
 
