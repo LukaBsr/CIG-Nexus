@@ -5,6 +5,7 @@
 #include "TcpListener.hpp"
 
 #include "protocol/MessageDispatcher.hpp"
+#include "protocol/handlers/ChannelHandler.hpp"
 #include "protocol/handlers/ChatHandler.hpp"
 #include "protocol/handlers/GuildHandler.hpp"
 #include "protocol/handlers/HelloHandler.hpp"
@@ -45,6 +46,7 @@ class Server {
     protocol::ChatHandler chat_handler_;
     protocol::IdentifyHandler identify_handler_;
     protocol::GuildHandler guild_handler_;
+    protocol::ChannelHandler channel_handler_;
 
     // In-memory connection/session/guild state
     session::SessionManager session_manager_;
