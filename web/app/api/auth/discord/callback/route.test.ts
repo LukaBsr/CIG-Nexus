@@ -47,6 +47,10 @@ function mockDiscordApi(discordUserId: string) {
   return fetchSpy;
 }
 
+// A distinct IP per call keeps every test in its own rate-limit bucket
+// (lib/auth/rateLimit.ts) instead of all sharing "unknown".
+let ipCounter = 0;
+
 async function requestWithTxn(params: {
   code?: string;
   state?: string;
@@ -58,7 +62,8 @@ async function requestWithTxn(params: {
   if (params.code !== undefined) url.searchParams.set("code", params.code);
   if (params.state !== undefined) url.searchParams.set("state", params.state);
 
-  const headers = new Headers();
+  ipCounter += 1;
+  const headers = new Headers({ "x-forwarded-for": `10.0.1.${ipCounter}` });
   if (!params.omitTxnCookie) {
     const txn = await signOAuthTxn({ codeVerifier: "verifier-abc", state: txnState });
     headers.set("cookie", `oauth_txn=${txn}`);
@@ -124,5 +129,18 @@ describe("GET /api/auth/discord/callback", () => {
     const request = await requestWithTxn({ code: "auth-code", state: "matching-state" });
     const response = await GET(request);
     expect(new URL(response.headers.get("location")!).pathname).toBe("/login-error");
+  });
+
+  it("returns 429 once the per-IP limit is exceeded", async () => {
+    const url = new URL(CALLBACK_URL);
+    const headers = new Headers({ "x-forwarded-for": "10.0.2.1" });
+    const request = new NextRequest(url, { headers });
+
+    for (let i = 0; i < 10; i += 1) {
+      const response = await GET(request);
+      expect(response.status).not.toBe(429);
+    }
+    const limited = await GET(request);
+    expect(limited.status).toBe(429);
   });
 });

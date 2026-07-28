@@ -1,11 +1,23 @@
-import { NextResponse } from "next/server";
+import { type NextRequest, NextResponse } from "next/server";
 
+import { clientIp } from "@/lib/auth/clientIp";
 import { authEnv } from "@/lib/auth/env";
 import { OAUTH_TXN_COOKIE, OAUTH_TXN_COOKIE_OPTIONS, signOAuthTxn } from "@/lib/auth/oauthTxnCookie";
 import { generateCodeChallenge, generateCodeVerifier, generateState } from "@/lib/auth/pkce";
+import { checkRateLimit } from "@/lib/auth/rateLimit";
+
+// design doc §9.1: per-IP sliding window. No specific threshold is given
+// in the design doc; 10 requests/minute is a starting point sized to allow
+// normal retry/back-and-forth during login without materially slowing down
+// a credential-stuffing-style abuse pattern against these routes.
+const RATE_LIMIT = { windowMs: 60_000, limit: 10 };
 
 // design doc §4, GET /api/auth/discord/login
-export async function GET(): Promise<NextResponse> {
+export async function GET(request: NextRequest): Promise<NextResponse> {
+  if (!(await checkRateLimit("oauth-login", clientIp(request), RATE_LIMIT))) {
+    return NextResponse.json({ error: "rate_limited" }, { status: 429 });
+  }
+
   const codeVerifier = generateCodeVerifier();
   const codeChallenge = generateCodeChallenge(codeVerifier);
   const state = generateState();

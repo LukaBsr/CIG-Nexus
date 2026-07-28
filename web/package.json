@@ -13,6 +13,7 @@
   },
   "dependencies": {
     "drizzle-orm": "^0.45.2",
+    "ioredis": "^5.11.1",
     "jose": "^6.2.4",
     "next": "^16.2.10",
     "pg": "^8.22.0",
@@ -22,6 +23,7 @@
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
     "@testcontainers/postgresql": "^12.0.4",
+    "@testcontainers/redis": "^12.0.4",
     "@types/node": "^20",
     "@types/pg": "^8.20.0",
     "@types/react": "^19",

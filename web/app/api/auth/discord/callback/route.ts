@@ -1,12 +1,17 @@
 import { type NextRequest, NextResponse } from "next/server";
 
+import { clientIp as rateLimitClientIp } from "@/lib/auth/clientIp";
 import { constantTimeEqual } from "@/lib/auth/constantTimeEqual";
 import { OAUTH_TXN_COOKIE, verifyOAuthTxn } from "@/lib/auth/oauthTxnCookie";
+import { checkRateLimit } from "@/lib/auth/rateLimit";
 import { createSession, REFRESH_COOKIE, REFRESH_COOKIE_OPTIONS } from "@/lib/auth/session";
 import { upsertDiscordUser } from "@/lib/auth/upsertUser";
 import { exchangeCodeForToken, fetchDiscordUser } from "@/lib/discord";
 
 const LOGIN_ERROR_PATH = "/login-error";
+
+// design doc §9.1: same bucket/limits reasoning as the login route.
+const RATE_LIMIT = { windowMs: 60_000, limit: 10 };
 
 function redirectToError(request: NextRequest): NextResponse {
   // design doc §4 step 8: generic failure response — never reveals which
@@ -16,12 +21,19 @@ function redirectToError(request: NextRequest): NextResponse {
   return response;
 }
 
-function clientIp(request: NextRequest): string | undefined {
+// Distinct from clientIp() in lib/auth/clientIp.ts: this must stay
+// `undefined` (not a placeholder string) when absent, since it's stored
+// directly in sessions.ip_address, a Postgres `inet` column.
+function sessionIpAddress(request: NextRequest): string | undefined {
   return request.headers.get("x-forwarded-for")?.split(",")[0]?.trim();
 }
 
 // design doc §4, GET /api/auth/discord/callback
 export async function GET(request: NextRequest): Promise<NextResponse> {
+  if (!(await checkRateLimit("oauth-callback", rateLimitClientIp(request), RATE_LIMIT))) {
+    return NextResponse.json({ error: "rate_limited" }, { status: 429 });
+  }
+
   const code = request.nextUrl.searchParams.get("code");
   const stateParam = request.nextUrl.searchParams.get("state");
   const txnCookie = request.cookies.get(OAUTH_TXN_COOKIE)?.value;
@@ -48,7 +60,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     const user = await upsertDiscordUser(discordUser);
     const { refreshToken } = await createSession(user.id, {
       userAgent: request.headers.get("user-agent") ?? undefined,
-      ipAddress: clientIp(request)
+      ipAddress: sessionIpAddress(request)
     });
 
     const response = NextResponse.redirect(new URL("/", request.url));

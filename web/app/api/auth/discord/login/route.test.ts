@@ -1,5 +1,6 @@
 import { randomBytes } from "node:crypto";
 
+import { NextRequest } from "next/server";
 import { beforeAll, describe, expect, it } from "vitest";
 
 import { GET } from "./route";
@@ -10,9 +11,21 @@ beforeAll(() => {
   process.env.OAUTH_TXN_SECRET = randomBytes(32).toString("hex");
 });
 
+// A distinct IP per test keeps each test's requests in their own rate-limit
+// bucket (lib/auth/rateLimit.ts) — otherwise every call in this file would
+// share the "unknown" bucket and could spuriously trip the limit as more
+// tests are added.
+let ipCounter = 0;
+function request(): NextRequest {
+  ipCounter += 1;
+  return new NextRequest("http://localhost:3000/api/auth/discord/login", {
+    headers: { "x-forwarded-for": `10.0.0.${ipCounter}` }
+  });
+}
+
 describe("GET /api/auth/discord/login", () => {
   it("redirects to Discord's authorize endpoint with PKCE + state params", async () => {
-    const response = await GET();
+    const response = await GET(request());
 
     expect(response.status).toBe(307);
     const location = new URL(response.headers.get("location")!);
@@ -29,7 +42,7 @@ describe("GET /api/auth/discord/login", () => {
   });
 
   it("sets an httpOnly oauth_txn cookie", async () => {
-    const response = await GET();
+    const response = await GET(request());
     const setCookie = response.headers.get("set-cookie")!;
     expect(setCookie).toContain("oauth_txn=");
     expect(setCookie).toContain("HttpOnly");
@@ -37,8 +50,19 @@ describe("GET /api/auth/discord/login", () => {
   });
 
   it("uses a different state/verifier on each call", async () => {
-    const first = new URL((await GET()).headers.get("location")!);
-    const second = new URL((await GET()).headers.get("location")!);
+    const req = request();
+    const first = new URL((await GET(req)).headers.get("location")!);
+    const second = new URL((await GET(req)).headers.get("location")!);
     expect(first.searchParams.get("state")).not.toBe(second.searchParams.get("state"));
+  });
+
+  it("returns 429 once the per-IP limit is exceeded", async () => {
+    const req = request();
+    for (let i = 0; i < 10; i += 1) {
+      const response = await GET(req);
+      expect(response.status).toBe(307);
+    }
+    const limited = await GET(req);
+    expect(limited.status).toBe(429);
   });
 });
