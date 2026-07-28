@@ -12,14 +12,22 @@ namespace guild {
 class GuildManager;
 }
 
+namespace http {
+class InternalApiClient;
+}
+
 namespace protocol {
 
 // Guild lifecycle: CREATE_GUILD, LIST_GUILDS, JOIN_GUILD, LEAVE_GUILD,
-// DELETE_GUILD. See docs/rooms-spec.md for the full protocol shapes.
+// DELETE_GUILD. See docs/rooms-spec.md for the full protocol shapes and
+// docs/auth-discord-design.md §8.1 for the write-through-cache/internal-API
+// pattern every mutation below follows: call InternalApiClient first, only
+// touch GuildManager/SessionManager if that call succeeds.
 class GuildHandler {
   public:
     void setSessionManager(session::SessionManager* session_manager);
     void setGuildManager(guild::GuildManager* guild_manager);
+    void setInternalApiClient(http::InternalApiClient* internal_api_client);
 
     Message handleCreateGuild(const Message& message, int fd) const;
     Message handleListGuilds(const Message& message, int fd) const;
@@ -36,6 +44,7 @@ class GuildHandler {
 
     session::SessionManager* session_manager_ = nullptr;
     guild::GuildManager* guild_manager_ = nullptr;
+    http::InternalApiClient* internal_api_client_ = nullptr;
 };
 
 } // namespace protocol

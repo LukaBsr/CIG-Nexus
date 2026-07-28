@@ -2,6 +2,7 @@
 
 #include "guild/Channel.hpp"
 #include "guild/GuildManager.hpp"
+#include "http/InternalApiClient.hpp"
 #include "protocol/MessageBuilders.hpp"
 #include "session/SessionManager.hpp"
 
@@ -15,6 +16,10 @@ void ChannelHandler::setSessionManager(session::SessionManager* session_manager)
 
 void ChannelHandler::setGuildManager(guild::GuildManager* guild_manager) {
     guild_manager_ = guild_manager;
+}
+
+void ChannelHandler::setInternalApiClient(http::InternalApiClient* internal_api_client) {
+    internal_api_client_ = internal_api_client;
 }
 
 Message ChannelHandler::makeError(const std::string& code, const std::string& msg) {
@@ -125,7 +130,7 @@ Message ChannelHandler::handleCreateChannel(const Message& message, int fd) cons
         return makeError("MALFORMED_MESSAGE", "CREATE_CHANNEL channel_type must be TEXT or VOICE");
     }
 
-    if (!guild_manager_) {
+    if (!guild_manager_ || !internal_api_client_) {
         return makeError("INTERNAL_ERROR", "Guild context unavailable");
     }
 
@@ -138,7 +143,14 @@ Message ChannelHandler::handleCreateChannel(const Message& message, int fd) cons
         return makeError("NOT_GUILD_OWNER", "Only the guild owner can create channels");
     }
 
-    guild::Channel& new_channel = guild_manager_->createChannel(guild_id, name, channel_type);
+    const std::optional<http::WireChannel> created =
+        internal_api_client_->createChannel(guild_id, name, channel_type_str);
+    if (!created) {
+        return makeError("INTERNAL_ERROR", "Failed to persist new channel");
+    }
+
+    guild::Channel& new_channel =
+        guild_manager_->upsertChannel(created->channel_id, guild_id, created->name, channel_type);
 
     Message response;
     response.type = "CHANNEL_CREATED";
@@ -174,7 +186,7 @@ Message ChannelHandler::handleDeleteChannel(const Message& message, int fd) cons
         return makeError("MALFORMED_MESSAGE", "DELETE_CHANNEL missing required field: channel_id");
     }
 
-    if (!guild_manager_) {
+    if (!guild_manager_ || !internal_api_client_) {
         return makeError("INTERNAL_ERROR", "Guild context unavailable");
     }
 
@@ -191,6 +203,10 @@ Message ChannelHandler::handleDeleteChannel(const Message& message, int fd) cons
 
     if (!guild_manager_->canDeleteChannel(guild_id, session->user_id)) {
         return makeError("NOT_GUILD_OWNER", "Only the guild owner can delete channels");
+    }
+
+    if (!internal_api_client_->deleteChannel(channel_id)) {
+        return makeError("INTERNAL_ERROR", "Failed to delete channel");
     }
 
     const std::vector<int> target_fds = session_manager_->getFdsInGuild(guild_id);

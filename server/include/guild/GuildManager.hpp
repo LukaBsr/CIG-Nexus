@@ -1,8 +1,6 @@
 #ifndef CIG_NEXUS_GUILD_GUILD_MANAGER_HPP
 #define CIG_NEXUS_GUILD_GUILD_MANAGER_HPP
 
-#include <atomic>
-#include <cstdint>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -12,13 +10,15 @@
 
 namespace guild {
 
-// GuildManager owns the guild/channel catalog (existence, ownership, names).
-// It does not track which connection is a member of what — that's
-// per-connection state and lives on session::Session, the same way
-// SessionManager already owns username instead of a separate manager.
+// GuildManager is a write-through cache over the Postgres-backed catalog
+// (design doc §8.1): the fast in-memory structure handlers read from for
+// every request, but no longer the source of truth. Ids are never
+// generated here — upsertGuild/upsertChannel take the id the internal API
+// (Next.js/Postgres) already assigned, either from a mutation response or
+// from the full-catalog fetch at server startup.
 class GuildManager {
   public:
-    Guild& createGuild(const std::string& name, const std::string& owner_id);
+    Guild& upsertGuild(const std::string& id, const std::string& name, const std::string& owner_id);
 
     // Deletes the guild and cascades to delete all of its channels. Callers
     // needing to clean up per-connection membership/active-channel state
@@ -27,7 +27,8 @@ class GuildManager {
     // won't be queryable afterward.
     bool deleteGuild(const std::string& guild_id);
 
-    Channel& createChannel(const std::string& guild_id, const std::string& name, ChannelType type);
+    Channel& upsertChannel(const std::string& id, const std::string& guild_id, const std::string& name,
+                           ChannelType type);
     bool deleteChannel(const std::string& channel_id);
 
     bool hasGuild(const std::string& guild_id) const;
@@ -54,14 +55,6 @@ class GuildManager {
   private:
     std::unordered_map<std::string, Guild> guilds_;
     std::unordered_map<std::string, Channel> channels_;
-
-    // Same reasoning as ChatHandler::message_counter_: the server is
-    // single-threaded today (one poll loop in Server::start()), so a plain
-    // uint64_t would be safe right now. Using std::atomic anyway removes a
-    // landmine for whenever that stops being true, at effectively zero cost
-    // in the single-threaded case.
-    std::atomic<std::uint64_t> next_guild_id_{1};
-    std::atomic<std::uint64_t> next_channel_id_{1};
 };
 
 } // namespace guild

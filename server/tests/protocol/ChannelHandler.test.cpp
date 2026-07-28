@@ -4,6 +4,8 @@
 #include "protocol/handlers/ChannelHandler.hpp"
 #include "session/SessionManager.hpp"
 
+#include "../http/FakeInternalApiClient.hpp"
+
 #include <algorithm>
 
 namespace {
@@ -19,16 +21,19 @@ protocol::Message make_message(const std::string& type, nlohmann::json extra = {
 struct Fixture {
     session::SessionManager sessions;
     guild::GuildManager guilds;
+    test_helpers::FakeInternalApiClient api;
     protocol::ChannelHandler handler;
 
     Fixture() {
         handler.setSessionManager(&sessions);
         handler.setGuildManager(&guilds);
+        handler.setInternalApiClient(&api);
     }
 
     session::Session& identify(int fd, const std::string& username) {
         session::Session& session = sessions.createSession(fd);
         session.username = username;
+        session.user_id = "u_" + std::to_string(fd);
         return session;
     }
 };
@@ -42,8 +47,8 @@ bool contains(const std::vector<int>& fds, int fd) {
 TEST_CASE("ChannelHandler LIST_CHANNELS returns channels for a guild member") {
     Fixture f;
     f.identify(1, "alice");
-    f.guilds.createGuild("First", "u_owner");
-    f.guilds.createChannel("g_1", "general", guild::ChannelType::TEXT);
+    f.guilds.upsertGuild("g_1", "First", "u_owner");
+    f.guilds.upsertChannel("c_1", "g_1", "general", guild::ChannelType::TEXT);
     f.sessions.addGuildMembership(1, "g_1");
 
     const auto response = f.handler.handleListChannels(make_message("LIST_CHANNELS", {{"guild_id", "g_1"}}), 1);
@@ -56,7 +61,7 @@ TEST_CASE("ChannelHandler LIST_CHANNELS returns channels for a guild member") {
 TEST_CASE("ChannelHandler LIST_CHANNELS rejects a non-member") {
     Fixture f;
     f.identify(1, "alice");
-    f.guilds.createGuild("First", "u_owner");
+    f.guilds.upsertGuild("g_1", "First", "u_owner");
 
     const auto response = f.handler.handleListChannels(make_message("LIST_CHANNELS", {{"guild_id", "g_1"}}), 1);
 
@@ -76,7 +81,7 @@ TEST_CASE("ChannelHandler CREATE_CHANNEL by the owner notifies every guild membe
     Fixture f;
     session::Session& owner = f.identify(1, "owner");
     f.identify(2, "member");
-    f.guilds.createGuild("First", owner.user_id);
+    f.guilds.upsertGuild("g_1", "First", owner.user_id);
     f.sessions.addGuildMembership(1, "g_1");
     f.sessions.addGuildMembership(2, "g_1");
 
@@ -88,15 +93,15 @@ TEST_CASE("ChannelHandler CREATE_CHANNEL by the owner notifies every guild membe
     REQUIRE(response.target_fds.size() == 2);
     REQUIRE(contains(response.target_fds, 1));
     REQUIRE(contains(response.target_fds, 2));
-    REQUIRE(response.payload["channel_id"] == "c_1");
+    REQUIRE(response.payload["channel_id"] == "c_fake_1"); // assigned by (fake) InternalApiClient
     REQUIRE(response.payload["channel_type"] == "TEXT");
-    REQUIRE(f.guilds.hasChannel("c_1"));
+    REQUIRE(f.guilds.hasChannel("c_fake_1"));
 }
 
 TEST_CASE("ChannelHandler CREATE_CHANNEL rejects a non-owner") {
     Fixture f;
     f.identify(1, "not-owner");
-    f.guilds.createGuild("First", "u_owner");
+    f.guilds.upsertGuild("g_1", "First", "u_owner");
     f.sessions.addGuildMembership(1, "g_1");
 
     const auto response = f.handler.handleCreateChannel(
@@ -108,7 +113,7 @@ TEST_CASE("ChannelHandler CREATE_CHANNEL rejects a non-owner") {
 TEST_CASE("ChannelHandler CREATE_CHANNEL rejects an invalid channel_type") {
     Fixture f;
     session::Session& owner = f.identify(1, "owner");
-    f.guilds.createGuild("First", owner.user_id);
+    f.guilds.upsertGuild("g_1", "First", owner.user_id);
 
     const auto response = f.handler.handleCreateChannel(
         make_message("CREATE_CHANNEL", {{"guild_id", "g_1"}, {"name", "general"}, {"channel_type", "VIDEO"}}), 1);
@@ -116,12 +121,26 @@ TEST_CASE("ChannelHandler CREATE_CHANNEL rejects an invalid channel_type") {
     REQUIRE(response.payload["code"] == "MALFORMED_MESSAGE");
 }
 
+TEST_CASE("ChannelHandler CREATE_CHANNEL returns INTERNAL_ERROR without mutating state when the "
+          "internal API call fails") {
+    Fixture f;
+    session::Session& owner = f.identify(1, "owner");
+    f.guilds.upsertGuild("g_1", "First", owner.user_id);
+    f.api.fail_create_channel = true;
+
+    const auto response = f.handler.handleCreateChannel(
+        make_message("CREATE_CHANNEL", {{"guild_id", "g_1"}, {"name", "general"}, {"channel_type", "TEXT"}}), 1);
+
+    REQUIRE(response.payload["code"] == "INTERNAL_ERROR");
+    REQUIRE(f.guilds.listChannels("g_1").empty());
+}
+
 TEST_CASE("ChannelHandler DELETE_CHANNEL clears the active channel for members who had it") {
     Fixture f;
     session::Session& owner = f.identify(1, "owner");
     f.identify(2, "member");
-    f.guilds.createGuild("First", owner.user_id);
-    f.guilds.createChannel("g_1", "general", guild::ChannelType::TEXT);
+    f.guilds.upsertGuild("g_1", "First", owner.user_id);
+    f.guilds.upsertChannel("c_1", "g_1", "general", guild::ChannelType::TEXT);
     f.sessions.addGuildMembership(1, "g_1");
     f.sessions.addGuildMembership(2, "g_1");
     f.sessions.setActiveChannel(2, "c_1");
@@ -139,8 +158,8 @@ TEST_CASE("ChannelHandler DELETE_CHANNEL clears the active channel for members w
 TEST_CASE("ChannelHandler DELETE_CHANNEL rejects a non-owner") {
     Fixture f;
     f.identify(1, "not-owner");
-    f.guilds.createGuild("First", "u_owner");
-    f.guilds.createChannel("g_1", "general", guild::ChannelType::TEXT);
+    f.guilds.upsertGuild("g_1", "First", "u_owner");
+    f.guilds.upsertChannel("c_1", "g_1", "general", guild::ChannelType::TEXT);
     f.sessions.addGuildMembership(1, "g_1");
 
     const auto response = f.handler.handleDeleteChannel(
@@ -153,7 +172,7 @@ TEST_CASE("ChannelHandler DELETE_CHANNEL rejects a non-owner") {
 TEST_CASE("ChannelHandler DELETE_CHANNEL rejects an unknown channel") {
     Fixture f;
     session::Session& owner = f.identify(1, "owner");
-    f.guilds.createGuild("First", owner.user_id);
+    f.guilds.upsertGuild("g_1", "First", owner.user_id);
 
     const auto response = f.handler.handleDeleteChannel(
         make_message("DELETE_CHANNEL", {{"guild_id", "g_1"}, {"channel_id", "c_404"}}), 1);
@@ -161,12 +180,27 @@ TEST_CASE("ChannelHandler DELETE_CHANNEL rejects an unknown channel") {
     REQUIRE(response.payload["code"] == "CHANNEL_NOT_FOUND");
 }
 
+TEST_CASE("ChannelHandler DELETE_CHANNEL returns INTERNAL_ERROR without mutating state when the "
+          "internal API call fails") {
+    Fixture f;
+    session::Session& owner = f.identify(1, "owner");
+    f.guilds.upsertGuild("g_1", "First", owner.user_id);
+    f.guilds.upsertChannel("c_1", "g_1", "general", guild::ChannelType::TEXT);
+    f.api.fail_delete_channel = true;
+
+    const auto response = f.handler.handleDeleteChannel(
+        make_message("DELETE_CHANNEL", {{"guild_id", "g_1"}, {"channel_id", "c_1"}}), 1);
+
+    REQUIRE(response.payload["code"] == "INTERNAL_ERROR");
+    REQUIRE(f.guilds.hasChannel("c_1")); // unchanged
+}
+
 TEST_CASE("ChannelHandler JOIN_CHANNEL sets the active channel, replacing any previous one") {
     Fixture f;
     f.identify(1, "alice");
-    f.guilds.createGuild("First", "u_owner");
-    f.guilds.createChannel("g_1", "general", guild::ChannelType::TEXT);
-    f.guilds.createChannel("g_1", "random", guild::ChannelType::TEXT);
+    f.guilds.upsertGuild("g_1", "First", "u_owner");
+    f.guilds.upsertChannel("c_1", "g_1", "general", guild::ChannelType::TEXT);
+    f.guilds.upsertChannel("c_2", "g_1", "random", guild::ChannelType::TEXT);
     f.sessions.addGuildMembership(1, "g_1");
     f.sessions.setActiveChannel(1, "c_1");
 
@@ -181,8 +215,8 @@ TEST_CASE("ChannelHandler JOIN_CHANNEL sets the active channel, replacing any pr
 TEST_CASE("ChannelHandler JOIN_CHANNEL rejects a non-member of the channel's guild") {
     Fixture f;
     f.identify(1, "alice");
-    f.guilds.createGuild("First", "u_owner");
-    f.guilds.createChannel("g_1", "general", guild::ChannelType::TEXT);
+    f.guilds.upsertGuild("g_1", "First", "u_owner");
+    f.guilds.upsertChannel("c_1", "g_1", "general", guild::ChannelType::TEXT);
 
     const auto response =
         f.handler.handleJoinChannel(make_message("JOIN_CHANNEL", {{"channel_id", "c_1"}}), 1);
@@ -193,8 +227,8 @@ TEST_CASE("ChannelHandler JOIN_CHANNEL rejects a non-member of the channel's gui
 TEST_CASE("ChannelHandler JOIN_CHANNEL rejects voice channels this iteration") {
     Fixture f;
     f.identify(1, "alice");
-    f.guilds.createGuild("First", "u_owner");
-    f.guilds.createChannel("g_1", "voice-lounge", guild::ChannelType::VOICE);
+    f.guilds.upsertGuild("g_1", "First", "u_owner");
+    f.guilds.upsertChannel("c_1", "g_1", "voice-lounge", guild::ChannelType::VOICE);
     f.sessions.addGuildMembership(1, "g_1");
 
     const auto response =
@@ -230,9 +264,9 @@ TEST_CASE("ChannelHandler CHANNEL_MESSAGE delivers only to connections with that
     f.identify(1, "alice");
     f.identify(2, "bob");
     f.identify(3, "carol");
-    f.guilds.createGuild("First", "u_owner");
-    f.guilds.createChannel("g_1", "general", guild::ChannelType::TEXT);
-    f.guilds.createChannel("g_1", "random", guild::ChannelType::TEXT);
+    f.guilds.upsertGuild("g_1", "First", "u_owner");
+    f.guilds.upsertChannel("c_1", "g_1", "general", guild::ChannelType::TEXT);
+    f.guilds.upsertChannel("c_2", "g_1", "random", guild::ChannelType::TEXT);
     f.sessions.setActiveChannel(1, "c_1");
     f.sessions.setActiveChannel(2, "c_1");
     f.sessions.setActiveChannel(3, "c_2"); // different channel, should not receive it
@@ -255,8 +289,8 @@ TEST_CASE("ChannelHandler CHANNEL_MESSAGE delivers only to connections with that
 TEST_CASE("ChannelHandler CHANNEL_MESSAGE message_id increments across calls") {
     Fixture f;
     f.identify(1, "alice");
-    f.guilds.createGuild("First", "u_owner");
-    f.guilds.createChannel("g_1", "general", guild::ChannelType::TEXT);
+    f.guilds.upsertGuild("g_1", "First", "u_owner");
+    f.guilds.upsertChannel("c_1", "g_1", "general", guild::ChannelType::TEXT);
     f.sessions.setActiveChannel(1, "c_1");
 
     const auto r1 = f.handler.handleChannelMessage(make_message("CHANNEL_MESSAGE", {{"content", "a"}}), 1);

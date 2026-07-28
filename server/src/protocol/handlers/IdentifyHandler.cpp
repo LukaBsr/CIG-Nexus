@@ -1,5 +1,7 @@
 #include "protocol/handlers/IdentifyHandler.hpp"
 
+#include "auth/JwtVerifier.hpp"
+#include "auth/RevocationCache.hpp"
 #include "protocol/MessageBuilders.hpp"
 #include "session/SessionManager.hpp"
 
@@ -7,18 +9,30 @@
 
 namespace protocol {
 
+namespace {
+
+Message makeError(const std::string& code, const std::string& msg) {
+    Message response;
+    response.type = "ERROR";
+    response.payload = make_error(code, msg);
+    return response;
+}
+
+} // namespace
+
 void IdentifyHandler::setSessionManager(session::SessionManager* session_manager) {
     session_manager_ = session_manager;
 }
 
-Message IdentifyHandler::handle(const Message& message, int fd) {
-    auto makeError = [](const std::string& code, const std::string& msg) {
-        Message response;
-        response.type = "ERROR";
-        response.payload = make_error(code, msg);
-        return response;
-    };
+void IdentifyHandler::setJwtVerifier(const auth::JwtVerifier* jwt_verifier) {
+    jwt_verifier_ = jwt_verifier;
+}
 
+void IdentifyHandler::setRevocationCache(const auth::RevocationCache* revocation_cache) {
+    revocation_cache_ = revocation_cache;
+}
+
+Message IdentifyHandler::handle(const Message& message, int fd) {
     if (message.type != "IDENTIFY") {
         return makeError("PROTOCOL_VIOLATION", "Expected IDENTIFY message");
     }
@@ -27,41 +41,53 @@ Message IdentifyHandler::handle(const Message& message, int fd) {
         return makeError("MALFORMED_MESSAGE", "IDENTIFY payload must be an object");
     }
 
-    if (!message.payload.contains("username")) {
-        return makeError("MALFORMED_MESSAGE", "IDENTIFY missing required field: username");
+    if (!message.payload.contains("session_token")) {
+        return makeError("AUTH_REQUIRED", "IDENTIFY missing required field: session_token");
     }
 
-    if (!message.payload["username"].is_string()) {
-        return makeError("MALFORMED_MESSAGE", "IDENTIFY username must be a string");
+    if (!message.payload["session_token"].is_string()) {
+        return makeError("AUTH_REQUIRED", "IDENTIFY session_token must be a string");
     }
 
-    const std::string username = message.payload["username"].get<std::string>();
-    if (username.empty()) {
-        return makeError("MALFORMED_MESSAGE", "IDENTIFY username must not be empty");
-    }
-
-    if (username.length() > 32) {
-        return makeError("MALFORMED_MESSAGE", "IDENTIFY username must be <= 32 characters");
-    }
-
-    if (!session_manager_) {
-        return makeError("INTERNAL_ERROR", "Session context unavailable");
+    if (!session_manager_ || !jwt_verifier_) {
+        return makeError("INTERNAL_ERROR", "Auth context unavailable");
     }
 
     if (session_manager_->hasSession(fd)) {
         return makeError("PROTOCOL_VIOLATION", "Connection is already identified");
     }
 
+    const std::string session_token = message.payload["session_token"].get<std::string>();
+    const auth::JwtVerification verification = jwt_verifier_->verify(session_token);
+
+    switch (verification.result) {
+    case auth::JwtVerifyResult::Ok:
+        break;
+    case auth::JwtVerifyResult::Expired:
+        return makeError("SESSION_EXPIRED", "session_token has expired");
+    case auth::JwtVerifyResult::Malformed:
+    case auth::JwtVerifyResult::UnsupportedAlgorithm:
+    case auth::JwtVerifyResult::InvalidSignature:
+    case auth::JwtVerifyResult::WrongAudience:
+        return makeError("INVALID_SESSION", "session_token is invalid");
+    }
+
+    const auth::AccessJwtClaims& claims = *verification.claims;
+
+    if (revocation_cache_ && revocation_cache_->isRevoked(claims.sid)) {
+        return makeError("SESSION_REVOKED", "Session has been revoked");
+    }
+
     session::Session& session = session_manager_->createSession(fd);
-    session.username = username;
+    session.user_id = claims.sub;
+    session.username = claims.username;
+    session.discord_id = claims.discord_id;
+    session.app_session_id = claims.sid;
 
     Message response;
     response.type = "IDENTIFIED";
     response.payload = nlohmann::json{
-        {"type", "IDENTIFIED"},
-        {"user_id", session.user_id},
-        {"username", session.username}
-    };
+        {"type", "IDENTIFIED"}, {"user_id", session.user_id}, {"username", session.username}};
     return response;
 }
 
