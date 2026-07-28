@@ -441,6 +441,16 @@ longer the source of truth —
 - **On C++ server startup**: fetch the full current catalog
   (`GET /internal/catalog`) and populate `GuildManager` before accepting
   connections.
+- **Endpoints**: `POST /internal/guilds` (`CREATE_GUILD`, also creates the
+  owner's membership), `DELETE /internal/guilds/:id` (`DELETE_GUILD`,
+  cascades to channels/memberships via the schema's `ON DELETE CASCADE`, §5),
+  `POST /internal/guild-memberships` (`JOIN_GUILD`),
+  `DELETE /internal/guild-memberships/:guildId/:userId` (`LEAVE_GUILD`),
+  `POST /internal/channels` (`CREATE_CHANNEL`),
+  `DELETE /internal/channels/:id` (`DELETE_CHANNEL`). `LIST_GUILDS`/
+  `LIST_CHANNELS` need no endpoint of their own — they're served from the
+  cache, populated by `GET /internal/catalog` and kept current by the
+  mutation calls above.
 - **On every mutation** (`CREATE_GUILD`, `DELETE_CHANNEL`, ...): call the
   corresponding internal endpoint first; only update the in-memory cache and
   respond to the client if that call succeeds. A failed internal call
@@ -484,9 +494,11 @@ design would need revisiting first.
 - New routes: `GET /api/auth/discord/login`, `GET /api/auth/discord/callback`,
   `POST /api/auth/logout`, `GET /api/auth/session-token`.
 - New internal routes (§8.1): `GET /internal/catalog`,
-  `POST /internal/guilds`, `POST /internal/guild-memberships`,
-  `DELETE /internal/guild-memberships/:id`, `POST /internal/channels`,
-  `DELETE /internal/channels/:id`, guarded by a shared-secret header, not by
+  `POST /internal/guilds`, `DELETE /internal/guilds/:id`,
+  `POST /internal/guild-memberships`,
+  `DELETE /internal/guild-memberships/:guildId/:userId`,
+  `POST /internal/channels`, `DELETE /internal/channels/:id`, guarded by a
+  shared-secret header, not by
   user auth — and excluded from any public-facing route at the reverse
   proxy / ingress level, backed by an integration test asserting that
   exclusion (§8.1).
