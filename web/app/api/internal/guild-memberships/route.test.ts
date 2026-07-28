@@ -46,7 +46,7 @@ describe("POST /api/internal/guild-memberships", () => {
     expect(response.status).toBe(201);
   });
 
-  it("returns 400 for a duplicate membership", async () => {
+  it("is idempotent for a duplicate membership (a reconnecting client's SessionManager starts empty, §8.1)", async () => {
     const [owner] = await db
       .insert(users)
       .values({ discordId: "3", discordUsername: "carol" })
@@ -58,7 +58,14 @@ describe("POST /api/internal/guild-memberships", () => {
       headers: SECRET_HEADERS,
       body: JSON.stringify({ guild_id: guild.guild_id, user_id: toUserWireId(owner.id) })
     });
-    expect((await POST(request)).status).toBe(400);
+    const response = await POST(request);
+    expect(response.status).toBe(201);
+
+    const memberships = await db
+      .select()
+      .from(guildMemberships)
+      .where(sql`${guildMemberships.guildId} = ${guild.guild_id.slice(2)}`);
+    expect(memberships).toHaveLength(1);
   });
 
   it("returns 400 for an invalid role", async () => {

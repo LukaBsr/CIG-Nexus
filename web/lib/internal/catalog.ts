@@ -97,6 +97,13 @@ export async function deleteGuild(guildWireId: string): Promise<boolean> {
   return deleted.length > 0;
 }
 
+// Idempotent on (guild_id, user_id): a returning connection's SessionManager
+// state (server/include/session/Session.hpp) starts empty on every reconnect
+// even though the underlying membership is durable now, so the C++
+// GuildHandler's JOIN_GUILD can legitimately call this again for a
+// membership that already exists in Postgres from a prior session. That
+// must not surface as an error — the client-facing "already a member" check
+// still happens against the per-connection SessionManager state, unchanged.
 export async function createMembership(
   guildWireId: string,
   userWireId: string,
@@ -107,7 +114,10 @@ export async function createMembership(
   if (!guildId || !userId) {
     throw new InvalidReferenceError("invalid guild_id or user_id");
   }
-  await db.insert(guildMemberships).values({ guildId, userId, role });
+  await db
+    .insert(guildMemberships)
+    .values({ guildId, userId, role })
+    .onConflictDoNothing({ target: [guildMemberships.guildId, guildMemberships.userId] });
   return { guild_id: guildWireId, user_id: userWireId };
 }
 
