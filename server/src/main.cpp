@@ -2,6 +2,8 @@
 #include <csignal>
 #include <iostream>
 
+#include <curl/curl.h>
+
 static Server* g_server = nullptr;
 
 static void handle_signal(int /*sig*/) {
@@ -11,6 +13,13 @@ static void handle_signal(int /*sig*/) {
 }
 
 int main(int argc, char* argv[]) {
+    // Required once before any CurlInternalApiClient use (http/CurlInternalApiClient.cpp).
+    // curl_easy_init() would otherwise do this lazily, but doing it explicitly
+    // here — before the signal handlers and any threads exist — is the
+    // documented-safe way to call it.
+    curl_global_init(CURL_GLOBAL_DEFAULT);
+
+    int exit_code = 0;
     try {
         uint16_t port = 4242;
 
@@ -30,10 +39,12 @@ int main(int argc, char* argv[]) {
         server.start();
 
         g_server = nullptr;
-        return 0;
 
     } catch (const std::exception& e) {
         std::cerr << "Fatal error: " << e.what() << std::endl;
-        return 1;
+        exit_code = 1;
     }
+
+    curl_global_cleanup();
+    return exit_code;
 }
