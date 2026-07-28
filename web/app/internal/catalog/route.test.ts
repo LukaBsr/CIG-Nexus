@@ -9,7 +9,7 @@ import { toUserWireId } from "@/lib/internal/wireIds";
 
 import { GET } from "./route";
 
-const URL = "http://internal/api/internal/catalog";
+const URL = "http://internal/internal/catalog";
 
 beforeAll(() => {
   process.env.INTERNAL_API_SHARED_SECRET = "test-internal-secret";
@@ -19,7 +19,7 @@ afterEach(async () => {
   await db.execute(sql`TRUNCATE TABLE ${guilds}, ${users} RESTART IDENTITY CASCADE`);
 });
 
-describe("GET /api/internal/catalog", () => {
+describe("GET /internal/catalog", () => {
   it("returns 401 without the shared secret header", async () => {
     const response = await GET(new NextRequest(URL));
     expect(response.status).toBe(401);

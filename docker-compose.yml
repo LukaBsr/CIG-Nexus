@@ -1,9 +1,94 @@
 services:
 
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - cig-nexus
+
+  redis:
+    image: redis:7-alpine
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - cig-nexus
+
+  # design doc: Discord OAuth2 + Postgres persistence (docs/auth-discord-design.md).
+  # web is where DATABASE_URL/REDIS_URL actually get used — its real runtime
+  # dependencies are postgres/redis, not gateway (the browser talks to
+  # gateway directly; the web container itself never needs it up first).
+  #
+  # All secrets/keys below are read from a gitignored .env file at the repo
+  # root — see .env.example for what's required and how to generate each
+  # value. Nothing sensitive is inlined in this file.
+  web:
+    build: ./web
+    ports:
+      - "3000:3000"
+      # 3001 (INTERNAL_PORT) is deliberately NOT published here — the
+      # internal catalog API (design doc §8.1) must only be reachable from
+      # other containers on the cig-nexus network, never from the host or
+      # beyond. See web/server.mjs and web/test/internalIsolation.test.ts.
+    environment:
+      NEXT_PUBLIC_GATEWAY_URL: ws://localhost:8080
+      PORT: 3000
+      INTERNAL_PORT: 3001
+      DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      REDIS_URL: redis://redis:6379
+      # No real default is possible for Discord app credentials (Discord
+      # requires app registration) — without them, OAuth login fails at
+      # request time, but the rest of the stack (chat, guilds/channels) is
+      # unaffected.
+      DISCORD_CLIENT_ID: ${DISCORD_CLIENT_ID:-}
+      DISCORD_CLIENT_SECRET: ${DISCORD_CLIENT_SECRET:-}
+      DISCORD_REDIRECT_URI: http://localhost:3000/api/auth/discord/callback
+      SESSION_JWT_PRIVATE_KEY: ${SESSION_JWT_PRIVATE_KEY}
+      OAUTH_TXN_SECRET: ${OAUTH_TXN_SECRET}
+      INTERNAL_API_SHARED_SECRET: ${INTERNAL_API_SHARED_SECRET}
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - cig-nexus
+
+  # server's InternalApiClient calls web's internal-only port (design doc
+  # §8.1) — depends_on web (not the other way around) to avoid a cycle with
+  # gateway->server below, and because the catalog-hydration fetch at
+  # server startup (Server::hydrateGuildCatalog) only ever runs once, with
+  # no retry, so having web already healthy first avoids booting with an
+  # empty cache on a cold `docker compose up`.
   server:
     build: ./server
     ports:
       - "4242:4242"
+    environment:
+      INTERNAL_API_BASE_URL: http://web:3001
+      # Same value as web's INTERNAL_API_SHARED_SECRET above — both sides
+      # of the shared-secret check (design doc §9.1).
+      INTERNAL_API_SHARED_SECRET: ${INTERNAL_API_SHARED_SECRET}
+      # Public counterpart of web's SESSION_JWT_PRIVATE_KEY above.
+      AUTH_JWT_PUBLIC_KEY: ${AUTH_JWT_PUBLIC_KEY}
+    depends_on:
+      web:
+        condition: service_healthy
     networks:
       - cig-nexus
 
@@ -17,17 +102,6 @@ services:
       TCP_PORT: 4242
     depends_on:
       - server
-    networks:
-      - cig-nexus
-
-  web:
-    build: ./web
-    ports:
-      - "3000:3000"
-    environment:
-      NEXT_PUBLIC_GATEWAY_URL: ws://localhost:8080
-    depends_on:
-      - gateway
     networks:
       - cig-nexus
 

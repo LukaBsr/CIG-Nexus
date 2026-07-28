@@ -19,7 +19,7 @@ afterEach(async () => {
   await db.execute(sql`TRUNCATE TABLE ${channels}, ${guilds}, ${users} RESTART IDENTITY CASCADE`);
 });
 
-describe("DELETE /api/internal/channels/:id", () => {
+describe("DELETE /internal/channels/:id", () => {
   it("returns 401 without the shared secret", async () => {
     const request = new NextRequest("http://internal/x", { method: "DELETE" });
     const response = await DELETE(request, { params: Promise.resolve({ id: "c_x" }) });

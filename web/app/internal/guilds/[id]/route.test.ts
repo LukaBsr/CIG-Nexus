@@ -19,9 +19,9 @@ afterEach(async () => {
   await db.execute(sql`TRUNCATE TABLE ${guilds}, ${users} RESTART IDENTITY CASCADE`);
 });
 
-describe("DELETE /api/internal/guilds/:id", () => {
+describe("DELETE /internal/guilds/:id", () => {
   it("returns 401 without the shared secret", async () => {
-    const request = new NextRequest("http://internal/api/internal/guilds/g_x", { method: "DELETE" });
+    const request = new NextRequest("http://internal/internal/guilds/g_x", { method: "DELETE" });
     const response = await DELETE(request, { params: Promise.resolve({ id: "g_x" }) });
     expect(response.status).toBe(401);
   });
@@ -33,7 +33,7 @@ describe("DELETE /api/internal/guilds/:id", () => {
       .returning();
     const guild = await createGuild("My Guild", toUserWireId(owner.id));
 
-    const request = new NextRequest(`http://internal/api/internal/guilds/${guild.guild_id}`, {
+    const request = new NextRequest(`http://internal/internal/guilds/${guild.guild_id}`, {
       method: "DELETE",
       headers: SECRET_HEADERS
     });
@@ -42,7 +42,7 @@ describe("DELETE /api/internal/guilds/:id", () => {
   });
 
   it("returns 404 for an unknown guild", async () => {
-    const request = new NextRequest("http://internal/api/internal/guilds/g_unknown", {
+    const request = new NextRequest("http://internal/internal/guilds/g_unknown", {
       method: "DELETE",
       headers: SECRET_HEADERS
     });

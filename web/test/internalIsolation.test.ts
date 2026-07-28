@@ -1,8 +1,9 @@
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { GenericContainerBuilder } from "testcontainers";
-import type { StartedTestContainer } from "testcontainers";
+import { PostgreSqlContainer, type StartedPostgreSqlContainer } from "@testcontainers/postgresql";
+import { GenericContainerBuilder, Network } from "testcontainers";
+import type { StartedNetwork, StartedTestContainer } from "testcontainers";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 // design doc §8.1: /internal/* must be genuinely unreachable from outside
@@ -15,6 +16,11 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 // image is actually unreachable on /internal/* via the public port, or it
 // isn't.
 //
+// The image's own CMD runs migrations before serving (web/Dockerfile), so
+// it needs a real reachable Postgres to boot at all — a second
+// testcontainer on a shared Docker network, standing in for
+// docker-compose.yml's postgres service.
+//
 // Building the image makes this the slowest test in the suite (~1-2 min
 // uncached). That cost buys checking the actual deployed artifact, not a
 // description of it.
@@ -23,18 +29,36 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PUBLIC_PORT = 3000;
 const INTERNAL_PORT = 3001;
 
+let network: StartedNetwork;
+let postgres: StartedPostgreSqlContainer;
 let container: StartedTestContainer;
 let baseUrl: string;
 
 beforeAll(async () => {
+  network = await new Network().start();
+
+  postgres = await new PostgreSqlContainer("postgres:16-alpine")
+    .withNetwork(network)
+    .withNetworkAliases("postgres")
+    .start();
+
   const image = await new GenericContainerBuilder(path.join(__dirname, ".."), "Dockerfile").build();
 
-  container = await image.withExposedPorts(PUBLIC_PORT).start();
+  container = await image
+    .withNetwork(network)
+    .withEnvironment({
+      DATABASE_URL: `postgres://${postgres.getUsername()}:${postgres.getPassword()}@postgres:5432/${postgres.getDatabase()}`
+    })
+    .withExposedPorts(PUBLIC_PORT)
+    .start();
+
   baseUrl = `http://${container.getHost()}:${container.getMappedPort(PUBLIC_PORT)}`;
 }, 300_000);
 
 afterAll(async () => {
   await container?.stop();
+  await postgres?.stop();
+  await network?.stop();
 });
 
 describe("web Docker image: /internal/* isolation", () => {
@@ -43,13 +67,13 @@ describe("web Docker image: /internal/* isolation", () => {
     expect(response.status).toBe(200);
   });
 
-  it("returns 404 for /api/internal/* on the published (public) port", async () => {
-    const response = await fetch(baseUrl + "/api/internal/catalog");
+  it("returns 404 for /internal/* on the published (public) port", async () => {
+    const response = await fetch(baseUrl + "/internal/catalog");
     expect(response.status).toBe(404);
   });
 
-  it("returns 404 for nested /api/internal/* paths on the published port too", async () => {
-    const response = await fetch(baseUrl + "/api/internal/guilds/g_1", { method: "DELETE" });
+  it("returns 404 for nested /internal/* paths on the published port too", async () => {
+    const response = await fetch(baseUrl + "/internal/guilds/g_1", { method: "DELETE" });
     expect(response.status).toBe(404);
   });
 

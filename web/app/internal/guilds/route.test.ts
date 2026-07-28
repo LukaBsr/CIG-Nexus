@@ -8,7 +8,7 @@ import { toUserWireId } from "@/lib/internal/wireIds";
 
 import { POST } from "./route";
 
-const URL = "http://internal/api/internal/guilds";
+const URL = "http://internal/internal/guilds";
 const SECRET_HEADERS = { "x-internal-secret": "test-internal-secret", "content-type": "application/json" };
 
 beforeAll(() => {
@@ -19,7 +19,7 @@ afterEach(async () => {
   await db.execute(sql`TRUNCATE TABLE ${guilds}, ${users} RESTART IDENTITY CASCADE`);
 });
 
-describe("POST /api/internal/guilds", () => {
+describe("POST /internal/guilds", () => {
   it("returns 401 without the shared secret", async () => {
     const request = new NextRequest(URL, { method: "POST", body: "{}" });
     expect((await POST(request)).status).toBe(401);

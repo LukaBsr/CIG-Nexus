@@ -17,9 +17,9 @@ afterEach(async () => {
   await db.execute(sql`TRUNCATE TABLE ${sessions}, ${users} RESTART IDENTITY CASCADE`);
 });
 
-describe("GET /api/internal/revoked-sessions", () => {
+describe("GET /internal/revoked-sessions", () => {
   it("returns 401 without the shared secret", async () => {
-    const response = await GET(new NextRequest("http://internal/api/internal/revoked-sessions"));
+    const response = await GET(new NextRequest("http://internal/internal/revoked-sessions"));
     expect(response.status).toBe(401);
   });
 
@@ -40,7 +40,7 @@ describe("GET /api/internal/revoked-sessions", () => {
       .returning();
 
     const request = new NextRequest(
-      `http://internal/api/internal/revoked-sessions?since=${since.toISOString()}`,
+      `http://internal/internal/revoked-sessions?since=${since.toISOString()}`,
       { headers: SECRET_HEADERS }
     );
     const response = await GET(request);
@@ -50,7 +50,7 @@ describe("GET /api/internal/revoked-sessions", () => {
   });
 
   it("defaults to since=epoch when omitted", async () => {
-    const request = new NextRequest("http://internal/api/internal/revoked-sessions", {
+    const request = new NextRequest("http://internal/internal/revoked-sessions", {
       headers: SECRET_HEADERS
     });
     const response = await GET(request);
@@ -58,7 +58,7 @@ describe("GET /api/internal/revoked-sessions", () => {
   });
 
   it("returns 400 for an invalid since param", async () => {
-    const request = new NextRequest("http://internal/api/internal/revoked-sessions?since=not-a-date", {
+    const request = new NextRequest("http://internal/internal/revoked-sessions?since=not-a-date", {
       headers: SECRET_HEADERS
     });
     expect((await GET(request)).status).toBe(400);

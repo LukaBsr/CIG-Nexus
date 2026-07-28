@@ -19,7 +19,7 @@ afterEach(async () => {
   await db.execute(sql`TRUNCATE TABLE ${guildMemberships}, ${guilds}, ${users} RESTART IDENTITY CASCADE`);
 });
 
-describe("DELETE /api/internal/guild-memberships/:guildId/:userId", () => {
+describe("DELETE /internal/guild-memberships/:guildId/:userId", () => {
   it("returns 401 without the shared secret", async () => {
     const request = new NextRequest("http://internal/x", { method: "DELETE" });
     const response = await DELETE(request, { params: Promise.resolve({ guildId: "g_x", userId: "u_x" }) });
