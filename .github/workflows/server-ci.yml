@@ -1,0 +1,47 @@
+name: Server CI
+
+on:
+  push:
+    paths:
+      - "server/**"
+      - ".github/workflows/server-ci.yml"
+  pull_request:
+    paths:
+      - "server/**"
+      - ".github/workflows/server-ci.yml"
+  workflow_dispatch:
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # libssl-dev/libcurl4-openssl-dev: required by CMakeLists.txt's
+      # find_package(OpenSSL REQUIRED)/find_package(CURL REQUIRED) (JWT
+      # verification + the internal-API HTTP client). Matches
+      # server/Dockerfile's build-stage package list exactly, rather than
+      # relying on whatever happens to be preinstalled on the runner image.
+      - name: Install build tools
+        run: sudo apt-get update && sudo apt-get install -y cmake g++ clang-format libssl-dev libcurl4-openssl-dev
+
+      - name: Configure
+        run: cmake -S server -B server/build
+
+      - name: Build
+        run: cmake --build server/build
+
+      - name: Test
+        run: ctest --test-dir server/build
+
+      # continue-on-error: the repo has pre-existing clang-format drift
+      # (predates this workflow step) across roughly a dozen files unrelated
+      # to CI configuration. This step surfaces drift going forward without
+      # blocking the build on a backlog that's a separate cleanup task.
+      - name: Check formatting
+        continue-on-error: true
+        run: |
+          find server/include server/src server/tests -type f \( -name '*.hpp' -o -name '*.cpp' \) -print0 \
+            | xargs -0 clang-format --dry-run --Werror

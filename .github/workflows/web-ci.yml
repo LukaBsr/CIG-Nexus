@@ -4,9 +4,12 @@ on:
   push:
     paths:
       - "web/**"
+      - ".github/workflows/web-ci.yml"
   pull_request:
     paths:
       - "web/**"
+      - ".github/workflows/web-ci.yml"
+  workflow_dispatch:
 
 jobs:
   build:
@@ -25,7 +28,40 @@ jobs:
           cd web
           npm install
 
+      # continue-on-error: pre-existing, already-tracked lint failure
+      # (lib/gateway.ts:4's `any`, see docs/frontend-rebuild-plan.md) predates
+      # this step. Surfaces new lint errors going forward without blocking
+      # on a backlog item reserved for the frontend rebuild's typed wire
+      # messages work.
+      - name: Lint
+        continue-on-error: true
+        run: |
+          cd web
+          npm run lint
+
       - name: Build
         run: |
           cd web
           npm run build
+
+      # No services: block needed — web/test/global-setup.ts and
+      # web/test/internalIsolation.test.ts each provision their own
+      # ephemeral Postgres/Redis/Docker-image resources via testcontainers
+      # against the runner's own Docker daemon.
+      - name: Test
+        run: |
+          cd web
+          npm test
+
+      # drizzle-kit generate diffs db/schema/*.ts against the committed
+      # migrations under db/migrations/ using local snapshot files — it
+      # doesn't open a real database connection for this, so DATABASE_URL
+      # only needs to be a non-empty string to satisfy drizzle.config.ts's
+      # own presence check, not a reachable database.
+      - name: Check for uncommitted Drizzle schema drift
+        run: |
+          cd web
+          npx drizzle-kit generate
+          git diff --exit-code -- db/migrations
+        env:
+          DATABASE_URL: postgresql://dummy:dummy@localhost:5432/dummy
