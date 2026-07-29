@@ -18,10 +18,15 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # 22, not 20: matches web/Dockerfile's node:22-alpine base image.
+      # Node 20 was found to fail npm test entirely (undici, a
+      # testcontainers dependency, calls a webidl API only present from
+      # Node 22 on) — discovered by actually running this workflow, not
+      # assumed.
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
 
       - name: Install dependencies
         run: |
