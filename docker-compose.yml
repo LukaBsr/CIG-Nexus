@@ -46,12 +46,13 @@ services:
       INTERNAL_PORT: 3001
       DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
       REDIS_URL: redis://redis:6379
-      # No real default is possible for Discord app credentials (Discord
-      # requires app registration) — without them, OAuth login fails at
-      # request time, but the rest of the stack (chat, guilds/channels) is
-      # unaffected.
-      DISCORD_CLIENT_ID: ${DISCORD_CLIENT_ID:-}
-      DISCORD_CLIENT_SECRET: ${DISCORD_CLIENT_SECRET:-}
+      # No default is possible for Discord app credentials (Discord requires
+      # app registration) — web's instrumentation.ts now refuses to start
+      # the process at all if either is missing or empty, rather than
+      # booting and only failing later when OAuth login is attempted. Set
+      # real values in .env before `docker compose up`.
+      DISCORD_CLIENT_ID: ${DISCORD_CLIENT_ID}
+      DISCORD_CLIENT_SECRET: ${DISCORD_CLIENT_SECRET}
       DISCORD_REDIRECT_URI: http://localhost:3000/api/auth/discord/callback
       SESSION_JWT_PRIVATE_KEY: ${SESSION_JWT_PRIVATE_KEY}
       OAUTH_TXN_SECRET: ${OAUTH_TXN_SECRET}

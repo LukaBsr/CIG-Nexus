@@ -10,6 +10,14 @@ declare global {
   var __cigNexusPgPool: Pool | undefined;
 }
 
+// Deliberately reads process.env directly here rather than throwing via
+// authEnv.databaseUrl: this module is imported at build time too (`next
+// build`'s page-data collection actually executes top-level module code,
+// not just type-checks it), when no real DATABASE_URL exists yet — an
+// import-time throw here would break the Docker build. The actual
+// fail-fast guarantee lives in instrumentation.ts's register(), which
+// checks DATABASE_URL is set before the server starts serving any request
+// that would reach this pool.
 const pool =
   global.__cigNexusPgPool ??
   new Pool({

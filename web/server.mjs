@@ -37,24 +37,36 @@ function notFound(res) {
   res.end(JSON.stringify({ error: "not found" }));
 }
 
-app.prepare().then(() => {
-  createServer((req, res) => {
-    if (isInternalRequest(req)) {
-      notFound(res);
-      return;
-    }
-    handle(req, res);
-  }).listen(PORT, () => {
-    console.log(`Public server listening on port ${PORT}`);
-  });
+app
+  .prepare()
+  .then(() => {
+    createServer((req, res) => {
+      if (isInternalRequest(req)) {
+        notFound(res);
+        return;
+      }
+      handle(req, res);
+    }).listen(PORT, () => {
+      console.log(`Public server listening on port ${PORT}`);
+    });
 
-  createServer((req, res) => {
-    if (!isInternalRequest(req)) {
-      notFound(res);
-      return;
-    }
-    handle(req, res);
-  }).listen(INTERNAL_PORT, () => {
-    console.log(`Internal server listening on port ${INTERNAL_PORT}`);
+    createServer((req, res) => {
+      if (!isInternalRequest(req)) {
+        notFound(res);
+        return;
+      }
+      handle(req, res);
+    }).listen(INTERNAL_PORT, () => {
+      console.log(`Internal server listening on port ${INTERNAL_PORT}`);
+    });
+  })
+  .catch((error) => {
+    // Safety net: instrumentation.ts's register() already process.exit()s
+    // on a missing required env var (a *thrown* error from register() was
+    // verified not to reliably stop Next.js from going on to bind ports
+    // anyway), but this still catches any other startup failure that would
+    // otherwise leave prepare() silently rejected while nothing is
+    // actually listening.
+    console.error("Failed to start server:", error);
+    process.exit(1);
   });
-});

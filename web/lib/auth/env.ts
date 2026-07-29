@@ -34,5 +34,25 @@ export const authEnv = {
   },
   get internalApiSharedSecret(): string {
     return requireEnv("INTERNAL_API_SHARED_SECRET");
+  },
+  get databaseUrl(): string {
+    return requireEnv("DATABASE_URL");
+  },
+  get redisUrl(): string {
+    return requireEnv("REDIS_URL");
   }
 };
+
+// The full list instrumentation.ts checks at process startup — kept next to
+// authEnv so the two can't drift apart (a var added to one without the
+// other silently reintroduces either a lazy-only check or an unchecked one).
+export const REQUIRED_ENV_VARS = [
+  "DISCORD_CLIENT_ID",
+  "DISCORD_CLIENT_SECRET",
+  "DISCORD_REDIRECT_URI",
+  "DATABASE_URL",
+  "REDIS_URL",
+  "SESSION_JWT_PRIVATE_KEY",
+  "OAUTH_TXN_SECRET",
+  "INTERNAL_API_SHARED_SECRET"
+] as const;

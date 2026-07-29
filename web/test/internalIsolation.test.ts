@@ -47,7 +47,19 @@ beforeAll(async () => {
   container = await image
     .withNetwork(network)
     .withEnvironment({
-      DATABASE_URL: `postgres://${postgres.getUsername()}:${postgres.getPassword()}@postgres:5432/${postgres.getDatabase()}`
+      DATABASE_URL: `postgres://${postgres.getUsername()}:${postgres.getPassword()}@postgres:5432/${postgres.getDatabase()}`,
+      // This test only exercises HTTP routing/isolation, never real
+      // auth — but instrumentation.ts now refuses to start the process at
+      // all unless every required var is present (non-empty), so each of
+      // these needs *some* value even though none of them need to be
+      // functionally valid for what this test checks.
+      REDIS_URL: "redis://unused:6379",
+      DISCORD_CLIENT_ID: "unused",
+      DISCORD_CLIENT_SECRET: "unused",
+      DISCORD_REDIRECT_URI: "http://localhost:3000/api/auth/discord/callback",
+      SESSION_JWT_PRIVATE_KEY: "unused",
+      OAUTH_TXN_SECRET: "unused",
+      INTERNAL_API_SHARED_SECRET: "unused"
     })
     .withExposedPorts(PUBLIC_PORT)
     .start();
