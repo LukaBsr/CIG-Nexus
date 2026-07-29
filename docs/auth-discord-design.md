@@ -510,7 +510,10 @@ design would need revisiting first.
   (§9.1) — no other use of Redis is proposed by this design.
 - New env vars: `DISCORD_CLIENT_ID`, `DISCORD_CLIENT_SECRET`,
   `DISCORD_REDIRECT_URI`, `DATABASE_URL`, `REDIS_URL`,
-  `SESSION_JWT_PRIVATE_KEY`, `INTERNAL_API_SHARED_SECRET`.
+  `SESSION_JWT_PRIVATE_KEY_PATH`, `INTERNAL_API_SHARED_SECRET`.
+  `SESSION_JWT_PRIVATE_KEY_PATH` holds a file path, not the key content
+  itself — the keypair lives in `secrets/*.pem` (gitignored) and is
+  bind-mounted into the container, not passed as an env var.
 
 **Gateway (`gateway/`)**
 - **No changes.** It forwards `IDENTIFY { session_token }` exactly like it

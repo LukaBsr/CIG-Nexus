@@ -8,13 +8,14 @@ import { sessions, users } from "@/db/schema";
 import { createSession } from "@/lib/auth/session";
 
 import { generateTestRsaKeyPair } from "../../../../test/rsaKeys";
+import { writeTempPemFile } from "../../../../test/writeTempPemFile";
 import { GET } from "./route";
 
 let publicKeyPem: string;
 
 beforeAll(() => {
   const { privateKeyPem, publicKeyPem: pub } = generateTestRsaKeyPair();
-  process.env.SESSION_JWT_PRIVATE_KEY = privateKeyPem;
+  process.env.SESSION_JWT_PRIVATE_KEY_PATH = writeTempPemFile(privateKeyPem, "private.pem");
   publicKeyPem = pub;
 });
 

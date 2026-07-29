@@ -2,9 +2,18 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { REQUIRED_ENV_VARS } from "./lib/auth/env";
 import { register } from "./instrumentation";
+import { writeTempPemFile } from "./test/writeTempPemFile";
+
+// register()'s file-readability check (§ instrumentation.ts) only cares
+// that SESSION_JWT_PRIVATE_KEY_PATH resolves to a readable file — content
+// doesn't need to be a real key for that check alone.
+const validPrivateKeyPath = writeTempPemFile("-----BEGIN PRIVATE KEY-----\nfake\n-----END PRIVATE KEY-----\n");
 
 const ALL_PRESENT: Record<string, string> = Object.fromEntries(
-  REQUIRED_ENV_VARS.map((name) => [name, "value"])
+  REQUIRED_ENV_VARS.map((name) => [
+    name,
+    name === "SESSION_JWT_PRIVATE_KEY_PATH" ? validPrivateKeyPath : "value"
+  ])
 );
 
 let originalEnv: NodeJS.ProcessEnv;
@@ -31,7 +40,7 @@ function mockProcessExit() {
 }
 
 describe("register", () => {
-  it("does not exit when every required env var is present", async () => {
+  it("does not exit when every required env var is present and the key file is readable", async () => {
     Object.assign(process.env, ALL_PRESENT);
     const exitSpy = mockProcessExit();
 
@@ -58,13 +67,27 @@ describe("register", () => {
 
   it("treats an empty string the same as a missing var", async () => {
     Object.assign(process.env, ALL_PRESENT);
-    process.env.SESSION_JWT_PRIVATE_KEY = "";
+    process.env.SESSION_JWT_PRIVATE_KEY_PATH = "";
     const exitSpy = mockProcessExit();
     vi.spyOn(console, "error").mockImplementation(() => {});
 
     await register();
 
     expect(exitSpy).toHaveBeenCalledWith(1);
+  });
+
+  it("exits when SESSION_JWT_PRIVATE_KEY_PATH is set but the file doesn't exist", async () => {
+    Object.assign(process.env, ALL_PRESENT);
+    process.env.SESSION_JWT_PRIVATE_KEY_PATH = "/nonexistent/private.pem";
+    const exitSpy = mockProcessExit();
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+
+    await register();
+
+    expect(exitSpy).toHaveBeenCalledWith(1);
+    const message = errorSpy.mock.calls[0]?.[0] as string;
+    expect(message).toContain("SESSION_JWT_PRIVATE_KEY_PATH");
+    expect(message).toContain("/nonexistent/private.pem");
   });
 
   it("does nothing outside the Node.js runtime, even with vars missing", async () => {

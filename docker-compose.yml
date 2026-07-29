@@ -31,7 +31,12 @@ services:
   #
   # All secrets/keys below are read from a gitignored .env file at the repo
   # root — see .env.example for what's required and how to generate each
-  # value. Nothing sensitive is inlined in this file.
+  # value. Nothing sensitive is inlined in this file. The RS256 keypair is
+  # the one exception to "read from .env": it lives in secrets/*.pem
+  # (also gitignored) and is bind-mounted read-only below rather than
+  # passed as an env var — key material doesn't belong in `docker inspect`
+  # output or process environment dumps the way a short secret string is
+  # already unavoidably exposed to.
   web:
     build: ./web
     ports:
@@ -54,9 +59,13 @@ services:
       DISCORD_CLIENT_ID: ${DISCORD_CLIENT_ID}
       DISCORD_CLIENT_SECRET: ${DISCORD_CLIENT_SECRET}
       DISCORD_REDIRECT_URI: http://localhost:3000/api/auth/discord/callback
-      SESSION_JWT_PRIVATE_KEY: ${SESSION_JWT_PRIVATE_KEY}
+      SESSION_JWT_PRIVATE_KEY_PATH: ${SESSION_JWT_PRIVATE_KEY_PATH}
+      AUTH_JWT_PUBLIC_KEY_PATH: ${AUTH_JWT_PUBLIC_KEY_PATH}
       OAUTH_TXN_SECRET: ${OAUTH_TXN_SECRET}
       INTERNAL_API_SHARED_SECRET: ${INTERNAL_API_SHARED_SECRET}
+    volumes:
+      - ./secrets/private.pem:${SESSION_JWT_PRIVATE_KEY_PATH}:ro
+      - ./secrets/public.pem:${AUTH_JWT_PUBLIC_KEY_PATH}:ro
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/"]
       interval: 5s
@@ -85,8 +94,11 @@ services:
       # Same value as web's INTERNAL_API_SHARED_SECRET above — both sides
       # of the shared-secret check (design doc §9.1).
       INTERNAL_API_SHARED_SECRET: ${INTERNAL_API_SHARED_SECRET}
-      # Public counterpart of web's SESSION_JWT_PRIVATE_KEY above.
-      AUTH_JWT_PUBLIC_KEY: ${AUTH_JWT_PUBLIC_KEY}
+      # Public counterpart of web's private key, bind-mounted below — same
+      # file as web's copy, this service just never sees private.pem.
+      AUTH_JWT_PUBLIC_KEY_PATH: ${AUTH_JWT_PUBLIC_KEY_PATH}
+    volumes:
+      - ./secrets/public.pem:${AUTH_JWT_PUBLIC_KEY_PATH}:ro
     depends_on:
       web:
         condition: service_healthy

@@ -3,8 +3,10 @@
 
 #include <cstdlib>
 #include <csignal>
+#include <fstream>
 #include <iostream>
 #include <memory>
+#include <sstream>
 #include <stdexcept>
 
 #include <curl/curl.h>
@@ -32,16 +34,22 @@ std::string requireEnv(const char* name) {
     return value;
 }
 
-// PEM values passed through docker-compose/.env files commonly arrive with
-// literal "\n" escape sequences instead of real newlines (same issue,
-// mirrored in web/lib/auth/env.ts's normalizePem for SESSION_JWT_PRIVATE_KEY).
-std::string normalizePem(std::string value) {
-    std::string::size_type pos = 0;
-    while ((pos = value.find("\\n", pos)) != std::string::npos) {
-        value.replace(pos, 2, "\n");
-        pos += 1;
+// AUTH_JWT_PUBLIC_KEY_PATH points at a real .pem file on disk (bind-mounted
+// from secrets/, see docker-compose.yml) rather than holding key content
+// directly in the env var — no escaped-newline normalization needed, since
+// a real file already has real newlines.
+std::string readRequiredFile(const std::string& path_env_var_name) {
+    const std::string path = requireEnv(path_env_var_name.c_str());
+
+    std::ifstream file(path, std::ios::binary);
+    if (!file) {
+        throw std::runtime_error("Failed to read file at " + path_env_var_name + "=" + path +
+                                 ": could not open file");
     }
-    return value;
+
+    std::ostringstream contents;
+    contents << file.rdbuf();
+    return contents.str();
 }
 
 } // namespace
@@ -64,11 +72,11 @@ int main(int argc, char* argv[]) {
             }
         }
 
-        // AUTH_JWT_PUBLIC_KEY: the RS256 public key counterpart of Next.js's
-        // SESSION_JWT_PRIVATE_KEY (design doc §6) — static env-provided key,
-        // not a JWKS endpoint (see docs/auth-discord-design.md's "Key
-        // distribution" decision).
-        const std::string jwt_public_key_pem = normalizePem(requireEnv("AUTH_JWT_PUBLIC_KEY"));
+        // AUTH_JWT_PUBLIC_KEY_PATH: the RS256 public key counterpart of
+        // Next.js's SESSION_JWT_PRIVATE_KEY_PATH (design doc §6) — a static
+        // env-provided key file, not a JWKS endpoint (see
+        // docs/auth-discord-design.md's "Key distribution" decision).
+        const std::string jwt_public_key_pem = readRequiredFile("AUTH_JWT_PUBLIC_KEY_PATH");
         const std::string internal_api_base_url = requireEnv("INTERNAL_API_BASE_URL");
         const std::string internal_api_shared_secret = requireEnv("INTERNAL_API_SHARED_SECRET");
 

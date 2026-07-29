@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+
 function requireEnv(name: string): string {
   const value = process.env[name];
   if (!value) {
@@ -6,11 +8,19 @@ function requireEnv(name: string): string {
   return value;
 }
 
-// PEM values passed through docker-compose/.env files commonly arrive with
-// literal "\n" escape sequences instead of real newlines; normalize either
-// form to what node:crypto/jose expect.
-function normalizePem(value: string): string {
-  return value.includes("\\n") ? value.replace(/\\n/g, "\n") : value;
+// SESSION_JWT_PRIVATE_KEY_PATH points at a real .pem file on disk (bind-
+// mounted from secrets/, see docker-compose.yml) rather than holding key
+// content directly — no more escaped-newline normalization needed, since a
+// real file already has real newlines.
+function readRequiredFile(pathEnvVarName: string): string {
+  const path = requireEnv(pathEnvVarName);
+  try {
+    return readFileSync(path, "utf8");
+  } catch (err) {
+    throw new Error(
+      `Failed to read file at ${pathEnvVarName}=${path}: ${(err as Error).message}`
+    );
+  }
 }
 
 // Centralizes required-env lookups so failures happen at the point of use
@@ -27,7 +37,7 @@ export const authEnv = {
     return requireEnv("DISCORD_REDIRECT_URI");
   },
   get sessionJwtPrivateKey(): string {
-    return normalizePem(requireEnv("SESSION_JWT_PRIVATE_KEY"));
+    return readRequiredFile("SESSION_JWT_PRIVATE_KEY_PATH");
   },
   get oauthTxnSecret(): string {
     return requireEnv("OAUTH_TXN_SECRET");
@@ -52,7 +62,7 @@ export const REQUIRED_ENV_VARS = [
   "DISCORD_REDIRECT_URI",
   "DATABASE_URL",
   "REDIS_URL",
-  "SESSION_JWT_PRIVATE_KEY",
+  "SESSION_JWT_PRIVATE_KEY_PATH",
   "OAUTH_TXN_SECRET",
   "INTERNAL_API_SHARED_SECRET"
 ] as const;

@@ -2,13 +2,14 @@ import { importSPKI, jwtVerify } from "jose";
 import { beforeAll, describe, expect, it } from "vitest";
 
 import { generateTestRsaKeyPair } from "../../test/rsaKeys";
+import { writeTempPemFile } from "../../test/writeTempPemFile";
 import { issueAccessJwt } from "./jwt";
 
 let publicKeyPem: string;
 
 beforeAll(() => {
   const { privateKeyPem, publicKeyPem: pub } = generateTestRsaKeyPair();
-  process.env.SESSION_JWT_PRIVATE_KEY = privateKeyPem;
+  process.env.SESSION_JWT_PRIVATE_KEY_PATH = writeTempPemFile(privateKeyPem, "private.pem");
   publicKeyPem = pub;
 });
 

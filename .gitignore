@@ -54,3 +54,6 @@ ARCHITECTURE.md
 
 # Environment variables (see .env.example)
 .env
+
+# RS256 keypair for the application session JWT (see .env.example)
+secrets/

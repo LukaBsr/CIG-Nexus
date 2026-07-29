@@ -44,8 +44,20 @@ beforeAll(async () => {
 
   const image = await new GenericContainerBuilder(path.join(__dirname, ".."), "Dockerfile").build();
 
+  const privateKeyPath = "/tmp/test-private.pem";
+
   container = await image
     .withNetwork(network)
+    // instrumentation.ts's startup check doesn't just check
+    // SESSION_JWT_PRIVATE_KEY_PATH is set — it actually reads the file at
+    // that path, so (unlike the other "unused" placeholders below) this
+    // one needs a real file to exist in the container, not just a string.
+    .withCopyContentToContainer([
+      {
+        content: "-----BEGIN PRIVATE KEY-----\nunused\n-----END PRIVATE KEY-----\n",
+        target: privateKeyPath
+      }
+    ])
     .withEnvironment({
       DATABASE_URL: `postgres://${postgres.getUsername()}:${postgres.getPassword()}@postgres:5432/${postgres.getDatabase()}`,
       // This test only exercises HTTP routing/isolation, never real
@@ -57,7 +69,8 @@ beforeAll(async () => {
       DISCORD_CLIENT_ID: "unused",
       DISCORD_CLIENT_SECRET: "unused",
       DISCORD_REDIRECT_URI: "http://localhost:3000/api/auth/discord/callback",
-      SESSION_JWT_PRIVATE_KEY: "unused",
+      SESSION_JWT_PRIVATE_KEY_PATH: privateKeyPath,
+      AUTH_JWT_PUBLIC_KEY_PATH: "/tmp/unused-public.pem",
       OAUTH_TXN_SECRET: "unused",
       INTERNAL_API_SHARED_SECRET: "unused"
     })
