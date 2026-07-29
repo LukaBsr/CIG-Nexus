@@ -48,8 +48,10 @@ class SessionManager {
   private:
     std::unordered_map<int, Session> sessions_;
 
+    // user_id is no longer generated here — it comes from the verified
+    // access JWT's `sub` claim (design doc §8), set by IdentifyHandler
+    // after createSession() the same way it already sets username.
     std::uint64_t next_session_id_ = 1;
-    std::uint64_t next_user_id_ = 1;
 };
 
 } // namespace session

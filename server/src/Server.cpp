@@ -13,6 +13,9 @@
 
 namespace {
 
+// design doc §9: "polls on a short interval (e.g. 30s)".
+constexpr std::chrono::seconds kRevocationPollInterval{30};
+
 bool send_all(int fd, const void* data, size_t size) {
     const char* bytes = static_cast<const char*>(data);
     size_t total_sent = 0;
@@ -41,6 +44,11 @@ Server::Server(uint16_t port) : port_(port), running_(false), listener_(port) {
 
     chat_handler_.setSessionManager(&session_manager_);
     identify_handler_.setSessionManager(&session_manager_);
+    // RevocationCache needs no PEM/config, so it's always safe to wire in —
+    // unlike JwtVerifier (configureAuth()) and InternalApiClient
+    // (setInternalApiClient()), which are constructed with runtime config
+    // that isn't available yet at Server construction time.
+    identify_handler_.setRevocationCache(&revocation_cache_);
     guild_handler_.setSessionManager(&session_manager_);
     guild_handler_.setGuildManager(&guild_manager_);
     channel_handler_.setSessionManager(&session_manager_);
@@ -103,6 +111,79 @@ Server::Server(uint16_t port) : port_(port), running_(false), listener_(port) {
     });
 }
 
+void Server::configureAuth(const std::string& jwt_public_key_pem) {
+    jwt_verifier_.emplace(jwt_public_key_pem);
+    identify_handler_.setJwtVerifier(&*jwt_verifier_);
+}
+
+void Server::setInternalApiClient(std::unique_ptr<http::InternalApiClient> client) {
+    internal_api_client_ = std::move(client);
+    guild_handler_.setInternalApiClient(internal_api_client_.get());
+    channel_handler_.setInternalApiClient(internal_api_client_.get());
+}
+
+void Server::hydrateGuildCatalog() {
+    if (!internal_api_client_) {
+        return;
+    }
+
+    const std::optional<http::Catalog> catalog = internal_api_client_->fetchCatalog();
+    if (!catalog) {
+        std::cerr << "Failed to fetch initial guild/channel catalog from internal API" << std::endl;
+        return;
+    }
+
+    for (const auto& g : catalog->guilds) {
+        guild_manager_.upsertGuild(g.guild_id, g.name, g.owner_id);
+    }
+    for (const auto& c : catalog->channels) {
+        const guild::ChannelType type = c.channel_type == "VOICE" ? guild::ChannelType::VOICE
+                                                                   : guild::ChannelType::TEXT;
+        guild_manager_.upsertChannel(c.channel_id, c.guild_id, c.name, type);
+    }
+    // catalog->memberships is deliberately not consulted here — durable
+    // guild membership lives in Postgres, but delivery eligibility is
+    // per-connection SessionManager state established via JOIN_GUILD, not
+    // hydrated from the catalog (design doc §8.1).
+
+    std::cout << "Hydrated guild catalog: " << catalog->guilds.size() << " guild(s), "
+              << catalog->channels.size() << " channel(s)" << std::endl;
+}
+
+void Server::pollRevocationCache() {
+    if (!internal_api_client_) {
+        return;
+    }
+
+    std::string as_of;
+    const std::vector<std::string> revoked =
+        internal_api_client_->fetchRevokedSessionIds(revocation_poll_as_of_, as_of);
+    if (!revoked.empty()) {
+        revocation_cache_.merge(revoked);
+    }
+    if (!as_of.empty()) {
+        revocation_poll_as_of_ = as_of;
+    }
+
+    disconnectRevokedSessions();
+}
+
+void Server::disconnectRevokedSessions() {
+    for (auto it = connections_.begin(); it != connections_.end();) {
+        const int fd = it->first;
+        const session::Session* session = session_manager_.getSession(fd);
+
+        if (session && !session->app_session_id.empty() &&
+            revocation_cache_.isRevoked(session->app_session_id)) {
+            std::cout << "Disconnecting revoked session (fd=" << fd << ")" << std::endl;
+            session_manager_.removeSession(fd);
+            it = connections_.erase(it);
+            continue;
+        }
+        ++it;
+    }
+}
+
 void Server::start() {
     if (running_) {
         throw std::runtime_error("Server is already running");
@@ -111,6 +192,9 @@ void Server::start() {
     listener_.start();
     running_ = true;
     std::cout << "CIG Nexus Server starting on port " << port_ << std::endl;
+
+    hydrateGuildCatalog();
+    last_revocation_poll_ = std::chrono::steady_clock::now();
 
     while (running_) {
         int client_fd = listener_.accept();
@@ -171,6 +255,16 @@ void Server::start() {
                 }
             }
             ++it;
+        }
+
+        // design doc §9: pull-based revocation cache, polled on an interval
+        // rather than a network call per IDENTIFY. Also sweeps already-
+        // connected sessions so an explicit revocation disconnects them
+        // within one poll interval, not just blocks *new* identifies.
+        const auto now = std::chrono::steady_clock::now();
+        if (now - last_revocation_poll_ >= kRevocationPollInterval) {
+            pollRevocationCache();
+            last_revocation_poll_ = now;
         }
 
         std::this_thread::sleep_for(std::chrono::milliseconds(100));

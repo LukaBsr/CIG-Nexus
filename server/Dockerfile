@@ -6,6 +6,8 @@ RUN apt-get update && apt-get install -y \
     g++ \
     make \
     git \
+    libssl-dev \
+    libcurl4-openssl-dev \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /build
@@ -21,6 +23,8 @@ FROM ubuntu:22.04
 
 RUN apt-get update && apt-get install -y \
     ca-certificates \
+    libssl3 \
+    libcurl4 \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app

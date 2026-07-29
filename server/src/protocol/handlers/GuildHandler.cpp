@@ -2,6 +2,7 @@
 
 #include "guild/Channel.hpp"
 #include "guild/GuildManager.hpp"
+#include "http/InternalApiClient.hpp"
 #include "protocol/MessageBuilders.hpp"
 #include "session/SessionManager.hpp"
 
@@ -13,6 +14,10 @@ void GuildHandler::setSessionManager(session::SessionManager* session_manager) {
 
 void GuildHandler::setGuildManager(guild::GuildManager* guild_manager) {
     guild_manager_ = guild_manager;
+}
+
+void GuildHandler::setInternalApiClient(http::InternalApiClient* internal_api_client) {
+    internal_api_client_ = internal_api_client;
 }
 
 Message GuildHandler::makeError(const std::string& code, const std::string& msg) {
@@ -66,11 +71,20 @@ Message GuildHandler::handleCreateGuild(const Message& message, int fd) const {
         return makeError("MALFORMED_MESSAGE", "CREATE_GUILD name must be <= 64 characters");
     }
 
-    if (!guild_manager_) {
+    if (!guild_manager_ || !internal_api_client_) {
         return makeError("INTERNAL_ERROR", "Guild context unavailable");
     }
 
-    guild::Guild& new_guild = guild_manager_->createGuild(name, session->user_id);
+    // Write-through: persist first (design doc §8.1), only touch the local
+    // cache/session state if that succeeds. The Postgres-assigned guild_id
+    // and owner-membership row (created transactionally on the Next.js
+    // side, rooms-spec.md decision #2) come back in the response.
+    const std::optional<http::WireGuild> created = internal_api_client_->createGuild(name, session->user_id);
+    if (!created) {
+        return makeError("INTERNAL_ERROR", "Failed to persist new guild");
+    }
+
+    guild::Guild& new_guild = guild_manager_->upsertGuild(created->guild_id, created->name, created->owner_id);
     session_manager_->addGuildMembership(fd, new_guild.id);
 
     Message response;
@@ -95,6 +109,8 @@ Message GuildHandler::handleListGuilds(const Message& message, int fd) const {
         return makeError("INTERNAL_ERROR", "Guild context unavailable");
     }
 
+    // Served entirely from the local write-through cache — no internal API
+    // call per read (design doc §8.1).
     nlohmann::json guilds = nlohmann::json::array();
     for (const auto& g : guild_manager_->listGuilds()) {
         guilds.push_back({{"guild_id", g.id}, {"name", g.name}, {"owner_id", g.owner_id}});
@@ -123,7 +139,7 @@ Message GuildHandler::handleJoinGuild(const Message& message, int fd) const {
         return makeError("MALFORMED_MESSAGE", "JOIN_GUILD missing required field: guild_id");
     }
 
-    if (!guild_manager_) {
+    if (!guild_manager_ || !internal_api_client_) {
         return makeError("INTERNAL_ERROR", "Guild context unavailable");
     }
 
@@ -135,6 +151,16 @@ Message GuildHandler::handleJoinGuild(const Message& message, int fd) const {
 
     if (session_manager_->isMemberOfGuild(fd, guild_id)) {
         return makeError("PROTOCOL_VIOLATION", "Already a member of this guild");
+    }
+
+    // Note: createMembership is idempotent server-side for a membership
+    // that already exists in Postgres from a prior session (a returning
+    // connection's SessionManager state starts empty every reconnect, see
+    // web/lib/internal/catalog.ts) — so this call succeeding here doesn't
+    // imply a *new* row was created, only that one now exists.
+    const session::Session* session = requireIdentified(fd);
+    if (!internal_api_client_->createMembership(guild_id, session->user_id, "member")) {
+        return makeError("INTERNAL_ERROR", "Failed to persist guild membership");
     }
 
     session_manager_->addGuildMembership(fd, guild_id);
@@ -173,7 +199,7 @@ Message GuildHandler::handleLeaveGuild(const Message& message, int fd) const {
         return makeError("MALFORMED_MESSAGE", "LEAVE_GUILD missing required field: guild_id");
     }
 
-    if (!guild_manager_) {
+    if (!guild_manager_ || !internal_api_client_) {
         return makeError("INTERNAL_ERROR", "Guild context unavailable");
     }
 
@@ -189,6 +215,10 @@ Message GuildHandler::handleLeaveGuild(const Message& message, int fd) const {
     if (guild_manager_->isOwner(guild_id, session->user_id)) {
         return makeError("PROTOCOL_VIOLATION",
                          "Guild owner cannot leave; use DELETE_GUILD instead");
+    }
+
+    if (!internal_api_client_->deleteMembership(guild_id, session->user_id)) {
+        return makeError("INTERNAL_ERROR", "Failed to remove guild membership");
     }
 
     // Snapshot before mutating membership so the leaver is included in the
@@ -233,7 +263,7 @@ Message GuildHandler::handleDeleteGuild(const Message& message, int fd) const {
         return makeError("MALFORMED_MESSAGE", "DELETE_GUILD missing required field: guild_id");
     }
 
-    if (!guild_manager_) {
+    if (!guild_manager_ || !internal_api_client_) {
         return makeError("INTERNAL_ERROR", "Guild context unavailable");
     }
 
@@ -244,6 +274,10 @@ Message GuildHandler::handleDeleteGuild(const Message& message, int fd) const {
 
     if (!guild_manager_->isOwner(guild_id, session->user_id)) {
         return makeError("NOT_GUILD_OWNER", "Only the guild owner can delete it");
+    }
+
+    if (!internal_api_client_->deleteGuild(guild_id)) {
+        return makeError("INTERNAL_ERROR", "Failed to delete guild");
     }
 
     // Snapshot fds and channel ids before tearing anything down: deleteGuild

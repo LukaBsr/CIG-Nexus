@@ -2,6 +2,9 @@
 
 #include "Server.hpp"
 
+#include "../auth/TestJwtHelper.hpp"
+#include "../http/FakeInternalApiClient.hpp"
+
 #include <arpa/inet.h>
 #include <chrono>
 #include <netinet/in.h>
@@ -52,6 +55,29 @@ std::string recv_framed(int fd) {
     if (::recv(fd, buf.data(), size, MSG_WAITALL) != static_cast<ssize_t>(size))
         return "";
     return buf;
+}
+
+uint64_t now_seconds() {
+    return static_cast<uint64_t>(
+        std::chrono::duration_cast<std::chrono::seconds>(
+            std::chrono::system_clock::now().time_since_epoch())
+            .count());
+}
+
+// Signs a session_token for IDENTIFY (design doc §6/§8) — every caller in
+// this file shares one server-wide keypair (configured via
+// Server::configureAuth) but gets a distinct sub/username/sid per identity.
+std::string make_session_token(EVP_PKEY* key, const std::string& user_id, const std::string& username) {
+    nlohmann::json header{{"alg", "RS256"}, {"typ", "JWT"}};
+    nlohmann::json payload{{"sub", user_id},
+                          {"discord_id", user_id},
+                          {"username", username},
+                          {"sid", user_id + "-sid"},
+                          {"iat", now_seconds()},
+                          {"exp", now_seconds() + 900},
+                          {"iss", "cig-nexus-web"},
+                          {"aud", "cig-nexus-server"}};
+    return test_helpers::signTestJwt(key, header, payload);
 }
 
 } // namespace
@@ -112,7 +138,11 @@ TEST_CASE("Server returns PROTOCOL_VIOLATION for unknown message type") {
 // ----------------------------------------------------------------------------
 
 TEST_CASE("Server handles CREATE_GUILD end-to-end") {
+    test_helpers::TestRsaKeyPair keys;
     Server server(0);
+    server.configureAuth(keys.publicKeyPem());
+    server.setInternalApiClient(std::make_unique<test_helpers::FakeInternalApiClient>());
+
     std::thread t([&server] { server.start(); });
     std::this_thread::sleep_for(std::chrono::milliseconds(50));
 
@@ -121,7 +151,8 @@ TEST_CASE("Server handles CREATE_GUILD end-to-end") {
 
     send_framed(fd, R"({"type":"HELLO","version":"0.1","client":"web"})");
     REQUIRE(!recv_framed(fd).empty());
-    send_framed(fd, R"({"type":"IDENTIFY","username":"alice"})");
+    send_framed(fd, R"({"type":"IDENTIFY","session_token":")" +
+                        make_session_token(keys.key, "u_alice", "alice") + R"("})");
     REQUIRE(!recv_framed(fd).empty());
 
     send_framed(fd, R"({"type":"CREATE_GUILD","name":"My Guild"})");
@@ -135,7 +166,7 @@ TEST_CASE("Server handles CREATE_GUILD end-to-end") {
     auto parsed = nlohmann::json::parse(response);
     REQUIRE(parsed["type"] == "GUILD_CREATED");
     REQUIRE(parsed["name"] == "My Guild");
-    REQUIRE(parsed["guild_id"] == "g_1");
+    REQUIRE(parsed["guild_id"] == "g_fake_1"); // assigned by the fake InternalApiClient
 }
 
 // ----------------------------------------------------------------------------
@@ -147,28 +178,33 @@ TEST_CASE("Server handles CREATE_GUILD end-to-end") {
 // ----------------------------------------------------------------------------
 
 TEST_CASE("Server delivers CHANNEL_MESSAGE only to connections with that channel active") {
+    test_helpers::TestRsaKeyPair keys;
     Server server(0);
+    server.configureAuth(keys.publicKeyPem());
+    server.setInternalApiClient(std::make_unique<test_helpers::FakeInternalApiClient>());
+
     std::thread t([&server] { server.start(); });
     std::this_thread::sleep_for(std::chrono::milliseconds(50));
 
-    auto identify = [&](int fd, const std::string& username) {
+    auto identify = [&](int fd, const std::string& user_id, const std::string& username) {
         send_framed(fd, R"({"type":"HELLO","version":"0.1","client":"web"})");
         REQUIRE(!recv_framed(fd).empty());
-        send_framed(fd, R"({"type":"IDENTIFY","username":")" + username + R"("})");
+        send_framed(fd, R"({"type":"IDENTIFY","session_token":")" +
+                            make_session_token(keys.key, user_id, username) + R"("})");
         REQUIRE(!recv_framed(fd).empty());
     };
 
     int fd_a = tcp_connect(server.bound_port());
     REQUIRE(fd_a >= 0);
-    identify(fd_a, "alice");
+    identify(fd_a, "u_alice", "alice");
 
     int fd_b = tcp_connect(server.bound_port());
     REQUIRE(fd_b >= 0);
-    identify(fd_b, "bob");
+    identify(fd_b, "u_bob", "bob");
 
     int fd_c = tcp_connect(server.bound_port());
     REQUIRE(fd_c >= 0);
-    identify(fd_c, "carol");
+    identify(fd_c, "u_carol", "carol");
 
     // alice creates a guild and a channel in it.
     send_framed(fd_a, R"({"type":"CREATE_GUILD","name":"My Guild"})");
@@ -232,14 +268,18 @@ TEST_CASE("Server delivers CHANNEL_MESSAGE only to connections with that channel
 // ----------------------------------------------------------------------------
 
 TEST_CASE("Server survives broadcasting to a connection reset by its peer") {
+    test_helpers::TestRsaKeyPair keys;
     Server server(0);
+    server.configureAuth(keys.publicKeyPem());
+
     std::thread t([&server] { server.start(); });
     std::this_thread::sleep_for(std::chrono::milliseconds(50));
 
-    auto identify = [&](int fd, const std::string& username) {
+    auto identify = [&](int fd, const std::string& user_id, const std::string& username) {
         send_framed(fd, R"({"type":"HELLO","version":"0.1","client":"web"})");
         REQUIRE(!recv_framed(fd).empty()); // WELCOME
-        send_framed(fd, R"({"type":"IDENTIFY","username":")" + username + R"("})");
+        send_framed(fd, R"({"type":"IDENTIFY","session_token":")" +
+                            make_session_token(keys.key, user_id, username) + R"("})");
         REQUIRE(!recv_framed(fd).empty()); // IDENTIFIED
     };
 
@@ -251,11 +291,11 @@ TEST_CASE("Server survives broadcasting to a connection reset by its peer") {
     // after fd_b's CHAT_MESSAGE triggers a broadcast into it.
     int fd_b = tcp_connect(server.bound_port());
     REQUIRE(fd_b >= 0);
-    identify(fd_b, "bob");
+    identify(fd_b, "u_bob", "bob");
 
     int fd_a = tcp_connect(server.bound_port());
     REQUIRE(fd_a >= 0);
-    identify(fd_a, "alice");
+    identify(fd_a, "u_alice", "alice");
 
     // Force an RST instead of a clean FIN. Server::start() checks every
     // connection's readFromSocket() once per tick, so an RST on fd_a
@@ -280,4 +320,48 @@ TEST_CASE("Server survives broadcasting to a connection reset by its peer") {
     auto parsed = nlohmann::json::parse(response);
     REQUIRE(parsed["type"] == "CHAT_MESSAGE");
     REQUIRE(parsed["content"] == "still alive");
+}
+
+// ----------------------------------------------------------------------------
+// design doc §8.1: GuildManager is a write-through cache hydrated from the
+// internal API's full-catalog snapshot at startup — a guild that already
+// existed in Postgres before this process started must be immediately
+// visible via LIST_GUILDS, without ever going through CREATE_GUILD on this
+// connection.
+// ----------------------------------------------------------------------------
+
+TEST_CASE("Server hydrates the guild catalog from InternalApiClient at startup") {
+    test_helpers::TestRsaKeyPair keys;
+    auto api = std::make_unique<test_helpers::FakeInternalApiClient>();
+    api->catalog_to_return.guilds.push_back({"g_preexisting", "Pre-existing Guild", "u_owner"});
+
+    Server server(0);
+    server.configureAuth(keys.publicKeyPem());
+    server.setInternalApiClient(std::move(api));
+
+    std::thread t([&server] { server.start(); });
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+
+    int fd = tcp_connect(server.bound_port());
+    REQUIRE(fd >= 0);
+
+    send_framed(fd, R"({"type":"HELLO","version":"0.1","client":"web"})");
+    REQUIRE(!recv_framed(fd).empty());
+    send_framed(fd, R"({"type":"IDENTIFY","session_token":")" +
+                        make_session_token(keys.key, "u_alice", "alice") + R"("})");
+    REQUIRE(!recv_framed(fd).empty());
+
+    send_framed(fd, R"({"type":"LIST_GUILDS"})");
+    std::string response = recv_framed(fd);
+
+    ::close(fd);
+    server.stop();
+    t.join();
+
+    REQUIRE(!response.empty());
+    auto parsed = nlohmann::json::parse(response);
+    REQUIRE(parsed["type"] == "GUILD_LIST");
+    REQUIRE(parsed["guilds"].size() == 1);
+    REQUIRE(parsed["guilds"][0]["guild_id"] == "g_preexisting");
+    REQUIRE(parsed["guilds"][0]["name"] == "Pre-existing Guild");
 }

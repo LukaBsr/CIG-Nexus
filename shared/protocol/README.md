@@ -37,7 +37,7 @@ Framing rules:
 1. Client opens a TCP connection.
 2. Client sends a `HELLO` message.
 3. Server returns `WELCOME` or `ERROR`.
-4. Client sends `IDENTIFY` with a username.
+4. Client sends `IDENTIFY` with a session token.
 5. Server returns `IDENTIFIED` or `ERROR`.
 6. Identified clients may send `CHAT_MESSAGE` messages.
 7. Valid chat messages are broadcast to all active connections.
@@ -86,19 +86,31 @@ Client to server:
 ```json
 {
   "type": "IDENTIFY",
-  "username": "web_user"
+  "session_token": "<JWT>"
 }
 ```
+
+`session_token` is the short-lived RS256 access JWT issued by the web
+client's `/api/auth/session-token` endpoint after a completed Discord
+OAuth2 login — not a client-chosen value. See
+`docs/auth-discord-design.md` §6/§8 for the full issuance flow and claim
+shape.
 
 Validation:
 
 - payload must be an object
-- `username` must exist
-- `username` must be a string
-- `username` must not be empty
-- `username` length must be at most `32`
+- `session_token` must exist (`AUTH_REQUIRED` otherwise)
+- `session_token` must be a string (`AUTH_REQUIRED` otherwise)
+- `session_token` must be a well-formed JWT with a valid signature and the
+  expected audience, signed with the algorithm this server is configured
+  to verify (`INVALID_SESSION` otherwise — see error codes below)
+- `session_token` must not be expired (`SESSION_EXPIRED` otherwise)
+- `session_token` must reference a session that has not been revoked
+  (`SESSION_REVOKED` otherwise)
 
-On success, the server creates a session for that socket and returns:
+On success, the server creates a session for that socket — with `user_id`
+and `username` taken from the token's verified claims, not supplied by the
+client — and returns:
 
 ```json
 {
@@ -481,6 +493,10 @@ Current error codes used by the implementation:
 | `MALFORMED_MESSAGE` | required fields are missing or invalid |
 | `NOT_IDENTIFIED` | client attempted chat before successful `IDENTIFY` |
 | `INTERNAL_ERROR` | missing internal context for request processing |
+| `AUTH_REQUIRED` | `IDENTIFY` sent without a `session_token` |
+| `INVALID_SESSION` | `session_token` is malformed, has an invalid signature, or was issued for a different audience |
+| `SESSION_EXPIRED` | `session_token` has passed its expiry |
+| `SESSION_REVOKED` | `session_token` references a session that has been revoked |
 | `GUILD_NOT_FOUND` | referenced `guild_id` does not exist |
 | `CHANNEL_NOT_FOUND` | referenced `channel_id` does not exist, or does not belong to the given guild |
 | `NOT_GUILD_MEMBER` | action requires guild membership the caller doesn't have |

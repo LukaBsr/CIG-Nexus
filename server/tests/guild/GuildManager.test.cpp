@@ -2,11 +2,11 @@
 
 #include "guild/GuildManager.hpp"
 
-TEST_CASE("GuildManager creates guilds with incrementing ids") {
+TEST_CASE("GuildManager upsertGuild stores a guild under the given (externally-assigned) id") {
     guild::GuildManager manager;
 
-    guild::Guild& g1 = manager.createGuild("First", "u_1");
-    guild::Guild& g2 = manager.createGuild("Second", "u_2");
+    guild::Guild& g1 = manager.upsertGuild("g_1", "First", "u_1");
+    guild::Guild& g2 = manager.upsertGuild("g_2", "Second", "u_2");
 
     REQUIRE(g1.id == "g_1");
     REQUIRE(g1.name == "First");
@@ -19,9 +19,18 @@ TEST_CASE("GuildManager creates guilds with incrementing ids") {
     REQUIRE_FALSE(manager.hasGuild("g_404"));
 }
 
+TEST_CASE("GuildManager upsertGuild called twice with the same id overwrites, not duplicates") {
+    guild::GuildManager manager;
+    manager.upsertGuild("g_1", "First", "u_1");
+    manager.upsertGuild("g_1", "Renamed", "u_1");
+
+    REQUIRE(manager.listGuilds().size() == 1);
+    REQUIRE(manager.getGuild("g_1")->name == "Renamed");
+}
+
 TEST_CASE("GuildManager getGuild returns the stored guild") {
     guild::GuildManager manager;
-    manager.createGuild("First", "u_1");
+    manager.upsertGuild("g_1", "First", "u_1");
 
     const guild::Guild* guild = manager.getGuild("g_1");
     REQUIRE(guild != nullptr);
@@ -32,19 +41,19 @@ TEST_CASE("GuildManager getGuild returns the stored guild") {
 
 TEST_CASE("GuildManager listGuilds returns every guild") {
     guild::GuildManager manager;
-    manager.createGuild("First", "u_1");
-    manager.createGuild("Second", "u_2");
+    manager.upsertGuild("g_1", "First", "u_1");
+    manager.upsertGuild("g_2", "Second", "u_2");
 
     const auto guilds = manager.listGuilds();
     REQUIRE(guilds.size() == 2);
 }
 
-TEST_CASE("GuildManager creates channels with incrementing ids scoped to a guild") {
+TEST_CASE("GuildManager upsertChannel stores a channel scoped to its guild") {
     guild::GuildManager manager;
-    manager.createGuild("First", "u_1");
+    manager.upsertGuild("g_1", "First", "u_1");
 
-    guild::Channel& c1 = manager.createChannel("g_1", "general", guild::ChannelType::TEXT);
-    guild::Channel& c2 = manager.createChannel("g_1", "voice-lounge", guild::ChannelType::VOICE);
+    guild::Channel& c1 = manager.upsertChannel("c_1", "g_1", "general", guild::ChannelType::TEXT);
+    guild::Channel& c2 = manager.upsertChannel("c_2", "g_1", "voice-lounge", guild::ChannelType::VOICE);
 
     REQUIRE(c1.id == "c_1");
     REQUIRE(c1.guild_id == "g_1");
@@ -60,12 +69,12 @@ TEST_CASE("GuildManager creates channels with incrementing ids scoped to a guild
 
 TEST_CASE("GuildManager listChannels only returns channels for the requested guild") {
     guild::GuildManager manager;
-    manager.createGuild("First", "u_1");
-    manager.createGuild("Second", "u_2");
+    manager.upsertGuild("g_1", "First", "u_1");
+    manager.upsertGuild("g_2", "Second", "u_2");
 
-    manager.createChannel("g_1", "general", guild::ChannelType::TEXT);
-    manager.createChannel("g_1", "random", guild::ChannelType::TEXT);
-    manager.createChannel("g_2", "other-guild-channel", guild::ChannelType::TEXT);
+    manager.upsertChannel("c_1", "g_1", "general", guild::ChannelType::TEXT);
+    manager.upsertChannel("c_2", "g_1", "random", guild::ChannelType::TEXT);
+    manager.upsertChannel("c_3", "g_2", "other-guild-channel", guild::ChannelType::TEXT);
 
     const auto channels = manager.listChannels("g_1");
     REQUIRE(channels.size() == 2);
@@ -76,9 +85,9 @@ TEST_CASE("GuildManager listChannels only returns channels for the requested gui
 
 TEST_CASE("GuildManager deleteChannel removes only that channel") {
     guild::GuildManager manager;
-    manager.createGuild("First", "u_1");
-    manager.createChannel("g_1", "general", guild::ChannelType::TEXT);
-    manager.createChannel("g_1", "random", guild::ChannelType::TEXT);
+    manager.upsertGuild("g_1", "First", "u_1");
+    manager.upsertChannel("c_1", "g_1", "general", guild::ChannelType::TEXT);
+    manager.upsertChannel("c_2", "g_1", "random", guild::ChannelType::TEXT);
 
     REQUIRE(manager.deleteChannel("c_1"));
     REQUIRE_FALSE(manager.hasChannel("c_1"));
@@ -89,11 +98,11 @@ TEST_CASE("GuildManager deleteChannel removes only that channel") {
 
 TEST_CASE("GuildManager deleteGuild cascades to delete its channels") {
     guild::GuildManager manager;
-    manager.createGuild("First", "u_1");
-    manager.createGuild("Second", "u_2");
-    manager.createChannel("g_1", "general", guild::ChannelType::TEXT);
-    manager.createChannel("g_1", "random", guild::ChannelType::TEXT);
-    manager.createChannel("g_2", "unrelated", guild::ChannelType::TEXT);
+    manager.upsertGuild("g_1", "First", "u_1");
+    manager.upsertGuild("g_2", "Second", "u_2");
+    manager.upsertChannel("c_1", "g_1", "general", guild::ChannelType::TEXT);
+    manager.upsertChannel("c_2", "g_1", "random", guild::ChannelType::TEXT);
+    manager.upsertChannel("c_3", "g_2", "unrelated", guild::ChannelType::TEXT);
 
     REQUIRE(manager.deleteGuild("g_1"));
 
@@ -107,7 +116,7 @@ TEST_CASE("GuildManager deleteGuild cascades to delete its channels") {
 
 TEST_CASE("GuildManager isOwner reflects the guild's owner_id") {
     guild::GuildManager manager;
-    manager.createGuild("First", "u_1");
+    manager.upsertGuild("g_1", "First", "u_1");
 
     REQUIRE(manager.isOwner("g_1", "u_1"));
     REQUIRE_FALSE(manager.isOwner("g_1", "u_2"));
@@ -116,7 +125,7 @@ TEST_CASE("GuildManager isOwner reflects the guild's owner_id") {
 
 TEST_CASE("GuildManager canCreateChannel and canDeleteChannel are owner-only today") {
     guild::GuildManager manager;
-    manager.createGuild("First", "u_1");
+    manager.upsertGuild("g_1", "First", "u_1");
 
     REQUIRE(manager.canCreateChannel("g_1", "u_1"));
     REQUIRE_FALSE(manager.canCreateChannel("g_1", "u_2"));

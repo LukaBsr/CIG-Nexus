@@ -20,6 +20,11 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(nlohmann_json)
 
+# RS256 JWT verification (auth/JwtVerifier) and the internal API client
+# (http/CurlInternalApiClient) — design doc §8.2's two new C++ dependencies.
+find_package(OpenSSL REQUIRED)
+find_package(CURL REQUIRED)
+
 file(GLOB_RECURSE SERVER_SOURCES CONFIGURE_DEPENDS
     ${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp
 )
@@ -34,6 +39,8 @@ target_include_directories(cig-nexus-server
 target_link_libraries(cig-nexus-server
     PRIVATE
         nlohmann_json::nlohmann_json
+        OpenSSL::Crypto
+        CURL::libcurl
 )
 
 if(BUILD_TESTS)

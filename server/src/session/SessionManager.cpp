@@ -9,13 +9,11 @@ Session& SessionManager::createSession(int socket_fd) {
     const auto timestamp =
         std::chrono::duration_cast<std::chrono::seconds>(now.time_since_epoch()).count();
 
-    Session session{"s_" + std::to_string(next_session_id_++),
-                    "u_" + std::to_string(next_user_id_++),
-                    "",
-                    static_cast<uint64_t>(timestamp),
-                    socket_fd,
-                    {},
-                    ""};
+    // user_id/username/discord_id/app_session_id start empty and are filled
+    // in by IdentifyHandler from the verified access JWT's claims — this
+    // function only establishes the local per-connection bookkeeping.
+    Session session{"s_" + std::to_string(next_session_id_++), "",        "", "", "",
+                    static_cast<uint64_t>(timestamp),          socket_fd, {}, ""};
 
     auto [it, inserted] = sessions_.insert_or_assign(socket_fd, session);
 

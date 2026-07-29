@@ -14,15 +14,24 @@ namespace guild {
 class GuildManager;
 }
 
+namespace http {
+class InternalApiClient;
+}
+
 namespace protocol {
 
 // Channel lifecycle and messaging: LIST_CHANNELS, CREATE_CHANNEL,
 // DELETE_CHANNEL, JOIN_CHANNEL, LEAVE_CHANNEL, CHANNEL_MESSAGE. See
-// docs/rooms-spec.md for the full protocol shapes.
+// docs/rooms-spec.md for the full protocol shapes. CREATE_CHANNEL/
+// DELETE_CHANNEL go through InternalApiClient first (design doc §8.1,
+// write-through cache) — the rest (LIST_CHANNELS, JOIN/LEAVE_CHANNEL,
+// CHANNEL_MESSAGE) are either cache reads or purely per-connection
+// SessionManager state, neither of which is durable.
 class ChannelHandler {
   public:
     void setSessionManager(session::SessionManager* session_manager);
     void setGuildManager(guild::GuildManager* guild_manager);
+    void setInternalApiClient(http::InternalApiClient* internal_api_client);
 
     Message handleListChannels(const Message& message, int fd) const;
     Message handleCreateChannel(const Message& message, int fd) const;
@@ -40,6 +49,7 @@ class ChannelHandler {
 
     session::SessionManager* session_manager_ = nullptr;
     guild::GuildManager* guild_manager_ = nullptr;
+    http::InternalApiClient* internal_api_client_ = nullptr;
 
     // Same reasoning as ChatHandler::message_counter_ and GuildManager's id
     // counters: single-threaded today, std::atomic removes a landmine for

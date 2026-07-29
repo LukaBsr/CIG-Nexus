@@ -12,7 +12,7 @@ namespace guild {
 enum class ChannelType { TEXT, VOICE };
 
 struct Channel {
-    std::string id; // "c_1", "c_2", ...
+    std::string id; // "c_<uuid>" — assigned by Postgres, not generated here (design doc §8.1)
     std::string guild_id;
     std::string name;
     ChannelType type;

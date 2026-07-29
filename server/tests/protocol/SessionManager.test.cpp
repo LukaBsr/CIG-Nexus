@@ -10,21 +10,27 @@ TEST_CASE("SessionManager creates and retrieves sessions") {
 
     session::Session& session = manager.createSession(42);
 
+    // user_id/username/discord_id/app_session_id start empty — they're no
+    // longer generated here, IdentifyHandler fills them in from the
+    // verified access JWT's claims (design doc §8).
     REQUIRE(session.session_id == "s_1");
-    REQUIRE(session.user_id == "u_1");
+    REQUIRE(session.user_id.empty());
     REQUIRE(session.username.empty());
+    REQUIRE(session.discord_id.empty());
+    REQUIRE(session.app_session_id.empty());
     REQUIRE(session.socket_fd == 42);
     REQUIRE(session.connected_at > 0);
     REQUIRE(manager.hasSession(42));
 
     const session::Session* fetched = manager.getSession(42);
     REQUIRE(fetched != nullptr);
-    REQUIRE(fetched->user_id == "u_1");
+    REQUIRE(fetched->session_id == "s_1");
 }
 
 TEST_CASE("SessionManager updates username and supports lookup by user id") {
     session::SessionManager manager;
     session::Session& session = manager.createSession(7);
+    session.user_id = "u_1"; // normally set by IdentifyHandler from the JWT's sub claim
 
     REQUIRE(manager.updateUsername(7, "alice"));
 

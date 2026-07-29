@@ -37,6 +37,8 @@ target_link_libraries(cig-nexus-tests
     PRIVATE
         Catch2::Catch2WithMain
         nlohmann_json::nlohmann_json
+        OpenSSL::Crypto
+        CURL::libcurl
 )
 
 include(CTest)

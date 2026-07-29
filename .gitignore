@@ -51,3 +51,9 @@ dist/
 # Local AI assistant files
 CLAUDE.md
 ARCHITECTURE.md
+
+# Environment variables (see .env.example)
+.env
+
+# RS256 keypair for the application session JWT (see .env.example)
+secrets/

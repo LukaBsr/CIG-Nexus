@@ -14,9 +14,8 @@ uint64_t now_seconds() {
 
 } // namespace
 
-Guild& GuildManager::createGuild(const std::string& name, const std::string& owner_id) {
-    const std::string id = "g_" + std::to_string(next_guild_id_++);
-
+Guild& GuildManager::upsertGuild(const std::string& id, const std::string& name,
+                                 const std::string& owner_id) {
     Guild guild{id, name, owner_id, now_seconds()};
     auto [it, inserted] = guilds_.insert_or_assign(id, guild);
 
@@ -39,10 +38,8 @@ bool GuildManager::deleteGuild(const std::string& guild_id) {
     return true;
 }
 
-Channel& GuildManager::createChannel(const std::string& guild_id, const std::string& name,
-                                     ChannelType type) {
-    const std::string id = "c_" + std::to_string(next_channel_id_++);
-
+Channel& GuildManager::upsertChannel(const std::string& id, const std::string& guild_id,
+                                     const std::string& name, ChannelType type) {
     Channel channel{id, guild_id, name, type, now_seconds()};
     auto [it, inserted] = channels_.insert_or_assign(id, channel);
 
