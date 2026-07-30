@@ -23,7 +23,7 @@ TEST_CASE("HelloHandler returns WELCOME for valid HELLO") {
 
     REQUIRE(response.type == "WELCOME");
     REQUIRE(response.payload["type"] == "WELCOME");
-    REQUIRE(response.payload["server_version"] == "0.5");
+    REQUIRE(response.payload["server_version"] == "0.6");
     REQUIRE_FALSE(response.payload.contains("session_id"));
 }
 
