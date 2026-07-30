@@ -8,7 +8,7 @@
 namespace session {
 class SessionManager;
 struct Session;
-}
+} // namespace session
 
 namespace guild {
 class GuildManager;
@@ -22,7 +22,7 @@ namespace protocol {
 
 // Channel lifecycle and messaging: LIST_CHANNELS, CREATE_CHANNEL,
 // DELETE_CHANNEL, JOIN_CHANNEL, LEAVE_CHANNEL, CHANNEL_MESSAGE. See
-// docs/rooms-spec.md for the full protocol shapes. CREATE_CHANNEL/
+// docs/guilds/design.md for the full protocol shapes. CREATE_CHANNEL/
 // DELETE_CHANNEL go through InternalApiClient first (design doc §8.1,
 // write-through cache) — the rest (LIST_CHANNELS, JOIN/LEAVE_CHANNEL,
 // CHANNEL_MESSAGE) are either cache reads or purely per-connection

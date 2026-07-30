@@ -1,8 +1,8 @@
 #include "Server.hpp"
 #include "http/CurlInternalApiClient.hpp"
 
-#include <cstdlib>
 #include <csignal>
+#include <cstdlib>
 #include <fstream>
 #include <iostream>
 #include <memory>
@@ -75,7 +75,7 @@ int main(int argc, char* argv[]) {
         // AUTH_JWT_PUBLIC_KEY_PATH: the RS256 public key counterpart of
         // Next.js's SESSION_JWT_PRIVATE_KEY_PATH (design doc §6) — a static
         // env-provided key file, not a JWKS endpoint (see
-        // docs/auth-discord-design.md's "Key distribution" decision).
+        // docs/auth/discord-design.md's "Key distribution" decision).
         const std::string jwt_public_key_pem = readRequiredFile("AUTH_JWT_PUBLIC_KEY_PATH");
         const std::string internal_api_base_url = requireEnv("INTERNAL_API_BASE_URL");
         const std::string internal_api_shared_secret = requireEnv("INTERNAL_API_SHARED_SECRET");
@@ -84,8 +84,8 @@ int main(int argc, char* argv[]) {
         g_server = &server;
 
         server.configureAuth(jwt_public_key_pem);
-        server.setInternalApiClient(
-            std::make_unique<http::CurlInternalApiClient>(internal_api_base_url, internal_api_shared_secret));
+        server.setInternalApiClient(std::make_unique<http::CurlInternalApiClient>(
+            internal_api_base_url, internal_api_shared_secret));
 
         std::signal(SIGINT, handle_signal);
         std::signal(SIGTERM, handle_signal);

@@ -61,7 +61,7 @@ Chat request:
 Guild/channel messages (`CREATE_GUILD`, `JOIN_CHANNEL`, `CHANNEL_MESSAGE`,
 etc.) are forwarded the same way — the gateway doesn't special-case any
 message type. See
-[../shared/protocol/README.md](../shared/protocol/README.md) for the full
+[../../shared/protocol/README.md](../../shared/protocol/README.md) for the full
 set.
 
 ## TCP Side
@@ -92,7 +92,7 @@ For each browser connection:
 4. Browser chat, guild, and channel messages are forwarded to TCP.
 5. TCP responses (`WELCOME`, `IDENTIFIED`, `CHAT_MESSAGE`, `ERROR`, and the
    guild/channel response types — see
-   [../shared/protocol/README.md](../shared/protocol/README.md)) are
+   [../../shared/protocol/README.md](../../shared/protocol/README.md)) are
    forwarded back to the browser.
 6. If one side closes or errors, the gateway closes the other side.
 

@@ -1,9 +1,28 @@
 # Repository Structure Audit — Proposal
 
-**Status: proposal only. Nothing in this document has been executed.** No
-files have been moved, split, renamed, or deleted. Every recommendation
-below is for review — see [Proposed Action List](#proposed-action-list) at
-the end for the concrete, ordered list to confirm before anything changes.
+**Status: partially executed.** Action list items **1, 2, 3, and 5** below
+have been carried out as written. **Item 4** was explicitly declined —
+`shared/protocol/README.md` stays where it is. **Item 6**'s decision
+(wire-message casing conversion happens at the `useGatewayConnection` hook
+boundary, not per-component) is recorded in
+[`docs/frontend-rebuild-plan.md`](../frontend-rebuild-plan.md) rather than
+here. **Item 7** (the actual component extraction) has not been started —
+its specifics are captured in that same plan document for whoever picks it
+up. **Item 8** (CI workflow naming) remains undone, low priority. The rest
+of this document is left as originally written — a point-in-time proposal,
+not a changelog — so paths mentioned in the body below (e.g.
+`docs/architecture.md`, `docs/rooms-spec.md`) reflect the *pre-move*
+structure being proposed, not the current one.
+
+---
+
+<details>
+<summary>Original proposal text (paths below predate the item 1/2/3/5 execution above)</summary>
+
+No files had been moved, split, renamed, or deleted at the time this was
+written. Every recommendation below was for review — see
+[Proposed Action List](#proposed-action-list) at the end for the concrete,
+ordered list that was confirmed before anything changed.
 
 Scope: this audit covers repo structure, documentation organization, and
 frontend code organization ahead of a frontend rebuild. It does not audit
@@ -417,3 +436,5 @@ explicit go-ahead; none of this has been executed.
    prerequisite, not an optional polish item.
 8. *(Lower priority, not blocking anything)* Normalize CI workflow naming
    and add a `gateway` CI workflow (§5).
+
+</details>

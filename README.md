@@ -185,9 +185,10 @@ Successful chat responses currently include metadata such as:
 - See [gateway/README.md](gateway/README.md) for gateway details.
 - See [server/README.md](server/README.md) for server details.
 - See [shared/protocol/README.md](shared/protocol/README.md) for shared protocol documentation.
-- See [docs/architecture.md](docs/architecture.md) for system-level architecture.
-- See [docs/gateway-api.md](docs/gateway-api.md) for the gateway's transport contract.
-- See [docs/rooms-spec.md](docs/rooms-spec.md) for the guilds/channels feature's design rationale.
+- See [docs/architecture/overview.md](docs/architecture/overview.md) for system-level architecture.
+- See [docs/architecture/gateway-transport.md](docs/architecture/gateway-transport.md) for the gateway's transport contract.
+- See [docs/guilds/design.md](docs/guilds/design.md) for the guilds/channels feature's design rationale.
+- See [docs/auth/discord-design.md](docs/auth/discord-design.md) for the Discord OAuth2 authentication design.
 
 ## Status
 

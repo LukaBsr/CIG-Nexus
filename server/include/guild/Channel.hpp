@@ -8,7 +8,7 @@ namespace guild {
 
 // VOICE is a metadata-only placeholder this iteration: the type is modeled
 // and validated, but there's no audio transport or join/leave semantics for
-// it yet. See docs/rooms-spec.md, "Voice Channels".
+// it yet. See docs/guilds/design.md, "Voice Channels".
 enum class ChannelType { TEXT, VOICE };
 
 struct Channel {
