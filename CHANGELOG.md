@@ -1,11 +1,5 @@
 # Changelog
 
-Reconstructed from git history (tags, commit history of the three
-version-carrying files, and merged PR descriptions) rather than kept
-incrementally — see the note on each early version where the mapping from
-commits to a version number required inference. `v0.6.0` is the first
-entry written contemporaneously with its release.
-
 ## v0.6.0
 
 **Auth**
