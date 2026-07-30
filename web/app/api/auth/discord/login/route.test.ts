@@ -19,7 +19,7 @@ let ipCounter = 0;
 function request(): NextRequest {
   ipCounter += 1;
   return new NextRequest("http://localhost:3000/api/auth/discord/login", {
-    headers: { "x-forwarded-for": `10.0.0.${ipCounter}` }
+    headers: { "x-cig-nexus-remote-addr": `10.0.0.${ipCounter}` }
   });
 }
 

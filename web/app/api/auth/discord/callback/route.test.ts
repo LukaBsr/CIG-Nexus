@@ -63,7 +63,7 @@ async function requestWithTxn(params: {
   if (params.state !== undefined) url.searchParams.set("state", params.state);
 
   ipCounter += 1;
-  const headers = new Headers({ "x-forwarded-for": `10.0.1.${ipCounter}` });
+  const headers = new Headers({ "x-cig-nexus-remote-addr": `10.0.1.${ipCounter}` });
   if (!params.omitTxnCookie) {
     const txn = await signOAuthTxn({ codeVerifier: "verifier-abc", state: txnState });
     headers.set("cookie", `oauth_txn=${txn}`);
@@ -133,7 +133,7 @@ describe("GET /api/auth/discord/callback", () => {
 
   it("returns 429 once the per-IP limit is exceeded", async () => {
     const url = new URL(CALLBACK_URL);
-    const headers = new Headers({ "x-forwarded-for": "10.0.2.1" });
+    const headers = new Headers({ "x-cig-nexus-remote-addr": "10.0.2.1" });
     const request = new NextRequest(url, { headers });
 
     for (let i = 0; i < 10; i += 1) {

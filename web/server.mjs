@@ -23,12 +23,42 @@ const PORT = Number(process.env.PORT ?? 3000);
 const INTERNAL_PORT = Number(process.env.INTERNAL_PORT ?? 3001);
 const INTERNAL_PATH_PREFIX = "/internal";
 
+// docs/security-audit.md §2.1: X-Forwarded-For is client-controlled with no
+// reverse proxy in front of this server, so it can't be trusted for rate
+// limiting or for the IP address stored on a session. This server has raw
+// socket access (plain node:http), so it is instead the trust boundary
+// itself: it stamps every request with the real TCP peer address under a
+// header name a route handler can rely on, unconditionally overwriting
+// whatever the client sent — never merged, never left in place from the
+// incoming request. lib/auth/clientIp.ts reads this header and this header
+// alone.
+const TRUSTED_REMOTE_ADDR_HEADER = "x-cig-nexus-remote-addr";
+
 const app = next({ dev: false });
 const handle = app.getRequestHandler();
 
 function isInternalRequest(req) {
   const url = req.url ?? "";
   return url === INTERNAL_PATH_PREFIX || url.startsWith(`${INTERNAL_PATH_PREFIX}/`);
+}
+
+// Node reports IPv4-mapped connections as "::ffff:1.2.3.4" — stripped so
+// the stored/rate-limited value is a plain IPv4 address, matching what
+// X-Forwarded-For would have contained.
+function normalizeRemoteAddress(address) {
+  if (!address) {
+    return undefined;
+  }
+  return address.startsWith("::ffff:") ? address.slice("::ffff:".length) : address;
+}
+
+function stampTrustedRemoteAddr(req) {
+  const remoteAddress = normalizeRemoteAddress(req.socket.remoteAddress);
+  if (remoteAddress) {
+    req.headers[TRUSTED_REMOTE_ADDR_HEADER] = remoteAddress;
+  } else {
+    delete req.headers[TRUSTED_REMOTE_ADDR_HEADER];
+  }
 }
 
 function notFound(res) {
@@ -41,6 +71,7 @@ app
   .prepare()
   .then(() => {
     createServer((req, res) => {
+      stampTrustedRemoteAddr(req);
       if (isInternalRequest(req)) {
         notFound(res);
         return;
@@ -51,6 +82,7 @@ app
     });
 
     createServer((req, res) => {
+      stampTrustedRemoteAddr(req);
       if (!isInternalRequest(req)) {
         notFound(res);
         return;
