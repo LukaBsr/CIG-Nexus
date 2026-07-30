@@ -38,4 +38,23 @@ describe("authEnv.sessionJwtPrivateKey", () => {
 
     expect(() => authEnv.sessionJwtPrivateKey).toThrow(/SESSION_JWT_PRIVATE_KEY_PATH=\/nonexistent\/private\.pem/);
   });
+
+  // docs/security-audit.md §1.3 / action item 3.
+  it("throws when the key file is group-readable", () => {
+    process.env.SESSION_JWT_PRIVATE_KEY_PATH = writeTempPemFile("fake-key", "key.pem", 0o640);
+
+    expect(() => authEnv.sessionJwtPrivateKey).toThrow(/group- or world-readable/);
+  });
+
+  it("throws when the key file is world-readable", () => {
+    process.env.SESSION_JWT_PRIVATE_KEY_PATH = writeTempPemFile("fake-key", "key.pem", 0o644);
+
+    expect(() => authEnv.sessionJwtPrivateKey).toThrow(/group- or world-readable/);
+  });
+
+  it("does not throw for a matching var name where the file is owner-only-readable", () => {
+    process.env.SESSION_JWT_PRIVATE_KEY_PATH = writeTempPemFile("fake-key", "key.pem", 0o600);
+
+    expect(() => authEnv.sessionJwtPrivateKey).not.toThrow();
+  });
 });

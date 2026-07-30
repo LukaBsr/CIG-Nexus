@@ -90,6 +90,24 @@ describe("register", () => {
     expect(message).toContain("/nonexistent/private.pem");
   });
 
+  // docs/security-audit.md §1.3 / action item 3.
+  it("exits when the key file exists but is group- or world-readable", async () => {
+    Object.assign(process.env, ALL_PRESENT);
+    process.env.SESSION_JWT_PRIVATE_KEY_PATH = writeTempPemFile(
+      "-----BEGIN PRIVATE KEY-----\nfake\n-----END PRIVATE KEY-----\n",
+      "loose.pem",
+      0o644
+    );
+    const exitSpy = mockProcessExit();
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+
+    await register();
+
+    expect(exitSpy).toHaveBeenCalledWith(1);
+    const message = errorSpy.mock.calls[0]?.[0] as string;
+    expect(message).toContain("group- or world-readable");
+  });
+
   it("does nothing outside the Node.js runtime, even with vars missing", async () => {
     process.env.NEXT_RUNTIME = "edge";
     const exitSpy = mockProcessExit();

@@ -55,7 +55,14 @@ beforeAll(async () => {
     .withCopyContentToContainer([
       {
         content: "-----BEGIN PRIVATE KEY-----\nunused\n-----END PRIVATE KEY-----\n",
-        target: privateKeyPath
+        target: privateKeyPath,
+        // withCopyContentToContainer defaults to a world-readable mode —
+        // env.ts's readRequiredFile() now refuses to read a
+        // *_PRIVATE_KEY_PATH file that's group- or world-readable
+        // (docs/security-audit.md §1.3), so the real Docker image built
+        // here would otherwise fail this test's own startup, not the
+        // isolation behavior it's meant to check.
+        mode: 0o600
       }
     ])
     .withEnvironment({
