@@ -1,5 +1,6 @@
 #include "Server.hpp"
 #include "http/CurlInternalApiClient.hpp"
+#include "util/FilePermissions.hpp"
 
 #include <csignal>
 #include <cstdlib>
@@ -40,6 +41,12 @@ std::string requireEnv(const char* name) {
 // a real file already has real newlines.
 std::string readRequiredFile(const std::string& path_env_var_name) {
     const std::string path = requireEnv(path_env_var_name.c_str());
+
+    // docs/security-audit.md §1.3 / action item 3: refuse to start rather
+    // than read a private key that's group- or world-readable on disk.
+    if (util::isPrivateKeyPathVar(path_env_var_name)) {
+        util::requireOwnerOnlyPermissions(path);
+    }
 
     std::ifstream file(path, std::ios::binary);
     if (!file) {

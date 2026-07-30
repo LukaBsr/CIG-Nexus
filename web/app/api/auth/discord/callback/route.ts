@@ -1,6 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server";
 
-import { clientIp as rateLimitClientIp } from "@/lib/auth/clientIp";
+import { clientIp as rateLimitClientIp, trustedRemoteAddress } from "@/lib/auth/clientIp";
 import { constantTimeEqual } from "@/lib/auth/constantTimeEqual";
 import { OAUTH_TXN_COOKIE, verifyOAuthTxn } from "@/lib/auth/oauthTxnCookie";
 import { checkRateLimit } from "@/lib/auth/rateLimit";
@@ -19,13 +19,6 @@ function redirectToError(request: NextRequest): NextResponse {
   const response = NextResponse.redirect(new URL(LOGIN_ERROR_PATH, request.url));
   response.cookies.delete(OAUTH_TXN_COOKIE);
   return response;
-}
-
-// Distinct from clientIp() in lib/auth/clientIp.ts: this must stay
-// `undefined` (not a placeholder string) when absent, since it's stored
-// directly in sessions.ip_address, a Postgres `inet` column.
-function sessionIpAddress(request: NextRequest): string | undefined {
-  return request.headers.get("x-forwarded-for")?.split(",")[0]?.trim();
 }
 
 // design doc §4, GET /api/auth/discord/callback
@@ -60,7 +53,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     const user = await upsertDiscordUser(discordUser);
     const { refreshToken } = await createSession(user.id, {
       userAgent: request.headers.get("user-agent") ?? undefined,
-      ipAddress: sessionIpAddress(request)
+      ipAddress: trustedRemoteAddress(request)
     });
 
     const response = NextResponse.redirect(new URL("/", request.url));

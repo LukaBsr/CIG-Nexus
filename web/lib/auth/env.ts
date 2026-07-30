@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { readFileSync, statSync } from "node:fs";
 
 function requireEnv(name: string): string {
   const value = process.env[name];
@@ -8,6 +8,29 @@ function requireEnv(name: string): string {
   return value;
 }
 
+// Matches env var names by convention (SESSION_JWT_PRIVATE_KEY_PATH, not
+// AUTH_JWT_PUBLIC_KEY_PATH) rather than hardcoding one name, so any future
+// *_PRIVATE_KEY_PATH var read through readRequiredFile() gets the same
+// permission check automatically.
+function isPrivateKeyPathVar(pathEnvVarName: string): boolean {
+  return pathEnvVarName.includes("PRIVATE_KEY");
+}
+
+// Group or world read bits (0o040 | 0o004) — docs/security-audit.md §1.3 /
+// action item 3: a private key on disk that isn't restricted to its owner
+// defeats the point of keeping key material out of process env /
+// `docker inspect` output in the first place.
+const GROUP_OR_WORLD_READABLE = 0o044;
+
+function requireOwnerOnlyPermissions(path: string): void {
+  const mode = statSync(path).mode;
+  if ((mode & GROUP_OR_WORLD_READABLE) !== 0) {
+    throw new Error(
+      `${path} is group- or world-readable; refusing to use it as a private key. Run: chmod 600 ${path}`
+    );
+  }
+}
+
 // SESSION_JWT_PRIVATE_KEY_PATH points at a real .pem file on disk (bind-
 // mounted from secrets/, see docker-compose.yml) rather than holding key
 // content directly — no more escaped-newline normalization needed, since a
@@ -15,6 +38,9 @@ function requireEnv(name: string): string {
 function readRequiredFile(pathEnvVarName: string): string {
   const path = requireEnv(pathEnvVarName);
   try {
+    if (isPrivateKeyPathVar(pathEnvVarName)) {
+      requireOwnerOnlyPermissions(path);
+    }
     return readFileSync(path, "utf8");
   } catch (err) {
     throw new Error(
