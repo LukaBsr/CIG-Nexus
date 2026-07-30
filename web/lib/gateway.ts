@@ -1,51 +1,85 @@
+import type { WireInboundMessage } from "./types";
+
 let ws: WebSocket | null = null;
 
+export type ConnectionStatus = "connecting" | "connected" | "disconnected" | "unauthenticated" | "error";
+
+interface SessionTokenResponse {
+  token: string;
+  expires_at: string;
+}
+
+// design doc §6, "Bridging the browser-held token to the WebSocket": the
+// httpOnly refresh cookie authenticates this call automatically
+// (credentials: "include"); the returned short-lived access JWT is what
+// IDENTIFY actually sends. Returns null (not a thrown error) when the
+// caller isn't logged in at all — that's an expected, common state here,
+// not a failure to log.
+async function fetchSessionToken(): Promise<string | null> {
+  const response = await fetch("/api/auth/session-token", { credentials: "include" });
+  if (!response.ok) {
+    return null;
+  }
+
+  const data = (await response.json()) as SessionTokenResponse;
+  return data.token;
+}
+
 export function connect(
-  onMessage: (msg: any) => void,
-  onStatus: (status: string) => void
+  onMessage: (msg: WireInboundMessage) => void,
+  onStatus: (status: ConnectionStatus) => void
 ): void {
-  const url =
-    process.env.NEXT_PUBLIC_GATEWAY_URL || "ws://localhost:8080"
+  onStatus("connecting");
 
-  ws = new WebSocket(url);
-
-  ws.onopen = () => {
-    onStatus("connected");
-    ws?.send(
-      JSON.stringify({
-        type: "HELLO",
-        version: "0.1",
-        client: "web"
-      })
-    );
-  };
-
-  ws.onmessage = (event) => {
-    try {
-      const message = JSON.parse(event.data);
-
-      if (message.type === "WELCOME") {
-        ws?.send(
-          JSON.stringify({
-            type: "IDENTIFY",
-            username: "web_user"
-          })
-        );
-      }
-
-      onMessage(message);
-    } catch (error) {
-      console.error("Failed to parse message:", error);
+  void (async () => {
+    const sessionToken = await fetchSessionToken();
+    if (!sessionToken) {
+      onStatus("unauthenticated");
+      return;
     }
-  };
 
-  ws.onclose = () => {
-    onStatus("disconnected");
-  };
+    const url = process.env.NEXT_PUBLIC_GATEWAY_URL || "ws://localhost:8080";
 
-  ws.onerror = () => {
-    onStatus("error");
-  };
+    ws = new WebSocket(url);
+
+    ws.onopen = () => {
+      onStatus("connected");
+      ws?.send(
+        JSON.stringify({
+          type: "HELLO",
+          version: "0.1",
+          client: "web"
+        })
+      );
+    };
+
+    ws.onmessage = (event) => {
+      try {
+        const message = JSON.parse(event.data) as WireInboundMessage;
+
+        if (message.type === "WELCOME") {
+          ws?.send(
+            JSON.stringify({
+              type: "IDENTIFY",
+              session_token: sessionToken
+            })
+          );
+        }
+
+        onMessage(message);
+      } catch (error) {
+        console.error("Failed to parse message:", error);
+      }
+    };
+
+    ws.onclose = () => {
+      onStatus("disconnected");
+    };
+
+    ws.onerror = () => {
+      onStatus("error");
+    };
+  })();
 }
 
 function send(payload: Record<string, unknown>): void {
