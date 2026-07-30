@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="shard" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#7C9CF6"/>
+      <stop offset="55%" stop-color="#5EEAD4"/>
+      <stop offset="100%" stop-color="#8B5CF6"/>
+    </linearGradient>
+    <radialGradient id="bg" cx="50%" cy="38%" r="80%">
+      <stop offset="0%" stop-color="#1A1C2E"/>
+      <stop offset="100%" stop-color="#0D0E18"/>
+    </radialGradient>
+    <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="5" result="b"/>
+      <feMerge>
+        <feMergeNode in="b"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+
+  <rect width="512" height="512" fill="url(#bg)"/>
+
+  <!-- Crystal shard outline (line art, no fill) -->
+  <g filter="url(#glow)">
+    <polygon points="256,72 336,168 306,352 256,432 206,352 176,168"
+             fill="none" stroke="url(#shard)" stroke-width="7" stroke-linejoin="round"/>
+    <!-- facet lines -->
+    <polyline points="176,168 256,196 336,168" fill="none" stroke="url(#shard)" stroke-width="3" opacity="0.75"/>
+    <polyline points="206,352 256,320 306,352" fill="none" stroke="url(#shard)" stroke-width="3" opacity="0.75"/>
+    <line x1="256" y1="196" x2="256" y2="320" stroke="url(#shard)" stroke-width="3" opacity="0.55"/>
+  </g>
+
+  <!-- The three-hop topology, running through the core -->
+  <line x1="256" y1="30" x2="256" y2="196" stroke="#4A4E72" stroke-width="5" stroke-dasharray="3 11" stroke-linecap="round"/>
+  <circle cx="256" cy="30" r="15" fill="#4A4E72"/>
+
+  <rect x="244" y="246" width="24" height="24" rx="5" fill="#EDEFFB" transform="rotate(45 256 258)"/>
+  <line x1="256" y1="320" x2="256" y2="462" stroke="#5EEAD4" stroke-width="6" stroke-linecap="round"/>
+  <circle cx="256" cy="462" r="26" stroke="#5EEAD4" stroke-width="3" fill="none" opacity="0.4"/>
+  <circle cx="256" cy="462" r="16" fill="#5EEAD4"/>
+</svg>
