@@ -36,12 +36,7 @@ jobs:
       - name: Test
         run: ctest --test-dir server/build
 
-      # continue-on-error: the repo has pre-existing clang-format drift
-      # (predates this workflow step) across roughly a dozen files unrelated
-      # to CI configuration. This step surfaces drift going forward without
-      # blocking the build on a backlog that's a separate cleanup task.
       - name: Check formatting
-        continue-on-error: true
         run: |
           find server/include server/src server/tests -type f \( -name '*.hpp' -o -name '*.cpp' \) -print0 \
             | xargs -0 clang-format --dry-run --Werror
