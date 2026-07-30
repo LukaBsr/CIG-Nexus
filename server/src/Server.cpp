@@ -137,8 +137,8 @@ void Server::hydrateGuildCatalog() {
         guild_manager_.upsertGuild(g.guild_id, g.name, g.owner_id);
     }
     for (const auto& c : catalog->channels) {
-        const guild::ChannelType type = c.channel_type == "VOICE" ? guild::ChannelType::VOICE
-                                                                   : guild::ChannelType::TEXT;
+        const guild::ChannelType type =
+            c.channel_type == "VOICE" ? guild::ChannelType::VOICE : guild::ChannelType::TEXT;
         guild_manager_.upsertChannel(c.channel_id, c.guild_id, c.name, type);
     }
     // catalog->memberships is deliberately not consulted here — durable

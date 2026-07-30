@@ -13,14 +13,13 @@
 namespace {
 
 uint64_t nowSeconds() {
-    return static_cast<uint64_t>(
-        std::chrono::duration_cast<std::chrono::seconds>(
-            std::chrono::system_clock::now().time_since_epoch())
-            .count());
+    return static_cast<uint64_t>(std::chrono::duration_cast<std::chrono::seconds>(
+                                     std::chrono::system_clock::now().time_since_epoch())
+                                     .count());
 }
 
 nlohmann::json validClaims(const std::string& sub = "u_11111111-1111-1111-1111-111111111111",
-                          const std::string& sid = "22222222-2222-2222-2222-222222222222") {
+                           const std::string& sid = "22222222-2222-2222-2222-222222222222") {
     return nlohmann::json{{"sub", sub},
                           {"discord_id", "999"},
                           {"username", "web_user"},
@@ -44,7 +43,8 @@ protocol::Message make_identify(const std::string& token) {
 
 } // namespace
 
-TEST_CASE("IdentifyHandler accepts a valid session_token and populates the session from its claims") {
+TEST_CASE(
+    "IdentifyHandler accepts a valid session_token and populates the session from its claims") {
     test_helpers::TestRsaKeyPair keys;
     auth::JwtVerifier verifier(keys.publicKeyPem());
 
@@ -153,7 +153,8 @@ TEST_CASE("IdentifyHandler rejects a token signed by an unrecognized key") {
     handler.setSessionManager(&sessions);
     handler.setJwtVerifier(&verifier);
 
-    const std::string token = test_helpers::signTestJwt(signing_keys.key, rs256Header(), validClaims());
+    const std::string token =
+        test_helpers::signTestJwt(signing_keys.key, rs256Header(), validClaims());
     const auto response = handler.handle(make_identify(token), 14);
 
     REQUIRE(response.type == "ERROR");

@@ -79,12 +79,14 @@ Message GuildHandler::handleCreateGuild(const Message& message, int fd) const {
     // cache/session state if that succeeds. The Postgres-assigned guild_id
     // and owner-membership row (created transactionally on the Next.js
     // side, rooms-spec.md decision #2) come back in the response.
-    const std::optional<http::WireGuild> created = internal_api_client_->createGuild(name, session->user_id);
+    const std::optional<http::WireGuild> created =
+        internal_api_client_->createGuild(name, session->user_id);
     if (!created) {
         return makeError("INTERNAL_ERROR", "Failed to persist new guild");
     }
 
-    guild::Guild& new_guild = guild_manager_->upsertGuild(created->guild_id, created->name, created->owner_id);
+    guild::Guild& new_guild =
+        guild_manager_->upsertGuild(created->guild_id, created->name, created->owner_id);
     session_manager_->addGuildMembership(fd, new_guild.id);
 
     Message response;

@@ -9,10 +9,9 @@
 namespace {
 
 uint64_t nowSeconds() {
-    return static_cast<uint64_t>(
-        std::chrono::duration_cast<std::chrono::seconds>(
-            std::chrono::system_clock::now().time_since_epoch())
-            .count());
+    return static_cast<uint64_t>(std::chrono::duration_cast<std::chrono::seconds>(
+                                     std::chrono::system_clock::now().time_since_epoch())
+                                     .count());
 }
 
 nlohmann::json validPayload() {
@@ -32,8 +31,7 @@ nlohmann::json rs256Header() {
 
 } // namespace
 
-TEST_CASE("JwtVerifier accepts a well-formed RS256 token and returns its claims",
-          "[JwtVerifier]") {
+TEST_CASE("JwtVerifier accepts a well-formed RS256 token and returns its claims", "[JwtVerifier]") {
     test_helpers::TestRsaKeyPair keys;
     auth::JwtVerifier verifier(keys.publicKeyPem());
 
@@ -81,7 +79,8 @@ TEST_CASE("JwtVerifier rejects a token signed by a different key", "[JwtVerifier
     test_helpers::TestRsaKeyPair other_keys;
     auth::JwtVerifier verifier(other_keys.publicKeyPem());
 
-    const std::string token = test_helpers::signTestJwt(signing_keys.key, rs256Header(), validPayload());
+    const std::string token =
+        test_helpers::signTestJwt(signing_keys.key, rs256Header(), validPayload());
 
     const auto verification = verifier.verify(token);
     CHECK(verification.result == auth::JwtVerifyResult::InvalidSignature);

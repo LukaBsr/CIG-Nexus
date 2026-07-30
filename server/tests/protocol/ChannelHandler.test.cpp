@@ -51,7 +51,8 @@ TEST_CASE("ChannelHandler LIST_CHANNELS returns channels for a guild member") {
     f.guilds.upsertChannel("c_1", "g_1", "general", guild::ChannelType::TEXT);
     f.sessions.addGuildMembership(1, "g_1");
 
-    const auto response = f.handler.handleListChannels(make_message("LIST_CHANNELS", {{"guild_id", "g_1"}}), 1);
+    const auto response =
+        f.handler.handleListChannels(make_message("LIST_CHANNELS", {{"guild_id", "g_1"}}), 1);
 
     REQUIRE(response.type == "CHANNEL_LIST");
     REQUIRE(response.payload["channels"].size() == 1);
@@ -63,7 +64,8 @@ TEST_CASE("ChannelHandler LIST_CHANNELS rejects a non-member") {
     f.identify(1, "alice");
     f.guilds.upsertGuild("g_1", "First", "u_owner");
 
-    const auto response = f.handler.handleListChannels(make_message("LIST_CHANNELS", {{"guild_id", "g_1"}}), 1);
+    const auto response =
+        f.handler.handleListChannels(make_message("LIST_CHANNELS", {{"guild_id", "g_1"}}), 1);
 
     REQUIRE(response.payload["code"] == "NOT_GUILD_MEMBER");
 }
@@ -72,7 +74,8 @@ TEST_CASE("ChannelHandler LIST_CHANNELS rejects unknown guild") {
     Fixture f;
     f.identify(1, "alice");
 
-    const auto response = f.handler.handleListChannels(make_message("LIST_CHANNELS", {{"guild_id", "g_404"}}), 1);
+    const auto response =
+        f.handler.handleListChannels(make_message("LIST_CHANNELS", {{"guild_id", "g_404"}}), 1);
 
     REQUIRE(response.payload["code"] == "GUILD_NOT_FOUND");
 }
@@ -86,7 +89,9 @@ TEST_CASE("ChannelHandler CREATE_CHANNEL by the owner notifies every guild membe
     f.sessions.addGuildMembership(2, "g_1");
 
     const auto response = f.handler.handleCreateChannel(
-        make_message("CREATE_CHANNEL", {{"guild_id", "g_1"}, {"name", "general"}, {"channel_type", "TEXT"}}), 1);
+        make_message("CREATE_CHANNEL",
+                     {{"guild_id", "g_1"}, {"name", "general"}, {"channel_type", "TEXT"}}),
+        1);
 
     REQUIRE(response.type == "CHANNEL_CREATED");
     REQUIRE(response.scope == protocol::Scope::TARGETED);
@@ -105,7 +110,9 @@ TEST_CASE("ChannelHandler CREATE_CHANNEL rejects a non-owner") {
     f.sessions.addGuildMembership(1, "g_1");
 
     const auto response = f.handler.handleCreateChannel(
-        make_message("CREATE_CHANNEL", {{"guild_id", "g_1"}, {"name", "general"}, {"channel_type", "TEXT"}}), 1);
+        make_message("CREATE_CHANNEL",
+                     {{"guild_id", "g_1"}, {"name", "general"}, {"channel_type", "TEXT"}}),
+        1);
 
     REQUIRE(response.payload["code"] == "NOT_GUILD_OWNER");
 }
@@ -116,7 +123,9 @@ TEST_CASE("ChannelHandler CREATE_CHANNEL rejects an invalid channel_type") {
     f.guilds.upsertGuild("g_1", "First", owner.user_id);
 
     const auto response = f.handler.handleCreateChannel(
-        make_message("CREATE_CHANNEL", {{"guild_id", "g_1"}, {"name", "general"}, {"channel_type", "VIDEO"}}), 1);
+        make_message("CREATE_CHANNEL",
+                     {{"guild_id", "g_1"}, {"name", "general"}, {"channel_type", "VIDEO"}}),
+        1);
 
     REQUIRE(response.payload["code"] == "MALFORMED_MESSAGE");
 }
@@ -129,7 +138,9 @@ TEST_CASE("ChannelHandler CREATE_CHANNEL returns INTERNAL_ERROR without mutating
     f.api.fail_create_channel = true;
 
     const auto response = f.handler.handleCreateChannel(
-        make_message("CREATE_CHANNEL", {{"guild_id", "g_1"}, {"name", "general"}, {"channel_type", "TEXT"}}), 1);
+        make_message("CREATE_CHANNEL",
+                     {{"guild_id", "g_1"}, {"name", "general"}, {"channel_type", "TEXT"}}),
+        1);
 
     REQUIRE(response.payload["code"] == "INTERNAL_ERROR");
     REQUIRE(f.guilds.listChannels("g_1").empty());
@@ -293,8 +304,10 @@ TEST_CASE("ChannelHandler CHANNEL_MESSAGE message_id increments across calls") {
     f.guilds.upsertChannel("c_1", "g_1", "general", guild::ChannelType::TEXT);
     f.sessions.setActiveChannel(1, "c_1");
 
-    const auto r1 = f.handler.handleChannelMessage(make_message("CHANNEL_MESSAGE", {{"content", "a"}}), 1);
-    const auto r2 = f.handler.handleChannelMessage(make_message("CHANNEL_MESSAGE", {{"content", "b"}}), 1);
+    const auto r1 =
+        f.handler.handleChannelMessage(make_message("CHANNEL_MESSAGE", {{"content", "a"}}), 1);
+    const auto r2 =
+        f.handler.handleChannelMessage(make_message("CHANNEL_MESSAGE", {{"content", "b"}}), 1);
 
     REQUIRE(r2.payload["message_id"].get<int>() == r1.payload["message_id"].get<int>() + 1);
 }

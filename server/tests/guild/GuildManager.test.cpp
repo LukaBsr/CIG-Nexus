@@ -53,7 +53,8 @@ TEST_CASE("GuildManager upsertChannel stores a channel scoped to its guild") {
     manager.upsertGuild("g_1", "First", "u_1");
 
     guild::Channel& c1 = manager.upsertChannel("c_1", "g_1", "general", guild::ChannelType::TEXT);
-    guild::Channel& c2 = manager.upsertChannel("c_2", "g_1", "voice-lounge", guild::ChannelType::VOICE);
+    guild::Channel& c2 =
+        manager.upsertChannel("c_2", "g_1", "voice-lounge", guild::ChannelType::VOICE);
 
     REQUIRE(c1.id == "c_1");
     REQUIRE(c1.guild_id == "g_1");

@@ -27,8 +27,8 @@ class GuildManager {
     // won't be queryable afterward.
     bool deleteGuild(const std::string& guild_id);
 
-    Channel& upsertChannel(const std::string& id, const std::string& guild_id, const std::string& name,
-                           ChannelType type);
+    Channel& upsertChannel(const std::string& id, const std::string& guild_id,
+                           const std::string& name, ChannelType type);
     bool deleteChannel(const std::string& channel_id);
 
     bool hasGuild(const std::string& guild_id) const;

@@ -8,7 +8,7 @@
 namespace session {
 class SessionManager;
 struct Session;
-}
+} // namespace session
 
 namespace guild {
 class GuildManager;

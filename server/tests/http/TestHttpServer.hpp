@@ -33,9 +33,7 @@ class TestHttpServer {
     TestHttpServer(const TestHttpServer&) = delete;
     TestHttpServer& operator=(const TestHttpServer&) = delete;
 
-    uint16_t port() const {
-        return port_;
-    }
+    uint16_t port() const { return port_; }
 
     std::string baseUrl() const;
 

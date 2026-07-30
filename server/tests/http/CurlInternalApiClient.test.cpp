@@ -57,7 +57,8 @@ TEST_CASE("CurlInternalApiClient::createGuild posts the expected JSON body and p
     CHECK(request->body.find("\"owner_id\":\"u_1\"") != std::string::npos);
 }
 
-TEST_CASE("CurlInternalApiClient::createGuild returns nullopt on a 400", "[CurlInternalApiClient]") {
+TEST_CASE("CurlInternalApiClient::createGuild returns nullopt on a 400",
+          "[CurlInternalApiClient]") {
     TestHttpServer server(400, R"({"error": "invalid request"})");
     http::CurlInternalApiClient client(server.baseUrl(), "test-secret");
 
@@ -112,7 +113,8 @@ TEST_CASE("CurlInternalApiClient::deleteMembership targets the composite path",
 TEST_CASE("CurlInternalApiClient::createChannel posts guild_id/name/channel_type",
           "[CurlInternalApiClient]") {
     TestHttpServer server(
-        201, R"({"channel_id": "c_5", "guild_id": "g_1", "name": "general", "channel_type": "TEXT"})");
+        201,
+        R"({"channel_id": "c_5", "guild_id": "g_1", "name": "general", "channel_type": "TEXT"})");
     http::CurlInternalApiClient client(server.baseUrl(), "test-secret");
 
     const auto channel = client.createChannel("g_1", "general", "TEXT");

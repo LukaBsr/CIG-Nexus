@@ -1,8 +1,8 @@
 #include "Server.hpp"
 #include "http/CurlInternalApiClient.hpp"
 
-#include <cstdlib>
 #include <csignal>
+#include <cstdlib>
 #include <fstream>
 #include <iostream>
 #include <memory>
@@ -84,8 +84,8 @@ int main(int argc, char* argv[]) {
         g_server = &server;
 
         server.configureAuth(jwt_public_key_pem);
-        server.setInternalApiClient(
-            std::make_unique<http::CurlInternalApiClient>(internal_api_base_url, internal_api_shared_secret));
+        server.setInternalApiClient(std::make_unique<http::CurlInternalApiClient>(
+            internal_api_base_url, internal_api_shared_secret));
 
         std::signal(SIGINT, handle_signal);
         std::signal(SIGTERM, handle_signal);

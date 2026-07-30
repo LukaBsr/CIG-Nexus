@@ -1,21 +1,18 @@
 #include <catch2/catch_test_macros.hpp>
 
-#include "protocol/handlers/ChatHandler.hpp"
 #include "protocol/Message.hpp"
+#include "protocol/handlers/ChatHandler.hpp"
 #include "session/SessionManager.hpp"
 
 TEST_CASE("ChatHandler accepts valid CHAT_MESSAGE") {
     protocol::ChatHandler handler;
-    
+
     protocol::Message message;
     message.type = "CHAT_MESSAGE";
-    message.payload = {
-        {"type", "CHAT_MESSAGE"},
-        {"content", "hello"}
-    };
-    
+    message.payload = {{"type", "CHAT_MESSAGE"}, {"content", "hello"}};
+
     const auto response = handler.handle(message, -1);
-    
+
     REQUIRE(response.type == "CHAT_MESSAGE");
     REQUIRE(response.scope == protocol::Scope::BROADCAST);
     REQUIRE(response.payload["content"] == "hello");
@@ -29,10 +26,7 @@ TEST_CASE("ChatHandler returns NOT_IDENTIFIED when session manager is set but se
 
     protocol::Message message;
     message.type = "CHAT_MESSAGE";
-    message.payload = {
-        {"type", "CHAT_MESSAGE"},
-        {"content", "hello"}
-    };
+    message.payload = {{"type", "CHAT_MESSAGE"}, {"content", "hello"}};
 
     const auto response = handler.handle(message, 55);
 
@@ -51,10 +45,7 @@ TEST_CASE("ChatHandler enriches message with user identity after IDENTIFY") {
 
     protocol::Message message;
     message.type = "CHAT_MESSAGE";
-    message.payload = {
-        {"type", "CHAT_MESSAGE"},
-        {"content", "hello world"}
-    };
+    message.payload = {{"type", "CHAT_MESSAGE"}, {"content", "hello world"}};
 
     const auto response = handler.handle(message, 77);
 
@@ -67,47 +58,39 @@ TEST_CASE("ChatHandler enriches message with user identity after IDENTIFY") {
 
 TEST_CASE("ChatHandler rejects CHAT_MESSAGE with missing content") {
     protocol::ChatHandler handler;
-    
+
     protocol::Message message;
     message.type = "CHAT_MESSAGE";
-    message.payload = {
-        {"type", "CHAT_MESSAGE"}
-    };
-    
+    message.payload = {{"type", "CHAT_MESSAGE"}};
+
     const auto response = handler.handle(message, -1);
-    
+
     REQUIRE(response.type == "ERROR");
     REQUIRE(response.payload["code"] == "MALFORMED_MESSAGE");
 }
 
 TEST_CASE("ChatHandler rejects CHAT_MESSAGE with non-string content") {
     protocol::ChatHandler handler;
-    
+
     protocol::Message message;
     message.type = "CHAT_MESSAGE";
-    message.payload = {
-        {"type", "CHAT_MESSAGE"},
-        {"content", 12345}
-    };
-    
+    message.payload = {{"type", "CHAT_MESSAGE"}, {"content", 12345}};
+
     const auto response = handler.handle(message, -1);
-    
+
     REQUIRE(response.type == "ERROR");
     REQUIRE(response.payload["code"] == "MALFORMED_MESSAGE");
 }
 
 TEST_CASE("ChatHandler rejects CHAT_MESSAGE with empty content") {
     protocol::ChatHandler handler;
-    
+
     protocol::Message message;
     message.type = "CHAT_MESSAGE";
-    message.payload = {
-        {"type", "CHAT_MESSAGE"},
-        {"content", ""}
-    };
-    
+    message.payload = {{"type", "CHAT_MESSAGE"}, {"content", ""}};
+
     const auto response = handler.handle(message, -1);
-    
+
     REQUIRE(response.type == "ERROR");
     REQUIRE(response.payload["code"] == "MALFORMED_MESSAGE");
 }
@@ -133,16 +116,13 @@ TEST_CASE("ChatHandler message_id increments across calls") {
 
 TEST_CASE("ChatHandler rejects CHAT_MESSAGE with oversized content") {
     protocol::ChatHandler handler;
-    
+
     protocol::Message message;
     message.type = "CHAT_MESSAGE";
-    message.payload = {
-        {"type", "CHAT_MESSAGE"},
-        {"content", std::string(501, 'a')}
-    };
-    
+    message.payload = {{"type", "CHAT_MESSAGE"}, {"content", std::string(501, 'a')}};
+
     const auto response = handler.handle(message, -1);
-    
+
     REQUIRE(response.type == "ERROR");
     REQUIRE(response.payload["code"] == "MALFORMED_MESSAGE");
 }

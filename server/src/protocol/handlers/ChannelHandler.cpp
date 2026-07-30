@@ -117,7 +117,8 @@ Message ChannelHandler::handleCreateChannel(const Message& message, int fd) cons
     }
 
     if (!message.payload.contains("channel_type") || !message.payload["channel_type"].is_string()) {
-        return makeError("MALFORMED_MESSAGE", "CREATE_CHANNEL missing required field: channel_type");
+        return makeError("MALFORMED_MESSAGE",
+                         "CREATE_CHANNEL missing required field: channel_type");
     }
 
     const std::string channel_type_str = message.payload["channel_type"].get<std::string>();
@@ -218,8 +219,8 @@ Message ChannelHandler::handleDeleteChannel(const Message& message, int fd) cons
     response.type = "CHANNEL_DELETED";
     response.scope = Scope::TARGETED;
     response.target_fds = target_fds;
-    response.payload =
-        nlohmann::json{{"type", "CHANNEL_DELETED"}, {"guild_id", guild_id}, {"channel_id", channel_id}};
+    response.payload = nlohmann::json{
+        {"type", "CHANNEL_DELETED"}, {"guild_id", guild_id}, {"channel_id", channel_id}};
     return response;
 }
 
