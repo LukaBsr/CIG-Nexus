@@ -146,3 +146,19 @@ Matching the discipline already established in `server/` and
 - CI/lint enforcement of any convention decided here (e.g. a
   naming-convention ESLint rule) is out of scope, consistent with
   `docs/architecture-audit.md` §5's note that no such rule exists today.
+
+## Deferred
+
+- **Guilds/channels layout rework.** The current structure (a fixed guild
+  rail, a channel-pill row, and a single message pane) is functional and
+  covers today's protocol surface, but several features expected to land
+  before it — guild/member avatars, a real member list, roles/permissions
+  beyond owner-only, `VOICE` channels becoming functional — would each
+  plausibly reshape it. Reworking the layout now, before that surface
+  exists, risks optimizing for a shape that's still moving; revisit once
+  those land rather than iterating on the rail/pill structure speculatively.
+- **Selectable themes.** The visual identity pass settled on one dark
+  theme, deliberately — the brand mark's own background is baked-in dark,
+  so a second (e.g. light) theme isn't a small variant of the first, it's
+  a second design pass. Out of scope until there's a concrete reason a
+  user would need it.
