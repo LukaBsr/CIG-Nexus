@@ -1,8 +1,11 @@
 # Guilds & Channels — Feature Spec
 
-> File is named `rooms-spec.md` per the original request; the feature itself
-> settled on a Discord-shaped model (**Guild → Channel**), not flat "rooms."
-> See [Terminology](#terminology) for why "Guild" was chosen over "Server."
+> Originally written as `rooms-spec.md` per the original request; the feature
+> itself settled on a Discord-shaped model (**Guild → Channel**), not flat
+> "rooms." Now at `docs/guilds/design.md` per the repository structure audit
+> (`docs/architecture-audit.md`), moved to match the code's own naming
+> (`server/include/guild/`, `server/src/guild/`). See
+> [Terminology](#terminology) for why "Guild" was chosen over "Server."
 
 **Status: implemented.** Server-side protocol landed in
 [PR #11](https://github.com/LukaBsr/CIG-Nexus/pull/11); the web client landed
@@ -645,7 +648,8 @@ sections:
 - A note under "Behavior Notes" documenting `Scope::TARGETED` alongside the
   existing `DIRECT`/`BROADCAST` explanation.
 
-`docs/architecture.md` and `docs/gateway-api.md` should also get short
-mentions of the guild/channel flow once implemented — not drafted here in
-full since their existing content is closer to prose summary than spec, and
-is easier to update accurately after the real implementation exists.
+`docs/architecture/overview.md` and `docs/architecture/gateway-transport.md`
+should also get short mentions of the guild/channel flow once implemented —
+not drafted here in full since their existing content is closer to prose
+summary than spec, and is easier to update accurately after the real
+implementation exists.

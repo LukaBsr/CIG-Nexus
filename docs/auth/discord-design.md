@@ -14,17 +14,17 @@ exclusively by the Next.js side.
 
 **Confirmed: Discord is used only as an identity provider.** "Their guilds"
 means CIG-Nexus's own `Guild`/`Channel` entities (the ones from
-[`rooms-spec.md`](rooms-spec.md)) — currently in-memory on the C++ server —
+[`../guilds/design.md`](../guilds/design.md)) — currently in-memory on the C++ server —
 now persisted in Postgres and scoped to the authenticated user. Discord
 OAuth's job stops at "prove this browser belongs to Discord user
 `123456789`." Why this reading is correct:
 
 - The requested schema — `users`, `guilds`, `guild_memberships`, `channels` —
-  is exactly CIG-Nexus's existing domain model from `rooms-spec.md`, not a
+  is exactly CIG-Nexus's existing domain model from `docs/guilds/design.md`, not a
   Discord-shaped one (Discord guilds don't have a single `owner_id` column
   that fits this app's ownership model, and Discord channels aren't `TEXT` /
   `VOICE` in the same sense CIG-Nexus's are).
-- `rooms-spec.md` explicitly chose the name "Guild" *specifically to avoid*
+- `docs/guilds/design.md` explicitly chose the name "Guild" *specifically to avoid*
   colliding with Discord's own vocabulary while building an independent,
   Discord-*inspired* model. Importing real Discord guild data would be a much
   larger, different feature and contradicts that prior decision.
@@ -195,7 +195,7 @@ CREATE TABLE sessions (
 CREATE INDEX idx_sessions_user_id ON sessions(user_id);
 CREATE INDEX idx_sessions_expires_at ON sessions(expires_at); -- for the expiry sweep job
 
--- CIG-Nexus's own Guild entity (rooms-spec.md), now durable.
+-- CIG-Nexus's own Guild entity (docs/guilds/design.md), now durable.
 CREATE TABLE guilds (
     id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     name        TEXT NOT NULL CHECK (char_length(name) BETWEEN 1 AND 64),
@@ -220,9 +220,9 @@ CREATE INDEX idx_guild_memberships_user_id ON guild_memberships(user_id);   -- "
 CREATE INDEX idx_guild_memberships_guild_id ON guild_memberships(guild_id); -- "list members of a guild"
 -- `role` is intentionally just today's owner/member split stored as data
 -- instead of derived from guilds.owner_id, so it's the seam the Future
--- Permission Hook (rooms-spec.md) can widen later without a schema change.
+-- Permission Hook (docs/guilds/design.md) can widen later without a schema change.
 -- It is NOT read as a real permission system yet — canCreateChannel/
--- canDeleteChannel still just check for 'owner', per rooms-spec.
+-- canDeleteChannel still just check for 'owner', per docs/guilds/design.md.
 
 CREATE TYPE channel_type AS ENUM ('TEXT', 'VOICE');
 
@@ -293,7 +293,7 @@ access/refresh split:
 
 The web client opens its WebSocket directly to the Gateway
 (`ws://localhost:8080`), not proxied through Next.js — that topology is
-unchanged (see [Architecture Doc](architecture.md)). That means the access
+unchanged (see [Architecture Doc](../architecture/overview.md)). That means the access
 JWT has to become readable by client-side JS at some point, since it's
 `IDENTIFY`'s payload, sent in-band over that direct WS connection — it can't
 stay purely httpOnly the way the refresh cookie does.
@@ -399,7 +399,7 @@ Postgres-backed source of truth instead of pure in-memory state (§8.1).
 ### `CHANNEL_MESSAGE` and `CHAT_MESSAGE` — per-channel scope
 
 `CHANNEL_MESSAGE` already uses `Scope::TARGETED`, delivered only to
-connections with that channel active (`rooms-spec.md`). Under persisted,
+connections with that channel active (`docs/guilds/design.md`). Under persisted,
 authenticated membership, that becomes the actual authorization boundary
 this system needed all along — `JOIN_CHANNEL` already requires guild
 membership (`NOT_GUILD_MEMBER`), and membership now comes from the durable
@@ -410,7 +410,7 @@ membership (`NOT_GUILD_MEMBER`), and membership now comes from the durable
 (you must be identified to send it at all, same `NOT_IDENTIFIED` check as
 today) rather than a per-message channel-membership check. It is not
 retired or folded into a "default" channel; it remains the fully separate,
-orthogonal capability `rooms-spec.md` decision #6 already established,
+orthogonal capability `docs/guilds/design.md` decision #6 already established,
 running alongside per-channel messaging (`CHANNEL_MESSAGE`) rather than
 being replaced by it.
 
@@ -459,7 +459,7 @@ longer the source of truth —
   locally first.
 
 This keeps the Gateway completely untouched (still a dumb byte pipe — the
-sanity check `rooms-spec.md` already used: "if implementing this needs
+sanity check `docs/guilds/design.md` already used: "if implementing this needs
 Gateway changes, the design leaked"), and keeps literal Postgres access
 inside Next.js only, at the cost of the C++ server gaining a new outbound
 HTTP client responsibility it doesn't have today (§8.2).
@@ -656,7 +656,7 @@ outage.
   speculatively.
 - **Permission system beyond owner/member.** `guild_memberships.role`
   reserves the column; the actual permission logic is still the Future
-  Permission Hook from `rooms-spec.md`, untouched.
+  Permission Hook from `docs/guilds/design.md`, untouched.
 - **Voice channel authentication/transport** — voice channels remain
   metadata-only, unaffected by this design.
 - **Desktop client** (`desktop/`) — not the active development path per
@@ -676,10 +676,10 @@ outage.
 
 ## Related Documentation
 
-- [`rooms-spec.md`](rooms-spec.md) — the guild/channel domain model this
+- [`../guilds/design.md`](../guilds/design.md) — the guild/channel domain model this
   design persists and authenticates against.
-- [`architecture.md`](architecture.md) — service responsibilities; this
+- [`../architecture/overview.md`](../architecture/overview.md) — service responsibilities; this
   design's "Gateway stays transport-only" constraint comes directly from
   here.
-- [`../shared/protocol/README.md`](../shared/protocol/README.md) — current
+- [`../../shared/protocol/README.md`](../../shared/protocol/README.md) — current
   wire protocol; §8 above is the delta this design proposes against it.

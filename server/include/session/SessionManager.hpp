@@ -27,7 +27,7 @@ class SessionManager {
 
     bool updateUsername(int socket_fd, const std::string& username);
 
-    // Guild/channel membership (see docs/rooms-spec.md). SessionManager owns
+    // Guild/channel membership (see docs/guilds/design.md). SessionManager owns
     // this because it's per-connection state, the same way username is.
     void addGuildMembership(int socket_fd, const std::string& guild_id);
     void removeGuildMembership(int socket_fd, const std::string& guild_id);

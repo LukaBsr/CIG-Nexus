@@ -103,7 +103,7 @@ the relevant subset of connections, not a full broadcast.
 
 See [../shared/protocol/README.md](../shared/protocol/README.md) for the
 full request/response shapes and validation rules, and
-[../docs/rooms-spec.md](../docs/rooms-spec.md) for the feature's design
+[../docs/guilds/design.md](../docs/guilds/design.md) for the feature's design
 rationale.
 
 ## Architecture Notes
@@ -174,12 +174,12 @@ Not implemented yet:
 - production-grade event loop and backpressure handling
 - TLS or encryption
 - reconnection or delivery guarantees above TCP
-- guild privacy and channel-creation permission delegation (see [../docs/rooms-spec.md](../docs/rooms-spec.md))
+- guild privacy and channel-creation permission delegation (see [../docs/guilds/design.md](../docs/guilds/design.md))
 
 ## Related Documentation
 
 - See [../shared/protocol/README.md](../shared/protocol/README.md) for wire protocol details.
-- See [../docs/architecture.md](../docs/architecture.md) for system-level architecture.
+- See [../docs/architecture/overview.md](../docs/architecture/overview.md) for system-level architecture.
 
 ## Notes
 

@@ -171,5 +171,5 @@ The gateway will be reachable at `ws://localhost:8080`.
 
 ## Related Documentation
 
-- See [../docs/gateway-api.md](../docs/gateway-api.md) for gateway transport behavior.
+- See [../docs/architecture/gateway-transport.md](../docs/architecture/gateway-transport.md) for gateway transport behavior.
 - See [../shared/protocol/README.md](../shared/protocol/README.md) for message framing and protocol payloads.

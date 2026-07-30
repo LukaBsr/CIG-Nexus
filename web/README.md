@@ -111,7 +111,7 @@ The current UI is intentionally minimal:
 - no message history persistence
 - no reconnection logic
 - no optimistic UI state
-- no guild privacy or channel-creation permission delegation (server doesn't support them yet — see [../docs/rooms-spec.md](../docs/rooms-spec.md))
+- no guild privacy or channel-creation permission delegation (server doesn't support them yet — see [../docs/guilds/design.md](../docs/guilds/design.md))
 - no leave/delete controls in the UI for guilds or channels (the underlying `gateway.ts` calls exist, just not wired into the UI yet)
 
 ## Docker

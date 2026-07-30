@@ -35,7 +35,7 @@ struct JwtVerification {
 // verification routine runs. This is the algorithm-pinning requirement from
 // §6/§9: a verifier that instead branched on the header's declared
 // algorithm would be vulnerable to algorithm-confusion attacks (including
-// "alg: none"). See docs/auth-discord-design.md §9.1 checklist.
+// "alg: none"). See docs/auth/discord-design.md §9.1 checklist.
 class JwtVerifier {
   public:
     // public_key_pem: an RS256 SPKI PEM public key (jose's importSPKI /
