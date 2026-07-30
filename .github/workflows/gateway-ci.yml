@@ -1,0 +1,37 @@
+name: Gateway CI
+
+on:
+  push:
+    paths:
+      - "gateway/**"
+      - ".github/workflows/gateway-ci.yml"
+  pull_request:
+    paths:
+      - "gateway/**"
+      - ".github/workflows/gateway-ci.yml"
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # 18, not 20: matches gateway/Dockerfile's node:18-alpine base image.
+      # Found to be mismatched (a copy-paste from web-ci.yml's original
+      # value) while diagnosing the same class of issue in web-ci.yml.
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+
+      - name: Install dependencies
+        run: |
+          cd gateway
+          npm install
+
+      - name: Build
+        run: |
+          cd gateway
+          npm run build

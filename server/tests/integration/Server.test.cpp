@@ -58,25 +58,21 @@ std::string recv_framed(int fd) {
 }
 
 uint64_t now_seconds() {
-    return static_cast<uint64_t>(
-        std::chrono::duration_cast<std::chrono::seconds>(
-            std::chrono::system_clock::now().time_since_epoch())
-            .count());
+    return static_cast<uint64_t>(std::chrono::duration_cast<std::chrono::seconds>(
+                                     std::chrono::system_clock::now().time_since_epoch())
+                                     .count());
 }
 
 // Signs a session_token for IDENTIFY (design doc §6/§8) — every caller in
 // this file shares one server-wide keypair (configured via
 // Server::configureAuth) but gets a distinct sub/username/sid per identity.
-std::string make_session_token(EVP_PKEY* key, const std::string& user_id, const std::string& username) {
+std::string make_session_token(EVP_PKEY* key, const std::string& user_id,
+                               const std::string& username) {
     nlohmann::json header{{"alg", "RS256"}, {"typ", "JWT"}};
-    nlohmann::json payload{{"sub", user_id},
-                          {"discord_id", user_id},
-                          {"username", username},
-                          {"sid", user_id + "-sid"},
-                          {"iat", now_seconds()},
-                          {"exp", now_seconds() + 900},
-                          {"iss", "cig-nexus-web"},
-                          {"aud", "cig-nexus-server"}};
+    nlohmann::json payload{{"sub", user_id},         {"discord_id", user_id},
+                           {"username", username},   {"sid", user_id + "-sid"},
+                           {"iat", now_seconds()},   {"exp", now_seconds() + 900},
+                           {"iss", "cig-nexus-web"}, {"aud", "cig-nexus-server"}};
     return test_helpers::signTestJwt(key, header, payload);
 }
 
@@ -236,7 +232,9 @@ TEST_CASE("Server delivers CHANNEL_MESSAGE only to connections with that channel
     // Shorten carol's timeout for the negative check so this test doesn't
     // eat the full 2s default SO_RCVTIMEO waiting for something that should
     // never arrive.
-    struct timeval short_tv{0, 300000};
+    struct timeval short_tv {
+        0, 300000
+    };
     ::setsockopt(fd_c, SOL_SOCKET, SO_RCVTIMEO, &short_tv, sizeof(short_tv));
     std::string c_response = recv_framed(fd_c);
 

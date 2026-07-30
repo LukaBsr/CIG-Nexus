@@ -20,7 +20,8 @@ class CurlInternalApiClient : public InternalApiClient {
     CurlInternalApiClient& operator=(const CurlInternalApiClient&) = delete;
 
     std::optional<Catalog> fetchCatalog() override;
-    std::optional<WireGuild> createGuild(const std::string& name, const std::string& owner_id) override;
+    std::optional<WireGuild> createGuild(const std::string& name,
+                                         const std::string& owner_id) override;
     bool deleteGuild(const std::string& guild_id) override;
     bool createMembership(const std::string& guild_id, const std::string& user_id,
                           const std::string& role) override;
@@ -29,7 +30,7 @@ class CurlInternalApiClient : public InternalApiClient {
                                              const std::string& channel_type) override;
     bool deleteChannel(const std::string& channel_id) override;
     std::vector<std::string> fetchRevokedSessionIds(const std::string& since_iso8601,
-                                                     std::string& out_as_of) override;
+                                                    std::string& out_as_of) override;
 
   private:
     struct HttpResponse {

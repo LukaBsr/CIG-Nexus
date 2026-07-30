@@ -23,7 +23,8 @@ struct TestRsaKeyPair {
 // Signs an arbitrary header/payload with the given private key — used to
 // build both well-formed test tokens and deliberately malformed ones (wrong
 // alg, expired, wrong audience) for JwtVerifier's tests.
-std::string signTestJwt(EVP_PKEY* private_key, const nlohmann::json& header, const nlohmann::json& payload);
+std::string signTestJwt(EVP_PKEY* private_key, const nlohmann::json& header,
+                        const nlohmann::json& payload);
 
 } // namespace test_helpers
 

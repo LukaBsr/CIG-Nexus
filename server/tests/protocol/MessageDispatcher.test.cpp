@@ -14,7 +14,7 @@ TEST_CASE("MessageDispatcher dispatches to registered handler") {
 
     protocol::Message message;
     message.type = "HELLO";
-    message.payload = { {"type", "HELLO"} };
+    message.payload = {{"type", "HELLO"}};
 
     const auto response = dispatcher.dispatch(message, -1);
 
@@ -26,7 +26,7 @@ TEST_CASE("MessageDispatcher throws on unknown message type") {
 
     protocol::Message message;
     message.type = "UNKNOWN";
-    message.payload = { {"type", "UNKNOWN"} };
+    message.payload = {{"type", "UNKNOWN"}};
 
     REQUIRE_THROWS(dispatcher.dispatch(message, -1));
 }
@@ -43,7 +43,7 @@ TEST_CASE("MessageDispatcher returns handler response") {
 
     protocol::Message message;
     message.type = "PING";
-    message.payload = { {"type", "PING"} };
+    message.payload = {{"type", "PING"}};
 
     const auto response = dispatcher.dispatch(message, -1);
 

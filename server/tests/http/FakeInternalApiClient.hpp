@@ -14,20 +14,17 @@ namespace test_helpers {
 // cache/session updates), not HTTP mechanics.
 class FakeInternalApiClient : public http::InternalApiClient {
   public:
-    std::optional<http::Catalog> fetchCatalog() override {
-        return catalog_to_return;
-    }
+    std::optional<http::Catalog> fetchCatalog() override { return catalog_to_return; }
 
-    std::optional<http::WireGuild> createGuild(const std::string& name, const std::string& owner_id) override {
+    std::optional<http::WireGuild> createGuild(const std::string& name,
+                                               const std::string& owner_id) override {
         if (fail_create_guild) {
             return std::nullopt;
         }
         return http::WireGuild{"g_fake_" + std::to_string(next_guild_id_++), name, owner_id};
     }
 
-    bool deleteGuild(const std::string&) override {
-        return !fail_delete_guild;
-    }
+    bool deleteGuild(const std::string&) override { return !fail_delete_guild; }
 
     bool createMembership(const std::string&, const std::string&, const std::string&) override {
         return !fail_create_membership;
@@ -37,7 +34,8 @@ class FakeInternalApiClient : public http::InternalApiClient {
         return !fail_delete_membership;
     }
 
-    std::optional<http::WireChannel> createChannel(const std::string& guild_id, const std::string& name,
+    std::optional<http::WireChannel> createChannel(const std::string& guild_id,
+                                                   const std::string& name,
                                                    const std::string& channel_type) override {
         if (fail_create_channel) {
             return std::nullopt;
@@ -46,11 +44,10 @@ class FakeInternalApiClient : public http::InternalApiClient {
                                  channel_type};
     }
 
-    bool deleteChannel(const std::string&) override {
-        return !fail_delete_channel;
-    }
+    bool deleteChannel(const std::string&) override { return !fail_delete_channel; }
 
-    std::vector<std::string> fetchRevokedSessionIds(const std::string&, std::string& out_as_of) override {
+    std::vector<std::string> fetchRevokedSessionIds(const std::string&,
+                                                    std::string& out_as_of) override {
         out_as_of.clear();
         return {};
     }

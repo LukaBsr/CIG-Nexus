@@ -24,7 +24,8 @@ std::optional<WireGuild> parseWireGuild(const nlohmann::json& json) {
         !json.contains("owner_id")) {
         return std::nullopt;
     }
-    if (!json["guild_id"].is_string() || !json["name"].is_string() || !json["owner_id"].is_string()) {
+    if (!json["guild_id"].is_string() || !json["name"].is_string() ||
+        !json["owner_id"].is_string()) {
         return std::nullopt;
     }
     return WireGuild{json["guild_id"].get<std::string>(), json["name"].get<std::string>(),
@@ -36,8 +37,8 @@ std::optional<WireChannel> parseWireChannel(const nlohmann::json& json) {
         !json.contains("name") || !json.contains("channel_type")) {
         return std::nullopt;
     }
-    if (!json["channel_id"].is_string() || !json["guild_id"].is_string() || !json["name"].is_string() ||
-        !json["channel_type"].is_string()) {
+    if (!json["channel_id"].is_string() || !json["guild_id"].is_string() ||
+        !json["name"].is_string() || !json["channel_type"].is_string()) {
         return std::nullopt;
     }
     return WireChannel{json["channel_id"].get<std::string>(), json["guild_id"].get<std::string>(),
@@ -47,11 +48,11 @@ std::optional<WireChannel> parseWireChannel(const nlohmann::json& json) {
 } // namespace
 
 CurlInternalApiClient::CurlInternalApiClient(std::string base_url, std::string shared_secret)
-    : base_url_(std::move(base_url)), shared_secret_(std::move(shared_secret)) {
-}
+    : base_url_(std::move(base_url)), shared_secret_(std::move(shared_secret)) {}
 
-std::optional<CurlInternalApiClient::HttpResponse> CurlInternalApiClient::request(
-    const std::string& method, const std::string& path, const std::string& body) const {
+std::optional<CurlInternalApiClient::HttpResponse>
+CurlInternalApiClient::request(const std::string& method, const std::string& path,
+                               const std::string& body) const {
     CURL* curl = curl_easy_init();
     if (!curl) {
         return std::nullopt;
@@ -153,14 +154,15 @@ bool CurlInternalApiClient::deleteGuild(const std::string& guild_id) {
     return response && response->status == 200;
 }
 
-bool CurlInternalApiClient::createMembership(const std::string& guild_id, const std::string& user_id,
-                                             const std::string& role) {
+bool CurlInternalApiClient::createMembership(const std::string& guild_id,
+                                             const std::string& user_id, const std::string& role) {
     const nlohmann::json body{{"guild_id", guild_id}, {"user_id", user_id}, {"role", role}};
     const auto response = request("POST", "/internal/guild-memberships", body.dump());
     return response && response->status == 201;
 }
 
-bool CurlInternalApiClient::deleteMembership(const std::string& guild_id, const std::string& user_id) {
+bool CurlInternalApiClient::deleteMembership(const std::string& guild_id,
+                                             const std::string& user_id) {
     const auto response =
         request("DELETE", "/internal/guild-memberships/" + guild_id + "/" + user_id, "");
     return response && response->status == 200;
@@ -169,7 +171,8 @@ bool CurlInternalApiClient::deleteMembership(const std::string& guild_id, const 
 std::optional<WireChannel> CurlInternalApiClient::createChannel(const std::string& guild_id,
                                                                 const std::string& name,
                                                                 const std::string& channel_type) {
-    const nlohmann::json body{{"guild_id", guild_id}, {"name", name}, {"channel_type", channel_type}};
+    const nlohmann::json body{
+        {"guild_id", guild_id}, {"name", name}, {"channel_type", channel_type}};
     const auto response = request("POST", "/internal/channels", body.dump());
     if (!response || response->status != 201) {
         return std::nullopt;
@@ -187,9 +190,11 @@ bool CurlInternalApiClient::deleteChannel(const std::string& channel_id) {
     return response && response->status == 200;
 }
 
-std::vector<std::string> CurlInternalApiClient::fetchRevokedSessionIds(const std::string& since_iso8601,
-                                                                        std::string& out_as_of) {
-    char* escaped = curl_easy_escape(nullptr, since_iso8601.c_str(), static_cast<int>(since_iso8601.size()));
+std::vector<std::string>
+CurlInternalApiClient::fetchRevokedSessionIds(const std::string& since_iso8601,
+                                              std::string& out_as_of) {
+    char* escaped =
+        curl_easy_escape(nullptr, since_iso8601.c_str(), static_cast<int>(since_iso8601.size()));
     const std::string query = escaped ? std::string(escaped) : since_iso8601;
     if (escaped) {
         curl_free(escaped);

@@ -146,7 +146,8 @@ TEST_CASE("Connection readFromSocket returns false on a clean disconnect") {
     REQUIRE_FALSE(conn.readFromSocket());
 }
 
-TEST_CASE("Connection readFromSocket returns false, without throwing, when the peer resets the connection") {
+TEST_CASE("Connection readFromSocket returns false, without throwing, when the peer resets the "
+          "connection") {
     auto [server_fd, peer_fd] = make_tcp_pair();
     set_nonblocking(server_fd);
     Connection conn(server_fd);
@@ -154,7 +155,9 @@ TEST_CASE("Connection readFromSocket returns false, without throwing, when the p
     // SO_LINGER with a zero timeout forces an abortive close (RST) instead
     // of a clean FIN, so the next recv() on server_fd fails with
     // ECONNRESET rather than returning 0.
-    struct linger sl{1, 0};
+    struct linger sl {
+        1, 0
+    };
     ::setsockopt(peer_fd, SOL_SOCKET, SO_LINGER, &sl, sizeof(sl));
     ::close(peer_fd);
 

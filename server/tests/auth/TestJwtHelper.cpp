@@ -59,7 +59,8 @@ std::string TestRsaKeyPair::publicKeyPem() const {
     return pem;
 }
 
-std::string signTestJwt(EVP_PKEY* private_key, const nlohmann::json& header, const nlohmann::json& payload) {
+std::string signTestJwt(EVP_PKEY* private_key, const nlohmann::json& header,
+                        const nlohmann::json& payload) {
     const std::string header_b64 = base64UrlEncode(header.dump());
     const std::string payload_b64 = base64UrlEncode(payload.dump());
     const std::string signing_input = header_b64 + "." + payload_b64;
@@ -71,11 +72,13 @@ std::string signTestJwt(EVP_PKEY* private_key, const nlohmann::json& header, con
 
     size_t sig_len = 0;
     EVP_DigestSign(mdctx, nullptr, &sig_len,
-                   reinterpret_cast<const unsigned char*>(signing_input.data()), signing_input.size());
+                   reinterpret_cast<const unsigned char*>(signing_input.data()),
+                   signing_input.size());
 
     std::vector<unsigned char> signature(sig_len);
     EVP_DigestSign(mdctx, signature.data(), &sig_len,
-                   reinterpret_cast<const unsigned char*>(signing_input.data()), signing_input.size());
+                   reinterpret_cast<const unsigned char*>(signing_input.data()),
+                   signing_input.size());
     signature.resize(sig_len);
 
     EVP_MD_CTX_free(mdctx);

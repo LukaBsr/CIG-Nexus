@@ -47,11 +47,13 @@ TEST_CASE("GuildHandler CREATE_GUILD creates and auto-joins the creator") {
     Fixture f;
     f.identify(1, "alice");
 
-    const auto response = f.handler.handleCreateGuild(make_message("CREATE_GUILD", {{"name", "My Guild"}}), 1);
+    const auto response =
+        f.handler.handleCreateGuild(make_message("CREATE_GUILD", {{"name", "My Guild"}}), 1);
 
     REQUIRE(response.type == "GUILD_CREATED");
     REQUIRE(response.payload["name"] == "My Guild");
-    REQUIRE(response.payload["guild_id"] == "g_fake_1"); // assigned by (fake) InternalApiClient, not locally
+    REQUIRE(response.payload["guild_id"] ==
+            "g_fake_1"); // assigned by (fake) InternalApiClient, not locally
     REQUIRE(response.payload["owner_id"] == f.sessions.getSession(1)->user_id);
 
     REQUIRE(f.sessions.isMemberOfGuild(1, "g_fake_1"));
@@ -61,7 +63,8 @@ TEST_CASE("GuildHandler CREATE_GUILD creates and auto-joins the creator") {
 TEST_CASE("GuildHandler CREATE_GUILD requires identification") {
     Fixture f;
 
-    const auto response = f.handler.handleCreateGuild(make_message("CREATE_GUILD", {{"name", "X"}}), 1);
+    const auto response =
+        f.handler.handleCreateGuild(make_message("CREATE_GUILD", {{"name", "X"}}), 1);
 
     REQUIRE(response.type == "ERROR");
     REQUIRE(response.payload["code"] == "NOT_IDENTIFIED");
@@ -74,18 +77,20 @@ TEST_CASE("GuildHandler CREATE_GUILD rejects empty and oversized names") {
     const auto empty = f.handler.handleCreateGuild(make_message("CREATE_GUILD", {{"name", ""}}), 1);
     REQUIRE(empty.payload["code"] == "MALFORMED_MESSAGE");
 
-    const auto oversized =
-        f.handler.handleCreateGuild(make_message("CREATE_GUILD", {{"name", std::string(65, 'x')}}), 1);
+    const auto oversized = f.handler.handleCreateGuild(
+        make_message("CREATE_GUILD", {{"name", std::string(65, 'x')}}), 1);
     REQUIRE(oversized.payload["code"] == "MALFORMED_MESSAGE");
 }
 
-TEST_CASE("GuildHandler CREATE_GUILD returns INTERNAL_ERROR without mutating state when the internal "
-          "API call fails") {
+TEST_CASE(
+    "GuildHandler CREATE_GUILD returns INTERNAL_ERROR without mutating state when the internal "
+    "API call fails") {
     Fixture f;
     f.identify(1, "alice");
     f.api.fail_create_guild = true;
 
-    const auto response = f.handler.handleCreateGuild(make_message("CREATE_GUILD", {{"name", "My Guild"}}), 1);
+    const auto response =
+        f.handler.handleCreateGuild(make_message("CREATE_GUILD", {{"name", "My Guild"}}), 1);
 
     REQUIRE(response.type == "ERROR");
     REQUIRE(response.payload["code"] == "INTERNAL_ERROR");
@@ -119,7 +124,8 @@ TEST_CASE("GuildHandler JOIN_GUILD adds membership and returns the channel list"
     f.guilds.upsertGuild("g_1", "First", "u_owner");
     f.guilds.upsertChannel("c_1", "g_1", "general", guild::ChannelType::TEXT);
 
-    const auto response = f.handler.handleJoinGuild(make_message("JOIN_GUILD", {{"guild_id", "g_1"}}), 1);
+    const auto response =
+        f.handler.handleJoinGuild(make_message("JOIN_GUILD", {{"guild_id", "g_1"}}), 1);
 
     REQUIRE(response.type == "GUILD_JOINED");
     REQUIRE(response.payload["guild_id"] == "g_1");
@@ -133,7 +139,8 @@ TEST_CASE("GuildHandler JOIN_GUILD rejects unknown guild") {
     Fixture f;
     f.identify(1, "alice");
 
-    const auto response = f.handler.handleJoinGuild(make_message("JOIN_GUILD", {{"guild_id", "g_404"}}), 1);
+    const auto response =
+        f.handler.handleJoinGuild(make_message("JOIN_GUILD", {{"guild_id", "g_404"}}), 1);
 
     REQUIRE(response.payload["code"] == "GUILD_NOT_FOUND");
 }
@@ -144,25 +151,29 @@ TEST_CASE("GuildHandler JOIN_GUILD rejects double-join") {
     f.guilds.upsertGuild("g_1", "First", "u_owner");
     f.sessions.addGuildMembership(1, "g_1");
 
-    const auto response = f.handler.handleJoinGuild(make_message("JOIN_GUILD", {{"guild_id", "g_1"}}), 1);
+    const auto response =
+        f.handler.handleJoinGuild(make_message("JOIN_GUILD", {{"guild_id", "g_1"}}), 1);
 
     REQUIRE(response.payload["code"] == "PROTOCOL_VIOLATION");
 }
 
-TEST_CASE("GuildHandler JOIN_GUILD returns INTERNAL_ERROR without mutating state when the internal API "
-          "call fails") {
+TEST_CASE(
+    "GuildHandler JOIN_GUILD returns INTERNAL_ERROR without mutating state when the internal API "
+    "call fails") {
     Fixture f;
     f.identify(1, "alice");
     f.guilds.upsertGuild("g_1", "First", "u_owner");
     f.api.fail_create_membership = true;
 
-    const auto response = f.handler.handleJoinGuild(make_message("JOIN_GUILD", {{"guild_id", "g_1"}}), 1);
+    const auto response =
+        f.handler.handleJoinGuild(make_message("JOIN_GUILD", {{"guild_id", "g_1"}}), 1);
 
     REQUIRE(response.payload["code"] == "INTERNAL_ERROR");
     REQUIRE_FALSE(f.sessions.isMemberOfGuild(1, "g_1"));
 }
 
-TEST_CASE("GuildHandler LEAVE_GUILD removes membership and notifies remaining members, including the leaver") {
+TEST_CASE("GuildHandler LEAVE_GUILD removes membership and notifies remaining members, including "
+          "the leaver") {
     Fixture f;
     session::Session& owner = f.identify(1, "owner");
     f.identify(2, "member");
@@ -173,7 +184,8 @@ TEST_CASE("GuildHandler LEAVE_GUILD removes membership and notifies remaining me
     f.guilds.upsertChannel("c_1", "g_1", "general", guild::ChannelType::TEXT);
     f.sessions.setActiveChannel(2, "c_1"); // member is actively in this guild's channel
 
-    const auto response = f.handler.handleLeaveGuild(make_message("LEAVE_GUILD", {{"guild_id", "g_1"}}), 2);
+    const auto response =
+        f.handler.handleLeaveGuild(make_message("LEAVE_GUILD", {{"guild_id", "g_1"}}), 2);
 
     REQUIRE(response.type == "MEMBER_LEFT");
     REQUIRE(response.scope == protocol::Scope::TARGETED);
@@ -195,7 +207,8 @@ TEST_CASE("GuildHandler LEAVE_GUILD rejects the owner leaving their own guild") 
     f.guilds.upsertGuild("g_1", "First", owner.user_id);
     f.sessions.addGuildMembership(1, "g_1");
 
-    const auto response = f.handler.handleLeaveGuild(make_message("LEAVE_GUILD", {{"guild_id", "g_1"}}), 1);
+    const auto response =
+        f.handler.handleLeaveGuild(make_message("LEAVE_GUILD", {{"guild_id", "g_1"}}), 1);
 
     REQUIRE(response.payload["code"] == "PROTOCOL_VIOLATION");
     REQUIRE(f.sessions.isMemberOfGuild(1, "g_1")); // unchanged
@@ -206,20 +219,23 @@ TEST_CASE("GuildHandler LEAVE_GUILD rejects a non-member") {
     f.identify(1, "alice");
     f.guilds.upsertGuild("g_1", "First", "u_owner");
 
-    const auto response = f.handler.handleLeaveGuild(make_message("LEAVE_GUILD", {{"guild_id", "g_1"}}), 1);
+    const auto response =
+        f.handler.handleLeaveGuild(make_message("LEAVE_GUILD", {{"guild_id", "g_1"}}), 1);
 
     REQUIRE(response.payload["code"] == "NOT_GUILD_MEMBER");
 }
 
-TEST_CASE("GuildHandler LEAVE_GUILD returns INTERNAL_ERROR without mutating state when the internal API "
-          "call fails") {
+TEST_CASE(
+    "GuildHandler LEAVE_GUILD returns INTERNAL_ERROR without mutating state when the internal API "
+    "call fails") {
     Fixture f;
     f.identify(1, "alice");
     f.guilds.upsertGuild("g_1", "First", "u_owner");
     f.sessions.addGuildMembership(1, "g_1");
     f.api.fail_delete_membership = true;
 
-    const auto response = f.handler.handleLeaveGuild(make_message("LEAVE_GUILD", {{"guild_id", "g_1"}}), 1);
+    const auto response =
+        f.handler.handleLeaveGuild(make_message("LEAVE_GUILD", {{"guild_id", "g_1"}}), 1);
 
     REQUIRE(response.payload["code"] == "INTERNAL_ERROR");
     REQUIRE(f.sessions.isMemberOfGuild(1, "g_1")); // unchanged
@@ -236,7 +252,8 @@ TEST_CASE("GuildHandler DELETE_GUILD cascades and notifies all members") {
     f.guilds.upsertChannel("c_1", "g_1", "general", guild::ChannelType::TEXT);
     f.sessions.setActiveChannel(2, "c_1");
 
-    const auto response = f.handler.handleDeleteGuild(make_message("DELETE_GUILD", {{"guild_id", "g_1"}}), 1);
+    const auto response =
+        f.handler.handleDeleteGuild(make_message("DELETE_GUILD", {{"guild_id", "g_1"}}), 1);
 
     REQUIRE(response.type == "GUILD_DELETED");
     REQUIRE(response.scope == protocol::Scope::TARGETED);
@@ -255,23 +272,26 @@ TEST_CASE("GuildHandler DELETE_GUILD rejects a non-owner") {
     f.guilds.upsertGuild("g_1", "First", "u_owner");
     f.sessions.addGuildMembership(1, "g_1");
 
-    const auto response = f.handler.handleDeleteGuild(make_message("DELETE_GUILD", {{"guild_id", "g_1"}}), 1);
+    const auto response =
+        f.handler.handleDeleteGuild(make_message("DELETE_GUILD", {{"guild_id", "g_1"}}), 1);
 
     REQUIRE(response.payload["code"] == "NOT_GUILD_OWNER");
     REQUIRE(f.guilds.hasGuild("g_1")); // unchanged
 }
 
-TEST_CASE("GuildHandler DELETE_GUILD returns INTERNAL_ERROR without mutating state when the internal "
-          "API call fails") {
+TEST_CASE(
+    "GuildHandler DELETE_GUILD returns INTERNAL_ERROR without mutating state when the internal "
+    "API call fails") {
     Fixture f;
     session::Session& owner = f.identify(1, "owner");
     f.guilds.upsertGuild("g_1", "First", owner.user_id);
     f.sessions.addGuildMembership(1, "g_1");
     f.api.fail_delete_guild = true;
 
-    const auto response = f.handler.handleDeleteGuild(make_message("DELETE_GUILD", {{"guild_id", "g_1"}}), 1);
+    const auto response =
+        f.handler.handleDeleteGuild(make_message("DELETE_GUILD", {{"guild_id", "g_1"}}), 1);
 
     REQUIRE(response.payload["code"] == "INTERNAL_ERROR");
-    REQUIRE(f.guilds.hasGuild("g_1")); // unchanged
+    REQUIRE(f.guilds.hasGuild("g_1"));             // unchanged
     REQUIRE(f.sessions.isMemberOfGuild(1, "g_1")); // unchanged
 }
