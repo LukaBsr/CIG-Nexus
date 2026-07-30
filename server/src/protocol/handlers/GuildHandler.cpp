@@ -78,7 +78,7 @@ Message GuildHandler::handleCreateGuild(const Message& message, int fd) const {
     // Write-through: persist first (design doc §8.1), only touch the local
     // cache/session state if that succeeds. The Postgres-assigned guild_id
     // and owner-membership row (created transactionally on the Next.js
-    // side, rooms-spec.md decision #2) come back in the response.
+    // side, docs/guilds/design.md decision #2) come back in the response.
     const std::optional<http::WireGuild> created =
         internal_api_client_->createGuild(name, session->user_id);
     if (!created) {

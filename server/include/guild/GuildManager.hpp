@@ -48,7 +48,7 @@ class GuildManager {
     // future permission system (delegated channel-creation rights) only
     // needs to change these two methods' implementation; nothing in
     // ChannelHandler or the protocol itself should need to change.
-    // See docs/rooms-spec.md, "Future Permission Hook".
+    // See docs/guilds/design.md, "Future Permission Hook".
     bool canCreateChannel(const std::string& guild_id, const std::string& user_id) const;
     bool canDeleteChannel(const std::string& guild_id, const std::string& user_id) const;
 

@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 300" width="1000" height="300">
+  <defs>
+    <linearGradient id="shard" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#7C9CF6"/>
+      <stop offset="55%" stop-color="#5EEAD4"/>
+      <stop offset="100%" stop-color="#8B5CF6"/>
+    </linearGradient>
+    <linearGradient id="wordGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#EDEFFB"/>
+      <stop offset="100%" stop-color="#C9CEEF"/>
+    </linearGradient>
+    <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="4" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+
+  <rect width="1000" height="300" fill="#0D0E18"/>
+
+  <!-- Crystal mark, left -->
+  <g transform="translate(20 -40) scale(0.62)">
+    <g filter="url(#glow)">
+      <polygon points="256,72 336,168 306,352 256,432 206,352 176,168"
+               fill="none" stroke="url(#shard)" stroke-width="9" stroke-linejoin="round"/>
+      <polyline points="176,168 256,196 336,168" fill="none" stroke="url(#shard)" stroke-width="4" opacity="0.75"/>
+      <polyline points="206,352 256,320 306,352" fill="none" stroke="url(#shard)" stroke-width="4" opacity="0.75"/>
+      <line x1="256" y1="196" x2="256" y2="320" stroke="url(#shard)" stroke-width="4" opacity="0.55"/>
+    </g>
+    <line x1="256" y1="30" x2="256" y2="196" stroke="#4A4E72" stroke-width="6" stroke-dasharray="3 12" stroke-linecap="round"/>
+    <circle cx="256" cy="30" r="17" fill="#4A4E72"/>
+    <rect x="244" y="246" width="26" height="26" rx="5" fill="#EDEFFB" transform="rotate(45 256 258)"/>
+    <line x1="256" y1="320" x2="256" y2="462" stroke="#5EEAD4" stroke-width="7" stroke-linecap="round"/>
+    <circle cx="256" cy="462" r="30" stroke="#5EEAD4" stroke-width="3" fill="none" opacity="0.4"/>
+    <circle cx="256" cy="462" r="18" fill="#5EEAD4"/>
+  </g>
+
+  <!-- Wordmark, right -->
+  <text x="330" y="150" font-family="ui-monospace, 'JetBrains Mono', 'SF Mono', Menlo, Consolas, monospace"
+        font-size="52" font-weight="800" letter-spacing="6" fill="url(#wordGrad)" transform="skewX(-6)">CIG</text>
+  <text x="330" y="210" font-family="ui-monospace, 'JetBrains Mono', 'SF Mono', Menlo, Consolas, monospace"
+        font-size="72" font-weight="800" letter-spacing="4" fill="url(#shard)" transform="skewX(-6)">NEXUS</text>
+</svg>

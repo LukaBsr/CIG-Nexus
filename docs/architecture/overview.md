@@ -111,8 +111,8 @@ Responsible for:
    leaving, a guild being deleted) are also `Scope::TARGETED`, delivered to
    every current member rather than every connection.
 
-See [../shared/protocol/README.md](../shared/protocol/README.md) for the
-full message-by-message protocol and [rooms-spec.md](rooms-spec.md) for
+See [../../shared/protocol/README.md](../../shared/protocol/README.md) for the
+full message-by-message protocol and [../guilds/design.md](../guilds/design.md) for
 the feature's design rationale.
 
 ## Protocol Transport
@@ -156,7 +156,7 @@ Not implemented yet:
 - persistence layer
 - native WebSocket support in the C++ server
 - production-grade scalability and hardening
-- guild privacy and channel-creation permission delegation (see [rooms-spec.md](rooms-spec.md), "Deferred: Guild Privacy" and "Future Permission Hook")
+- guild privacy and channel-creation permission delegation (see [../guilds/design.md](../guilds/design.md), "Deferred: Guild Privacy" and "Future Permission Hook")
 
 ## Desktop Client Status
 
@@ -177,8 +177,8 @@ Desktop integration is not the primary active path at this stage.
 
 ## Related Documentation
 
-- See [../shared/protocol/README.md](../shared/protocol/README.md) for wire-level protocol behavior.
-- See [../gateway/README.md](../gateway/README.md) for gateway implementation notes.
-- See [../server/README.md](../server/README.md) for backend implementation details.
-- See [gateway-api.md](gateway-api.md) for the gateway's transport contract.
-- See [rooms-spec.md](rooms-spec.md) for the guilds/channels feature's design rationale.
+- See [../../shared/protocol/README.md](../../shared/protocol/README.md) for wire-level protocol behavior.
+- See [../../gateway/README.md](../../gateway/README.md) for gateway implementation notes.
+- See [../../server/README.md](../../server/README.md) for backend implementation details.
+- See [gateway-transport.md](gateway-transport.md) for the gateway's transport contract.
+- See [../guilds/design.md](../guilds/design.md) for the guilds/channels feature's design rationale.

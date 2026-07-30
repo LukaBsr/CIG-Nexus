@@ -93,7 +93,7 @@ Client to server:
 `session_token` is the short-lived RS256 access JWT issued by the web
 client's `/api/auth/session-token` endpoint after a completed Discord
 OAuth2 login — not a client-chosen value. See
-`docs/auth-discord-design.md` §6/§8 for the full issuance flow and claim
+`docs/auth/discord-design.md` §6/§8 for the full issuance flow and claim
 shape.
 
 Validation:
@@ -516,8 +516,8 @@ Current error codes used by the implementation:
 Current implementation limitations:
 
 - no authentication
-- no authorization — guild ownership is the only access control that exists, and it is not delegable yet (see `docs/rooms-spec.md`, "Future Permission Hook")
-- no guild privacy — `LIST_GUILDS` returns every guild, and any identified client can `JOIN_GUILD` any of them (see `docs/rooms-spec.md`, "Deferred: Guild Privacy")
+- no authorization — guild ownership is the only access control that exists, and it is not delegable yet (see `docs/guilds/design.md`, "Future Permission Hook")
+- no guild privacy — `LIST_GUILDS` returns every guild, and any identified client can `JOIN_GUILD` any of them (see `docs/guilds/design.md`, "Deferred: Guild Privacy")
 - `VOICE` channels are metadata-only: the type is modeled and validated, but there is no audio transport or voice presence
 - no TLS
 - no rate limiting
@@ -529,4 +529,4 @@ Do not treat the current protocol as production-ready for untrusted environments
 
 - See [../../gateway/README.md](../../gateway/README.md) for gateway transport behavior.
 - See [../../server/README.md](../../server/README.md) for current server implementation details.
-- See [../../docs/rooms-spec.md](../../docs/rooms-spec.md) for the guild/channel feature's design rationale, data model, and deferred work (permissions, privacy).
+- See [../../docs/guilds/design.md](../../docs/guilds/design.md) for the guild/channel feature's design rationale, data model, and deferred work (permissions, privacy).

@@ -6,9 +6,9 @@ import { users } from "./users";
 
 // `role` is intentionally just today's owner/member split stored as data
 // instead of derived from guilds.ownerId, so it's the seam the Future
-// Permission Hook (rooms-spec.md) can widen later without a schema change.
+// Permission Hook (docs/guilds/design.md) can widen later without a schema change.
 // It is NOT read as a real permission system yet — canCreateChannel/
-// canDeleteChannel still just check for 'owner', per rooms-spec.
+// canDeleteChannel still just check for 'owner', per docs/guilds/design.md.
 export const guildMemberships = pgTable(
   "guild_memberships",
   {

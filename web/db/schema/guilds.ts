@@ -3,7 +3,7 @@ import { pgTable, uuid, text, timestamp, index, check } from "drizzle-orm/pg-cor
 
 import { users } from "./users";
 
-// CIG-Nexus's own Guild entity (rooms-spec.md), now durable.
+// CIG-Nexus's own Guild entity (docs/guilds/design.md), now durable.
 export const guilds = pgTable(
   "guilds",
   {

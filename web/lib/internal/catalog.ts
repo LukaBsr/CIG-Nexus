@@ -66,7 +66,7 @@ export async function getCatalog(): Promise<Catalog> {
   };
 }
 
-// CREATE_GUILD also auto-adds the creator as a member (rooms-spec.md
+// CREATE_GUILD also auto-adds the creator as a member (docs/guilds/design.md
 // decision #2) — done in one transaction so the catalog never has a guild
 // with no owner membership row, even under a crash between the two writes.
 export async function createGuild(name: string, ownerWireId: string): Promise<WireGuild> {

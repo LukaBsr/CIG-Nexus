@@ -19,8 +19,8 @@ class InternalApiClient;
 namespace protocol {
 
 // Guild lifecycle: CREATE_GUILD, LIST_GUILDS, JOIN_GUILD, LEAVE_GUILD,
-// DELETE_GUILD. See docs/rooms-spec.md for the full protocol shapes and
-// docs/auth-discord-design.md §8.1 for the write-through-cache/internal-API
+// DELETE_GUILD. See docs/guilds/design.md for the full protocol shapes and
+// docs/auth/discord-design.md §8.1 for the write-through-cache/internal-API
 // pattern every mutation below follows: call InternalApiClient first, only
 // touch GuildManager/SessionManager if that call succeeds.
 class GuildHandler {
