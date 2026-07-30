@@ -194,6 +194,12 @@ void Server::start() {
     std::cout << "CIG Nexus Server starting on port " << port_ << std::endl;
 
     hydrateGuildCatalog();
+    // docs/security-audit.md §1.5: without this, every restart opens a
+    // window of up to kRevocationPollInterval where a session revoked
+    // before the restart is valid again, since revocation_cache_ starts
+    // empty and only the *next* interval tick would repopulate it.
+    // Mirrors hydrateGuildCatalog()'s immediate-call pattern above.
+    pollRevocationCache();
     last_revocation_poll_ = std::chrono::steady_clock::now();
 
     while (running_) {

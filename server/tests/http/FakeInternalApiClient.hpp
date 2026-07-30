@@ -48,8 +48,8 @@ class FakeInternalApiClient : public http::InternalApiClient {
 
     std::vector<std::string> fetchRevokedSessionIds(const std::string&,
                                                     std::string& out_as_of) override {
-        out_as_of.clear();
-        return {};
+        out_as_of = "fake-as-of";
+        return revoked_ids_to_return;
     }
 
     // Test control: flip one of these to exercise a handler's "internal API
@@ -62,6 +62,7 @@ class FakeInternalApiClient : public http::InternalApiClient {
     bool fail_create_channel = false;
     bool fail_delete_channel = false;
     http::Catalog catalog_to_return;
+    std::vector<std::string> revoked_ids_to_return;
 
   private:
     int next_guild_id_ = 1;

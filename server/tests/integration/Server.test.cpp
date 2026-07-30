@@ -363,3 +363,44 @@ TEST_CASE("Server hydrates the guild catalog from InternalApiClient at startup")
     REQUIRE(parsed["guilds"][0]["guild_id"] == "g_preexisting");
     REQUIRE(parsed["guilds"][0]["name"] == "Pre-existing Guild");
 }
+
+// ----------------------------------------------------------------------------
+// docs/security-audit.md §1.5: a session revoked before this process started
+// must not become valid again just because the process restarted —
+// pollRevocationCache() has to run once, synchronously, before the accept
+// loop (mirroring hydrateGuildCatalog() above), not only on the first
+// interval tick ~30s later. This test only waits 50ms, so it would fail on
+// a revert to the interval-only behavior.
+// ----------------------------------------------------------------------------
+
+TEST_CASE("Server rejects an already-revoked session immediately at startup, without waiting for "
+          "the poll interval") {
+    test_helpers::TestRsaKeyPair keys;
+    auto api = std::make_unique<test_helpers::FakeInternalApiClient>();
+    api->revoked_ids_to_return.push_back("u_alice-sid");
+
+    Server server(0);
+    server.configureAuth(keys.publicKeyPem());
+    server.setInternalApiClient(std::move(api));
+
+    std::thread t([&server] { server.start(); });
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+
+    int fd = tcp_connect(server.bound_port());
+    REQUIRE(fd >= 0);
+
+    send_framed(fd, R"({"type":"HELLO","version":"0.1","client":"web"})");
+    REQUIRE(!recv_framed(fd).empty());
+    send_framed(fd, R"({"type":"IDENTIFY","session_token":")" +
+                        make_session_token(keys.key, "u_alice", "alice") + R"("})");
+    std::string response = recv_framed(fd);
+
+    ::close(fd);
+    server.stop();
+    t.join();
+
+    REQUIRE(!response.empty());
+    auto parsed = nlohmann::json::parse(response);
+    REQUIRE(parsed["type"] == "ERROR");
+    REQUIRE(parsed["code"] == "SESSION_REVOKED");
+}
