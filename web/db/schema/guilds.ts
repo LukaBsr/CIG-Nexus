@@ -15,6 +15,10 @@ export const guilds = pgTable(
     ownerId: uuid("owner_id")
       .notNull()
       .references(() => users.id, { onDelete: "restrict" }),
+    // docs/social-presence-design.md §2.2: purely cosmetic — resolves
+    // role_rank -> role_label per guild (web/lib/internal/roleThemes.ts).
+    // Never read by any permission predicate.
+    roleTheme: text("role_theme").notNull().default("pirate"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow()
   },

@@ -19,10 +19,12 @@ class InternalApiClient;
 namespace protocol {
 
 // Guild lifecycle: CREATE_GUILD, LIST_GUILDS, JOIN_GUILD, LEAVE_GUILD,
-// DELETE_GUILD. See docs/guilds/design.md for the full protocol shapes and
-// docs/auth/discord-design.md §8.1 for the write-through-cache/internal-API
-// pattern every mutation below follows: call InternalApiClient first, only
-// touch GuildManager/SessionManager if that call succeeds.
+// DELETE_GUILD, LIST_MEMBERS, SET_MEMBER_ROLE. See docs/guilds/design.md for
+// the full protocol shapes, docs/auth/discord-design.md §8.1 for the
+// write-through-cache/internal-API pattern every mutation below follows
+// (call InternalApiClient first, only touch GuildManager/SessionManager if
+// that call succeeds), and docs/social-presence-design.md §2 for the
+// roster/rank-based-role protocol messages.
 class GuildHandler {
   public:
     void setSessionManager(session::SessionManager* session_manager);
@@ -34,6 +36,9 @@ class GuildHandler {
     Message handleJoinGuild(const Message& message, int fd) const;
     Message handleLeaveGuild(const Message& message, int fd) const;
     Message handleDeleteGuild(const Message& message, int fd) const;
+    Message handleListMembers(const Message& message, int fd) const;
+    Message handleSetMemberRole(const Message& message, int fd) const;
+    Message handleSetGuildVisibility(const Message& message, int fd) const;
 
   private:
     static Message makeError(const std::string& code, const std::string& msg);

@@ -169,7 +169,7 @@ A **guild** is a container owned by its creator, holding a set of **channels**. 
 
 A connection can be a member of multiple guilds at once, but has at most one **active channel** at a time across all guilds — joining a channel implicitly leaves whichever channel was previously active. Guild membership alone does not deliver channel messages; a connection must explicitly `JOIN_CHANNEL` to receive them.
 
-Only the guild owner can create or delete channels in this iteration. There is no mechanism yet to delegate that to other members, and no privacy model — `LIST_GUILDS` returns every guild that exists, and any identified client can `JOIN_GUILD` any of them by id.
+Every guild member has a `role_rank` (integer, `0` = crew/member, `1` = officer, `2` = owner — see [Roles](#roles)). Creating a channel requires officer-or-above; deleting a channel or the guild itself, and changing another member's role, stay owner-only. No privacy model yet — `LIST_GUILDS` returns every guild that exists, and any identified client can `JOIN_GUILD` any of them by id.
 
 #### CREATE_GUILD
 
@@ -300,6 +300,65 @@ On success, the server deletes the guild and all of its channels, clears members
 }
 ```
 
+#### Roles
+
+Roles are rank-based, not string-based: `guild_memberships.role_rank` is an integer, and every authorization check compares it against a named threshold (`kMemberRank = 0`, `kOfficerRank = 1`, `kOwnerRank = 2`) rather than a literal. `role_label` (e.g. `"Crew"`, `"Officer"`, `"Captain"`) is a cosmetic, per-guild display string resolved server-side from `role_rank` and never consulted by any authorization check — a client should gate UI on `role_rank`, not on the label's text.
+
+#### LIST_MEMBERS
+
+Client to server:
+
+```json
+{ "type": "LIST_MEMBERS", "guild_id": "g_1" }
+```
+
+Validation:
+
+- the guild must exist (`GUILD_NOT_FOUND`)
+- the connection must be a member of the guild (`NOT_GUILD_MEMBER` otherwise) — same precedent as `LIST_CHANNELS`
+
+Response:
+
+```json
+{
+  "type": "MEMBER_LIST",
+  "guild_id": "g_1",
+  "members": [
+    { "user_id": "u_1", "username": "web_user", "role_rank": 2, "role_label": "Captain", "joined_at": "2026-07-14T18:00:00Z" }
+  ]
+}
+```
+
+This is a live read on every request — the roster is never cached by the server, unlike the guild/channel catalog.
+
+#### SET_MEMBER_ROLE
+
+Client to server:
+
+```json
+{ "type": "SET_MEMBER_ROLE", "guild_id": "g_1", "user_id": "u_2", "role_rank": 1 }
+```
+
+Validation:
+
+- the guild must exist (`GUILD_NOT_FOUND`)
+- the connection must be the guild owner (`role_rank >= 2`; `NOT_GUILD_OWNER` otherwise — promoting/demoting is owner-only, same tier as `DELETE_GUILD`)
+- `role_rank` must be an integer `>= 0` and `< 2` (`MALFORMED_MESSAGE` otherwise) — the owner rank itself is never a valid target for this message
+- `user_id` must not be the guild's owner (`PROTOCOL_VIOLATION` otherwise) — ownership isn't reassignable through this message; see `LEAVE_GUILD`
+- `user_id` must be a member of the guild (`NOT_GUILD_MEMBER` otherwise)
+
+On success, the server broadcasts to every current guild member:
+
+```json
+{
+  "type": "MEMBER_ROLE_UPDATED",
+  "guild_id": "g_1",
+  "user_id": "u_2",
+  "role_rank": 1,
+  "role_label": "Officer"
+}
+```
+
 #### LIST_CHANNELS
 
 Client to server:
@@ -346,7 +405,7 @@ Validation:
 - `name` must exist, be a string, be non-empty, and be at most `64` characters
 - `channel_type` must exist and be exactly `"TEXT"` or `"VOICE"` (`MALFORMED_MESSAGE` otherwise)
 - the guild must exist (`GUILD_NOT_FOUND`)
-- the connection must be the guild owner (`NOT_GUILD_OWNER` otherwise — this is the only authorization check today; see [Security and Limits](#security-and-limits))
+- the connection must be an officer or above in the guild (`role_rank >= 1`; `NOT_GUILD_OFFICER` otherwise — see [Roles](#roles) and [Security and Limits](#security-and-limits))
 
 On success, the server broadcasts to **every current guild member**, including the owner:
 
@@ -546,6 +605,7 @@ Current error codes used by the implementation:
 | `CHANNEL_NOT_FOUND` | referenced `channel_id` does not exist, or does not belong to the given guild |
 | `NOT_GUILD_MEMBER` | action requires guild membership the caller doesn't have |
 | `NOT_GUILD_OWNER` | action is owner-only and the caller isn't the owner |
+| `NOT_GUILD_OFFICER` | action requires officer-or-above (`role_rank >= 1`) and the caller doesn't have it |
 | `NOT_IN_CHANNEL` | `CHANNEL_MESSAGE` or `LEAVE_CHANNEL` sent with no active channel |
 
 ## Behavior Notes
@@ -560,8 +620,7 @@ Current error codes used by the implementation:
 
 Current implementation limitations:
 
-- no authentication
-- no authorization — guild ownership is the only access control that exists, and it is not delegable yet (see `docs/guilds/design.md`, "Future Permission Hook")
+- authorization is rank-based (`role_rank`, [Roles](#roles)) with exactly three reachable tiers today (crew/officer/owner) — no general, delegable permission system yet (see `docs/guilds/design.md`, "Future Permission Hook")
 - no guild privacy — `LIST_GUILDS` returns every guild, and any identified client can `JOIN_GUILD` any of them (see `docs/guilds/design.md`, "Deferred: Guild Privacy")
 - `VOICE` channels are metadata-only: the type is modeled and validated, but there is no audio transport or voice presence
 - no TLS
