@@ -472,6 +472,51 @@ On success, the server broadcasts to every connection whose active channel match
 
 `message_id` is generated from its own counter, independent of `CHAT_MESSAGE`'s.
 
+#### FETCH_HISTORY
+
+Client to server:
+
+```json
+{
+  "type": "FETCH_HISTORY",
+  "channel_id": "c_2",
+  "before_seq": null,
+  "limit": 50
+}
+```
+
+`channel_id` is optional; omit it or send JSON `null` to fetch lobby (`CHAT_MESSAGE`) history instead of a channel's. `before_seq` is optional; omit it or send `null` to fetch the most recent page. `limit` is optional, defaults to `50`, and must be between `1` and `100`.
+
+Validation:
+
+- the client must be identified (`NOT_IDENTIFIED` otherwise)
+- when `channel_id` is given: it must reference an existing channel (`CHANNEL_NOT_FOUND` otherwise), and the caller must be a member of that channel's guild (`NOT_GUILD_MEMBER` otherwise) — reading history requires the same membership `CHANNEL_MESSAGE` already requires to send, so reading is never looser than writing. The lobby has no such check, matching `CHAT_MESSAGE`'s fully-open model.
+- `before_seq`, if present, must be an integer
+- `limit`, if present, must be an integer in `[1, 100]`
+
+Server to client:
+
+```json
+{
+  "type": "MESSAGE_HISTORY",
+  "channel_id": "c_2",
+  "messages": [
+    {
+      "message_id": 41,
+      "timestamp": 1741104000,
+      "user_id": "u_1",
+      "username": "web_user",
+      "content": "hello"
+    }
+  ],
+  "has_more": true
+}
+```
+
+`channel_id` in the response echoes the request (`null` for the lobby). `messages` is chronological (oldest first). `has_more` is `true` when older messages exist beyond this page — pass the oldest returned message's `message_id` as the next request's `before_seq` to page further back (keyset pagination, not offset-based).
+
+This is a live read-through call to the internal API on every request — results are never cached by the server. See `docs/social-presence-design.md` §4 for the persistence design (write-side: `CHAT_MESSAGE`/`CHANNEL_MESSAGE` persist asynchronously, fire-and-forget with bounded retry, after the broadcast — a client can in principle receive a message before it's durably persisted).
+
 ### ERROR
 
 Server to client:

@@ -3,12 +3,19 @@
 #include "guild/Channel.hpp"
 #include "guild/GuildManager.hpp"
 #include "http/InternalApiClient.hpp"
+#include "persistence/MessagePersistenceWorker.hpp"
 #include "protocol/MessageBuilders.hpp"
 #include "session/SessionManager.hpp"
 
 #include <ctime>
 
 namespace protocol {
+
+namespace {
+// Matches web/app/internal/messages/route.ts's DEFAULT_LIMIT/MAX_LIMIT.
+constexpr int kDefaultHistoryLimit = 50;
+constexpr int kMaxHistoryLimit = 100;
+} // namespace
 
 void ChannelHandler::setSessionManager(session::SessionManager* session_manager) {
     session_manager_ = session_manager;
@@ -20,6 +27,16 @@ void ChannelHandler::setGuildManager(guild::GuildManager* guild_manager) {
 
 void ChannelHandler::setInternalApiClient(http::InternalApiClient* internal_api_client) {
     internal_api_client_ = internal_api_client;
+}
+
+void ChannelHandler::setMessagePersistenceWorker(persistence::MessagePersistenceWorker* worker) {
+    message_worker_ = worker;
+}
+
+void ChannelHandler::seedMessageCounter(std::optional<int> last_seq) {
+    if (last_seq.has_value()) {
+        message_counter_.store(*last_seq);
+    }
 }
 
 Message ChannelHandler::makeError(const std::string& code, const std::string& msg) {
@@ -140,8 +157,11 @@ Message ChannelHandler::handleCreateChannel(const Message& message, int fd) cons
         return makeError("GUILD_NOT_FOUND", "No guild with that id");
     }
 
+    // docs/social-presence-design.md §2.2: widened from owner-only to
+    // officer-or-above — NOT_GUILD_OWNER would misdescribe this failure now
+    // that non-owner officers can pass this check.
     if (!guild_manager_->canCreateChannel(guild_id, session->user_id)) {
-        return makeError("NOT_GUILD_OWNER", "Only the guild owner can create channels");
+        return makeError("NOT_GUILD_OFFICER", "Must be an officer or above to create channels");
     }
 
     const std::optional<http::WireChannel> created =
@@ -349,6 +369,101 @@ Message ChannelHandler::handleChannelMessage(const Message& message, int fd) con
                                       {"user_id", session->user_id},
                                       {"username", session->username},
                                       {"content", content}};
+
+    // docs/social-presence-design.md §4.5: fire-and-forget — enqueue after
+    // building the broadcast response, never block on it.
+    if (message_worker_) {
+        message_worker_->enqueue({channel_id, session->user_id, content, message_id});
+    }
+
+    return response;
+}
+
+Message ChannelHandler::handleFetchHistory(const Message& message, int fd) const {
+    if (message.type != "FETCH_HISTORY") {
+        return makeError("PROTOCOL_VIOLATION", "Expected FETCH_HISTORY message");
+    }
+
+    if (!message.payload.is_object()) {
+        return makeError("MALFORMED_MESSAGE", "FETCH_HISTORY payload must be an object");
+    }
+
+    const session::Session* session = requireIdentified(fd);
+    if (!session) {
+        return makeError("NOT_IDENTIFIED", "Client must IDENTIFY before fetching history");
+    }
+
+    // channel_id omitted or JSON null = the lobby (docs/social-presence-design.md §4.4).
+    std::optional<std::string> channel_id;
+    if (message.payload.contains("channel_id") && !message.payload["channel_id"].is_null()) {
+        if (!message.payload["channel_id"].is_string()) {
+            return makeError("MALFORMED_MESSAGE", "FETCH_HISTORY channel_id must be a string or null");
+        }
+        channel_id = message.payload["channel_id"].get<std::string>();
+    }
+
+    // Reading history requires the same guild membership CHANNEL_MESSAGE
+    // already requires to send — reading shouldn't be looser than writing.
+    // The lobby has no such check, matching CHAT_MESSAGE's fully-open model.
+    if (channel_id.has_value()) {
+        if (!guild_manager_ || !session_manager_) {
+            return makeError("INTERNAL_ERROR", "Guild context unavailable");
+        }
+        const guild::Channel* channel = guild_manager_->getChannel(*channel_id);
+        if (!channel) {
+            return makeError("CHANNEL_NOT_FOUND", "Channel does not exist");
+        }
+        if (!session_manager_->isMemberOfGuild(fd, channel->guild_id)) {
+            return makeError("NOT_GUILD_MEMBER", "Must be a member of this channel's guild to read its history");
+        }
+    }
+
+    std::optional<int> before_seq;
+    if (message.payload.contains("before_seq") && !message.payload["before_seq"].is_null()) {
+        if (!message.payload["before_seq"].is_number_integer()) {
+            return makeError("MALFORMED_MESSAGE", "FETCH_HISTORY before_seq must be an integer or null");
+        }
+        before_seq = message.payload["before_seq"].get<int>();
+    }
+
+    int limit = kDefaultHistoryLimit;
+    if (message.payload.contains("limit") && !message.payload["limit"].is_null()) {
+        if (!message.payload["limit"].is_number_integer()) {
+            return makeError("MALFORMED_MESSAGE", "FETCH_HISTORY limit must be an integer");
+        }
+        limit = message.payload["limit"].get<int>();
+        if (limit < 1 || limit > kMaxHistoryLimit) {
+            return makeError("MALFORMED_MESSAGE", "FETCH_HISTORY limit must be between 1 and " +
+                                                       std::to_string(kMaxHistoryLimit));
+        }
+    }
+
+    if (!internal_api_client_) {
+        return makeError("INTERNAL_ERROR", "History unavailable");
+    }
+
+    // §4.4: the first read-through internal API call — nothing here is
+    // cached, this is a live round trip on every request.
+    const std::optional<http::HistoryPage> page = internal_api_client_->fetchMessages(channel_id, before_seq, limit);
+    if (!page) {
+        return makeError("INTERNAL_ERROR", "Failed to fetch message history");
+    }
+
+    nlohmann::json messages_json = nlohmann::json::array();
+    for (const auto& m : page->messages) {
+        messages_json.push_back(nlohmann::json{{"message_id", m.message_id},
+                                               {"timestamp", m.timestamp},
+                                               {"user_id", m.user_id},
+                                               {"username", m.username},
+                                               {"content", m.content}});
+    }
+
+    Message response;
+    response.type = "MESSAGE_HISTORY";
+    response.payload = nlohmann::json{{"type", "MESSAGE_HISTORY"},
+                                      {"channel_id", channel_id.has_value() ? nlohmann::json(*channel_id) : nullptr},
+                                      {"messages", messages_json},
+                                      {"has_more", page->has_more}};
     return response;
 }
 
