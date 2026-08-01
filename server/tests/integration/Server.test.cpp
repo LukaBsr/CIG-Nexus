@@ -46,7 +46,7 @@ void send_framed(int fd, const std::string& json) {
     ::send(fd, json.data(), json.size(), 0);
 }
 
-std::string recv_framed(int fd) {
+std::string recv_frame_raw(int fd) {
     uint32_t size_be = 0;
     if (::recv(fd, &size_be, 4, MSG_WAITALL) != 4)
         return "";
@@ -55,6 +55,34 @@ std::string recv_framed(int fd) {
     if (::recv(fd, buf.data(), size, MSG_WAITALL) != static_cast<ssize_t>(size))
         return "";
     return buf;
+}
+
+// docs/social-presence-design.md §3.2: PRESENCE_UPDATE broadcasts to every
+// open connection, including the one whose own IDENTIFY just triggered it
+// (same delivery model CHAT_MESSAGE already uses) and every other already-
+// connected socket. The tests below that predate presence, and every test
+// that doesn't specifically assert on presence, use this instead of the raw
+// primitive above so an interleaved PRESENCE_UPDATE never gets mistaken for
+// the response a test is actually waiting for. Tests that DO want to
+// observe a PRESENCE_UPDATE call recv_frame_raw() directly.
+std::string recv_framed(int fd) {
+    while (true) {
+        std::string frame = recv_frame_raw(fd);
+        if (frame.empty()) {
+            return frame;
+        }
+        const auto parsed = nlohmann::json::parse(frame, nullptr, false);
+        if (parsed.is_discarded() || parsed.value("type", "") != "PRESENCE_UPDATE") {
+            return frame;
+        }
+    }
+}
+
+void set_recv_timeout(int fd, long seconds, long microseconds) {
+    struct timeval tv {
+        seconds, microseconds
+    };
+    ::setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
 }
 
 uint64_t now_seconds() {
@@ -331,7 +359,7 @@ TEST_CASE("Server survives broadcasting to a connection reset by its peer") {
 TEST_CASE("Server hydrates the guild catalog from InternalApiClient at startup") {
     test_helpers::TestRsaKeyPair keys;
     auto api = std::make_unique<test_helpers::FakeInternalApiClient>();
-    api->catalog_to_return.guilds.push_back({"g_preexisting", "Pre-existing Guild", "u_owner"});
+    api->catalog_to_return.guilds.push_back({"g_preexisting", "Pre-existing Guild", "u_owner", "open"});
 
     Server server(0);
     server.configureAuth(keys.publicKeyPem());
@@ -403,4 +431,81 @@ TEST_CASE("Server rejects an already-revoked session immediately at startup, wit
     auto parsed = nlohmann::json::parse(response);
     REQUIRE(parsed["type"] == "ERROR");
     REQUIRE(parsed["code"] == "SESSION_REVOKED");
+}
+
+// ----------------------------------------------------------------------------
+// docs/social-presence-design.md §3: PRESENCE_UPDATE is a lobby-wide
+// broadcast (Scope::BROADCAST, same delivery model CHAT_MESSAGE uses) fired
+// only on a connection-count transition (0->1 online, 1->0 offline) — a
+// second/third tab for the same user must not flicker anything, and an
+// unrelated observer (bob, sharing nothing with alice) still sees it,
+// proving the broadcast really is lobby-wide, not scoped to shared state.
+// ----------------------------------------------------------------------------
+
+TEST_CASE("Server broadcasts PRESENCE_UPDATE online/offline only on real transitions, not on "
+          "additional tabs for the same user") {
+    test_helpers::TestRsaKeyPair keys;
+    Server server(0);
+    server.configureAuth(keys.publicKeyPem());
+
+    std::thread t([&server] { server.start(); });
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+
+    auto identify_raw = [&](int fd, const std::string& user_id, const std::string& username) {
+        send_framed(fd, R"({"type":"HELLO","version":"0.1","client":"web"})");
+        REQUIRE(!recv_frame_raw(fd).empty()); // WELCOME
+        send_framed(fd, R"({"type":"IDENTIFY","session_token":")" +
+                            make_session_token(keys.key, user_id, username) + R"("})");
+        REQUIRE(!recv_frame_raw(fd).empty()); // IDENTIFIED
+    };
+
+    // bob is a pure observer: shares no guild/channel with alice, exists
+    // only to prove presence really is lobby-wide.
+    int fd_bob = tcp_connect(server.bound_port());
+    REQUIRE(fd_bob >= 0);
+    identify_raw(fd_bob, "u_bob", "bob");
+    auto bob_online = nlohmann::json::parse(recv_frame_raw(fd_bob)); // bob's own broadcast
+    REQUIRE(bob_online["type"] == "PRESENCE_UPDATE");
+    REQUIRE(bob_online["user_id"] == "u_bob");
+    REQUIRE(bob_online["status"] == "online");
+
+    // alice's first tab: 0 -> 1, both bob and alice should see her come online.
+    int fd_a1 = tcp_connect(server.bound_port());
+    REQUIRE(fd_a1 >= 0);
+    identify_raw(fd_a1, "u_alice", "alice");
+    REQUIRE(!recv_frame_raw(fd_a1).empty()); // alice's own broadcast, drained without inspecting
+
+    auto alice_online = nlohmann::json::parse(recv_frame_raw(fd_bob));
+    REQUIRE(alice_online["type"] == "PRESENCE_UPDATE");
+    REQUIRE(alice_online["user_id"] == "u_alice");
+    REQUIRE(alice_online["status"] == "online");
+
+    // alice's second tab: 1 -> 2, no transition, nothing should broadcast.
+    int fd_a2 = tcp_connect(server.bound_port());
+    REQUIRE(fd_a2 >= 0);
+    identify_raw(fd_a2, "u_alice", "alice");
+    set_recv_timeout(fd_bob, 0, 300000);
+    REQUIRE(recv_frame_raw(fd_bob).empty());
+    set_recv_timeout(fd_a1, 0, 300000);
+    REQUIRE(recv_frame_raw(fd_a1).empty());
+    set_recv_timeout(fd_bob, 2, 0);
+    set_recv_timeout(fd_a1, 2, 0);
+
+    // Closing the second tab: 2 -> 1, still online, nothing should broadcast.
+    ::close(fd_a2);
+    std::this_thread::sleep_for(std::chrono::milliseconds(150)); // let the server notice
+    set_recv_timeout(fd_bob, 0, 300000);
+    REQUIRE(recv_frame_raw(fd_bob).empty());
+    set_recv_timeout(fd_bob, 2, 0);
+
+    // Closing the last tab: 1 -> 0, bob should see alice go offline.
+    ::close(fd_a1);
+    auto alice_offline = nlohmann::json::parse(recv_frame_raw(fd_bob));
+    REQUIRE(alice_offline["type"] == "PRESENCE_UPDATE");
+    REQUIRE(alice_offline["user_id"] == "u_alice");
+    REQUIRE(alice_offline["status"] == "offline");
+
+    ::close(fd_bob);
+    server.stop();
+    t.join();
 }

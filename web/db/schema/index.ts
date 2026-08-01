@@ -2,5 +2,8 @@ export * from "./users";
 export * from "./sessions";
 export * from "./guilds";
 export * from "./guildMemberships";
+export * from "./guildInvites";
+export * from "./guildJoinRequests";
 export * from "./channels";
+export * from "./messages";
 export * from "./relations";

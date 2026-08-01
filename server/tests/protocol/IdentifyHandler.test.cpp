@@ -5,6 +5,7 @@
 
 #include "auth/JwtVerifier.hpp"
 #include "auth/RevocationCache.hpp"
+#include "guild/GuildManager.hpp"
 
 #include "../auth/TestJwtHelper.hpp"
 
@@ -204,4 +205,68 @@ TEST_CASE("IdentifyHandler returns INTERNAL_ERROR when the JWT verifier is missi
 
     REQUIRE(response.type == "ERROR");
     REQUIRE(response.payload["code"] == "INTERNAL_ERROR");
+}
+
+TEST_CASE("IdentifyHandler hydrates Session.guild_ids from GuildManager on success "
+          "(docs/social-presence-design.md §3.4/§1.10)") {
+    test_helpers::TestRsaKeyPair keys;
+    auth::JwtVerifier verifier(keys.publicKeyPem());
+    guild::GuildManager guilds;
+    guilds.setMemberRank("g_1", "u_11111111-1111-1111-1111-111111111111", guild::kOwnerRank);
+    guilds.setMemberRank("g_2", "u_11111111-1111-1111-1111-111111111111", guild::kMemberRank);
+
+    protocol::IdentifyHandler handler;
+    session::SessionManager sessions;
+    handler.setSessionManager(&sessions);
+    handler.setJwtVerifier(&verifier);
+    handler.setGuildManager(&guilds);
+
+    const std::string token = test_helpers::signTestJwt(keys.key, rs256Header(), validClaims());
+    const auto response = handler.handle(make_identify(token), 18);
+
+    REQUIRE(response.type == "IDENTIFIED");
+    const auto* session = sessions.getSession(18);
+    REQUIRE(session != nullptr);
+    REQUIRE(session->guild_ids.size() == 2);
+    REQUIRE(sessions.isMemberOfGuild(18, "g_1"));
+    REQUIRE(sessions.isMemberOfGuild(18, "g_2"));
+}
+
+TEST_CASE("IdentifyHandler leaves Session.guild_ids empty for a user with no memberships") {
+    test_helpers::TestRsaKeyPair keys;
+    auth::JwtVerifier verifier(keys.publicKeyPem());
+    guild::GuildManager guilds;
+
+    protocol::IdentifyHandler handler;
+    session::SessionManager sessions;
+    handler.setSessionManager(&sessions);
+    handler.setJwtVerifier(&verifier);
+    handler.setGuildManager(&guilds);
+
+    const std::string token = test_helpers::signTestJwt(keys.key, rs256Header(), validClaims());
+    const auto response = handler.handle(make_identify(token), 19);
+
+    REQUIRE(response.type == "IDENTIFIED");
+    const auto* session = sessions.getSession(19);
+    REQUIRE(session != nullptr);
+    REQUIRE(session->guild_ids.empty());
+}
+
+TEST_CASE("IdentifyHandler does not crash without a GuildManager set, and leaves guild_ids empty") {
+    test_helpers::TestRsaKeyPair keys;
+    auth::JwtVerifier verifier(keys.publicKeyPem());
+
+    protocol::IdentifyHandler handler;
+    session::SessionManager sessions;
+    handler.setSessionManager(&sessions);
+    handler.setJwtVerifier(&verifier);
+    // setGuildManager deliberately not called.
+
+    const std::string token = test_helpers::signTestJwt(keys.key, rs256Header(), validClaims());
+    const auto response = handler.handle(make_identify(token), 20);
+
+    REQUIRE(response.type == "IDENTIFIED");
+    const auto* session = sessions.getSession(20);
+    REQUIRE(session != nullptr);
+    REQUIRE(session->guild_ids.empty());
 }

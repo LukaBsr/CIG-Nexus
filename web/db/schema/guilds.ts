@@ -1,7 +1,11 @@
 import { sql } from "drizzle-orm";
-import { pgTable, uuid, text, timestamp, index, check } from "drizzle-orm/pg-core";
+import { pgTable, pgEnum, uuid, text, timestamp, index, check } from "drizzle-orm/pg-core";
 
 import { users } from "./users";
+
+// docs/social-presence-design.md §1.7: DEFAULT 'open' means every existing
+// guild keeps today's exact behavior with no backfill decision needed.
+export const guildVisibilityEnum = pgEnum("guild_visibility", ["open", "application", "private"]);
 
 // CIG-Nexus's own Guild entity (docs/guilds/design.md), now durable.
 export const guilds = pgTable(
@@ -15,6 +19,11 @@ export const guilds = pgTable(
     ownerId: uuid("owner_id")
       .notNull()
       .references(() => users.id, { onDelete: "restrict" }),
+    // docs/social-presence-design.md §2.2: purely cosmetic — resolves
+    // role_rank -> role_label per guild (web/lib/internal/roleThemes.ts).
+    // Never read by any permission predicate.
+    roleTheme: text("role_theme").notNull().default("pirate"),
+    visibility: guildVisibilityEnum("visibility").notNull().default("open"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow()
   },

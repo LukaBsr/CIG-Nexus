@@ -7,10 +7,12 @@ import {
   type ConnectionStatus,
   createChannel as sendCreateChannel,
   createGuild as sendCreateGuild,
+  createInvite as sendCreateInvite,
   joinChannel as sendJoinChannel,
   joinGuild as sendJoinGuild,
   listChannels,
   listGuilds,
+  listMembers,
   sendChannelMessage as sendChannelMessageWire,
   sendChatMessage as sendChatMessageWire
 } from "@/lib/gateway";
@@ -19,10 +21,14 @@ import {
   mapChannelMessage,
   mapChatMessage,
   mapGuild,
+  mapInvite,
+  mapMember,
   type Channel,
   type ChannelMessage,
   type ChatMessage,
-  type Guild
+  type Guild,
+  type Invite,
+  type Member
 } from "@/lib/types";
 
 export interface UseGatewayConnectionResult {
@@ -35,15 +41,19 @@ export interface UseGatewayConnectionResult {
   channels: Channel[];
   activeChannelId: string | null;
   channelMessages: ChannelMessage[];
+  members: Member[];
   lastError: string | null;
   clearError: () => void;
+  lastCreatedInvite: Invite | null;
+  clearLastCreatedInvite: () => void;
   sendChatMessage: (content: string) => void;
-  createGuild: (name: string) => void;
+  createGuild: (name: string, visibility?: "open" | "application" | "private") => void;
   joinGuild: (guildId: string) => void;
   selectGuild: (guildId: string) => void;
   createChannel: (guildId: string, name: string, channelType: "TEXT" | "VOICE") => void;
   joinChannel: (channelId: string) => void;
   sendChannelMessage: (content: string) => void;
+  createInvite: (guildId: string, maxUses: number | null, expiresInSeconds: number | null) => void;
 }
 
 // Owns the WebSocket connection's entire lifecycle: opening it
@@ -64,8 +74,10 @@ export function useGatewayConnection(): UseGatewayConnectionResult {
   const [channels, setChannels] = useState<Channel[]>([]);
   const [activeChannelId, setActiveChannelId] = useState<string | null>(null);
   const [channelMessages, setChannelMessages] = useState<ChannelMessage[]>([]);
+  const [members, setMembers] = useState<Member[]>([]);
 
   const [lastError, setLastError] = useState<string | null>(null);
+  const [lastCreatedInvite, setLastCreatedInvite] = useState<Invite | null>(null);
 
   // onMessage is captured once by connect() in the effect below, so it can't
   // see later state directly (stale closure) — these refs mirror the state
@@ -111,6 +123,8 @@ export function useGatewayConnection(): UseGatewayConnectionResult {
             setChannels([]);
             setActiveChannelId(null);
             setChannelMessages([]);
+            setMembers([]);
+            listMembers(guild.guildId);
             break;
           }
 
@@ -124,6 +138,8 @@ export function useGatewayConnection(): UseGatewayConnectionResult {
             setChannels(msg.channels.map(mapChannel));
             setActiveChannelId(null);
             setChannelMessages([]);
+            setMembers([]);
+            listMembers(guild.guildId);
             break;
           }
 
@@ -139,7 +155,10 @@ export function useGatewayConnection(): UseGatewayConnectionResult {
                 setChannels([]);
                 setActiveChannelId(null);
                 setChannelMessages([]);
+                setMembers([]);
               }
+            } else if (msg.guild_id === activeGuildIdRef.current) {
+              setMembers((prev) => prev.filter((m) => m.userId !== msg.user_id));
             }
             break;
 
@@ -155,6 +174,7 @@ export function useGatewayConnection(): UseGatewayConnectionResult {
               setChannels([]);
               setActiveChannelId(null);
               setChannelMessages([]);
+              setMembers([]);
             }
             break;
 
@@ -192,6 +212,26 @@ export function useGatewayConnection(): UseGatewayConnectionResult {
             setChannelMessages((prev) => [...prev, mapChannelMessage(msg)]);
             break;
 
+          case "INVITE_CREATED":
+            setLastCreatedInvite(mapInvite(msg));
+            break;
+
+          case "MEMBER_LIST":
+            if (msg.guild_id === activeGuildIdRef.current) {
+              setMembers(msg.members.map(mapMember));
+            }
+            break;
+
+          case "MEMBER_ROLE_UPDATED":
+            if (msg.guild_id === activeGuildIdRef.current) {
+              setMembers((prev) =>
+                prev.map((m) =>
+                  m.userId === msg.user_id ? { ...m, roleRank: msg.role_rank, roleLabel: msg.role_label } : m
+                )
+              );
+            }
+            break;
+
           case "ERROR":
             setLastError(msg.message ?? msg.code ?? "Unknown error");
             break;
@@ -216,17 +256,23 @@ export function useGatewayConnection(): UseGatewayConnectionResult {
     channels,
     activeChannelId,
     channelMessages,
+    members,
     lastError,
     clearError: () => setLastError(null),
+    lastCreatedInvite,
+    clearLastCreatedInvite: () => setLastCreatedInvite(null),
     sendChatMessage: (content) => sendChatMessageWire(content),
-    createGuild: (name) => sendCreateGuild(name),
+    createGuild: (name, visibility) => sendCreateGuild(name, visibility),
     joinGuild: (guildId) => sendJoinGuild(guildId),
     selectGuild: (guildId) => {
       setActiveGuildId(guildId);
+      setMembers([]);
       listChannels(guildId);
+      listMembers(guildId);
     },
     createChannel: (guildId, name, channelType) => sendCreateChannel(guildId, name, channelType),
     joinChannel: (channelId) => sendJoinChannel(channelId),
-    sendChannelMessage: (content) => sendChannelMessageWire(content)
+    sendChannelMessage: (content) => sendChannelMessageWire(content),
+    createInvite: (guildId, maxUses, expiresInSeconds) => sendCreateInvite(guildId, maxUses, expiresInSeconds)
   };
 }

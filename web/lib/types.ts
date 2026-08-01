@@ -30,6 +30,7 @@ export interface WireGuild {
   guild_id: string;
   name: string;
   owner_id: string;
+  visibility: "open" | "application" | "private";
 }
 
 export interface WireChannel {
@@ -102,6 +103,46 @@ export interface WireChannelMessage {
   content: string;
 }
 
+// docs/social-presence-design.md §1.4. Only INVITE_CREATED is modeled on
+// the wire-inbound side today — the frontend's only invite-related UI is
+// the creation form (§6 step 6's explicit scope); LIST_INVITES/REVOKE_INVITE
+// aren't wired into the client yet.
+export interface WireInviteCreated {
+  type: "INVITE_CREATED";
+  guild_id: string;
+  code: string;
+  max_uses: number | null;
+  use_count: number;
+  expires_at: string | null;
+  created_at: string;
+}
+
+// docs/social-presence-design.md §2.1/§2.4. Fetched so the client can gate
+// permission-sensitive UI (e.g. "can I create an invite/channel?") on the
+// viewer's own role_rank instead of guild ownership — canCreateInvite/
+// canCreateChannel are officer-or-above, not owner-only (§2.2).
+export interface WireMember {
+  user_id: string;
+  username: string;
+  role_rank: number;
+  role_label: string;
+  joined_at: string;
+}
+
+export interface WireMemberList {
+  type: "MEMBER_LIST";
+  guild_id: string;
+  members: WireMember[];
+}
+
+export interface WireMemberRoleUpdated {
+  type: "MEMBER_ROLE_UPDATED";
+  guild_id: string;
+  user_id: string;
+  role_rank: number;
+  role_label: string;
+}
+
 export interface WireError {
   type: "ERROR";
   code: string;
@@ -127,6 +168,9 @@ export type WireInboundMessage =
   | WireChannelJoined
   | WireChannelLeft
   | WireChannelMessage
+  | WireInviteCreated
+  | WireMemberList
+  | WireMemberRoleUpdated
   | WireError;
 
 // camelCase types components actually consume. useGatewayConnection
@@ -138,6 +182,24 @@ export interface Guild {
   guildId: string;
   name: string;
   ownerId: string;
+  visibility: "open" | "application" | "private";
+}
+
+export interface Invite {
+  guildId: string;
+  code: string;
+  maxUses: number | null;
+  useCount: number;
+  expiresAt: string | null;
+  createdAt: string;
+}
+
+export interface Member {
+  userId: string;
+  username: string;
+  roleRank: number;
+  roleLabel: string;
+  joinedAt: string;
 }
 
 export interface Channel {
@@ -165,7 +227,28 @@ export interface ChannelMessage {
 }
 
 export function mapGuild(wire: WireGuild): Guild {
-  return { guildId: wire.guild_id, name: wire.name, ownerId: wire.owner_id };
+  return { guildId: wire.guild_id, name: wire.name, ownerId: wire.owner_id, visibility: wire.visibility };
+}
+
+export function mapInvite(wire: WireInviteCreated): Invite {
+  return {
+    guildId: wire.guild_id,
+    code: wire.code,
+    maxUses: wire.max_uses,
+    useCount: wire.use_count,
+    expiresAt: wire.expires_at,
+    createdAt: wire.created_at
+  };
+}
+
+export function mapMember(wire: WireMember): Member {
+  return {
+    userId: wire.user_id,
+    username: wire.username,
+    roleRank: wire.role_rank,
+    roleLabel: wire.role_label,
+    joinedAt: wire.joined_at
+  };
 }
 
 export function mapChannel(wire: WireChannel): Channel {

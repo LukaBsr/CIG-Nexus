@@ -49,65 +49,127 @@ Server::Server(uint16_t port) : port_(port), running_(false), listener_(port) {
     // (setInternalApiClient()), which are constructed with runtime config
     // that isn't available yet at Server construction time.
     identify_handler_.setRevocationCache(&revocation_cache_);
+    // docs/social-presence-design.md §3.4/§1.10: hydrates Session.guild_ids
+    // on successful IDENTIFY from GuildManager's membership index.
+    identify_handler_.setGuildManager(&guild_manager_);
     guild_handler_.setSessionManager(&session_manager_);
     guild_handler_.setGuildManager(&guild_manager_);
     channel_handler_.setSessionManager(&session_manager_);
     channel_handler_.setGuildManager(&guild_manager_);
+    invite_handler_.setSessionManager(&session_manager_);
+    invite_handler_.setGuildManager(&guild_manager_);
+    join_request_handler_.setSessionManager(&session_manager_);
+    join_request_handler_.setGuildManager(&guild_manager_);
 
+    // docs/social-presence-design.md §1.9/§6 step 5: most registrations below
+    // wrap their handler's single Message in a one-element vector — the
+    // dispatcher contract is std::vector<Message>, but only the handlers
+    // that actually need to notify two different recipients with two
+    // different payloads (JOIN_VIA_INVITE's application-mode diversion,
+    // REQUEST_JOIN, APPROVE_JOIN_REQUEST, REJECT_JOIN_REQUEST) return the
+    // vector directly instead of wrapping.
     dispatcher_.registerHandler("HELLO", [this](const protocol::Message& msg, int /*fd*/) {
-        return hello_handler_.handle(msg);
+        return std::vector<protocol::Message>{hello_handler_.handle(msg)};
     });
 
     dispatcher_.registerHandler("CHAT_MESSAGE", [this](const protocol::Message& msg, int fd) {
-        return chat_handler_.handle(msg, fd);
+        return std::vector<protocol::Message>{chat_handler_.handle(msg, fd)};
     });
 
     dispatcher_.registerHandler("IDENTIFY", [this](const protocol::Message& msg, int fd) {
-        return identify_handler_.handle(msg, fd);
+        return std::vector<protocol::Message>{identify_handler_.handle(msg, fd)};
     });
 
     dispatcher_.registerHandler("CREATE_GUILD", [this](const protocol::Message& msg, int fd) {
-        return guild_handler_.handleCreateGuild(msg, fd);
+        return std::vector<protocol::Message>{guild_handler_.handleCreateGuild(msg, fd)};
     });
 
     dispatcher_.registerHandler("LIST_GUILDS", [this](const protocol::Message& msg, int fd) {
-        return guild_handler_.handleListGuilds(msg, fd);
+        return std::vector<protocol::Message>{guild_handler_.handleListGuilds(msg, fd)};
     });
 
     dispatcher_.registerHandler("JOIN_GUILD", [this](const protocol::Message& msg, int fd) {
-        return guild_handler_.handleJoinGuild(msg, fd);
+        return std::vector<protocol::Message>{guild_handler_.handleJoinGuild(msg, fd)};
     });
 
     dispatcher_.registerHandler("LEAVE_GUILD", [this](const protocol::Message& msg, int fd) {
-        return guild_handler_.handleLeaveGuild(msg, fd);
+        return std::vector<protocol::Message>{guild_handler_.handleLeaveGuild(msg, fd)};
     });
 
     dispatcher_.registerHandler("DELETE_GUILD", [this](const protocol::Message& msg, int fd) {
-        return guild_handler_.handleDeleteGuild(msg, fd);
+        return std::vector<protocol::Message>{guild_handler_.handleDeleteGuild(msg, fd)};
+    });
+
+    dispatcher_.registerHandler("LIST_MEMBERS", [this](const protocol::Message& msg, int fd) {
+        return std::vector<protocol::Message>{guild_handler_.handleListMembers(msg, fd)};
+    });
+
+    dispatcher_.registerHandler("SET_MEMBER_ROLE", [this](const protocol::Message& msg, int fd) {
+        return std::vector<protocol::Message>{guild_handler_.handleSetMemberRole(msg, fd)};
+    });
+
+    dispatcher_.registerHandler("SET_GUILD_VISIBILITY", [this](const protocol::Message& msg, int fd) {
+        return std::vector<protocol::Message>{guild_handler_.handleSetGuildVisibility(msg, fd)};
     });
 
     dispatcher_.registerHandler("LIST_CHANNELS", [this](const protocol::Message& msg, int fd) {
-        return channel_handler_.handleListChannels(msg, fd);
+        return std::vector<protocol::Message>{channel_handler_.handleListChannels(msg, fd)};
     });
 
     dispatcher_.registerHandler("CREATE_CHANNEL", [this](const protocol::Message& msg, int fd) {
-        return channel_handler_.handleCreateChannel(msg, fd);
+        return std::vector<protocol::Message>{channel_handler_.handleCreateChannel(msg, fd)};
     });
 
     dispatcher_.registerHandler("DELETE_CHANNEL", [this](const protocol::Message& msg, int fd) {
-        return channel_handler_.handleDeleteChannel(msg, fd);
+        return std::vector<protocol::Message>{channel_handler_.handleDeleteChannel(msg, fd)};
     });
 
     dispatcher_.registerHandler("JOIN_CHANNEL", [this](const protocol::Message& msg, int fd) {
-        return channel_handler_.handleJoinChannel(msg, fd);
+        return std::vector<protocol::Message>{channel_handler_.handleJoinChannel(msg, fd)};
     });
 
     dispatcher_.registerHandler("LEAVE_CHANNEL", [this](const protocol::Message& msg, int fd) {
-        return channel_handler_.handleLeaveChannel(msg, fd);
+        return std::vector<protocol::Message>{channel_handler_.handleLeaveChannel(msg, fd)};
     });
 
     dispatcher_.registerHandler("CHANNEL_MESSAGE", [this](const protocol::Message& msg, int fd) {
-        return channel_handler_.handleChannelMessage(msg, fd);
+        return std::vector<protocol::Message>{channel_handler_.handleChannelMessage(msg, fd)};
+    });
+
+    dispatcher_.registerHandler("FETCH_HISTORY", [this](const protocol::Message& msg, int fd) {
+        return std::vector<protocol::Message>{channel_handler_.handleFetchHistory(msg, fd)};
+    });
+
+    dispatcher_.registerHandler("CREATE_INVITE", [this](const protocol::Message& msg, int fd) {
+        return std::vector<protocol::Message>{invite_handler_.handleCreateInvite(msg, fd)};
+    });
+
+    dispatcher_.registerHandler("LIST_INVITES", [this](const protocol::Message& msg, int fd) {
+        return std::vector<protocol::Message>{invite_handler_.handleListInvites(msg, fd)};
+    });
+
+    dispatcher_.registerHandler("REVOKE_INVITE", [this](const protocol::Message& msg, int fd) {
+        return std::vector<protocol::Message>{invite_handler_.handleRevokeInvite(msg, fd)};
+    });
+
+    dispatcher_.registerHandler("JOIN_VIA_INVITE", [this](const protocol::Message& msg, int fd) {
+        return invite_handler_.handleJoinViaInvite(msg, fd);
+    });
+
+    dispatcher_.registerHandler("REQUEST_JOIN", [this](const protocol::Message& msg, int fd) {
+        return join_request_handler_.handleRequestJoin(msg, fd);
+    });
+
+    dispatcher_.registerHandler("LIST_JOIN_REQUESTS", [this](const protocol::Message& msg, int fd) {
+        return std::vector<protocol::Message>{join_request_handler_.handleListJoinRequests(msg, fd)};
+    });
+
+    dispatcher_.registerHandler("APPROVE_JOIN_REQUEST", [this](const protocol::Message& msg, int fd) {
+        return join_request_handler_.handleApproveJoinRequest(msg, fd);
+    });
+
+    dispatcher_.registerHandler("REJECT_JOIN_REQUEST", [this](const protocol::Message& msg, int fd) {
+        return join_request_handler_.handleRejectJoinRequest(msg, fd);
     });
 }
 
@@ -120,6 +182,17 @@ void Server::setInternalApiClient(std::unique_ptr<http::InternalApiClient> clien
     internal_api_client_ = std::move(client);
     guild_handler_.setInternalApiClient(internal_api_client_.get());
     channel_handler_.setInternalApiClient(internal_api_client_.get());
+    invite_handler_.setInternalApiClient(internal_api_client_.get());
+    join_request_handler_.setInternalApiClient(internal_api_client_.get());
+
+    // docs/social-presence-design.md §4.5: constructed here (not at Server
+    // construction) because it needs internal_api_client_.get(), which
+    // isn't available yet at that point. Started in start(), stopped
+    // explicitly at the end of start()'s loop.
+    message_worker_ =
+        std::make_unique<persistence::MessagePersistenceWorker>(internal_api_client_.get());
+    chat_handler_.setMessagePersistenceWorker(message_worker_.get());
+    channel_handler_.setMessagePersistenceWorker(message_worker_.get());
 }
 
 void Server::hydrateGuildCatalog() {
@@ -134,20 +207,41 @@ void Server::hydrateGuildCatalog() {
     }
 
     for (const auto& g : catalog->guilds) {
-        guild_manager_.upsertGuild(g.guild_id, g.name, g.owner_id);
+        const guild::GuildVisibility visibility =
+            guild::guildVisibilityFromString(g.visibility).value_or(guild::GuildVisibility::OPEN);
+        guild_manager_.upsertGuild(g.guild_id, g.name, g.owner_id, visibility);
     }
     for (const auto& c : catalog->channels) {
         const guild::ChannelType type =
             c.channel_type == "VOICE" ? guild::ChannelType::VOICE : guild::ChannelType::TEXT;
         guild_manager_.upsertChannel(c.channel_id, c.guild_id, c.name, type);
     }
-    // catalog->memberships is deliberately not consulted here — durable
-    // guild membership lives in Postgres, but delivery eligibility is
+    // Delivery eligibility (who receives a BROADCAST/TARGETED message) stays
     // per-connection SessionManager state established via JOIN_GUILD, not
-    // hydrated from the catalog (design doc §8.1).
+    // hydrated from the catalog (design doc §8.1) — catalog->memberships is
+    // NOT used to populate that. It IS consulted here for role_rank
+    // (docs/social-presence-design.md §2.2/§2.3): a minimal predicate cache,
+    // not the delivery-eligibility roster, and not the full LIST_MEMBERS
+    // roster either (that stays a live read, §2.3).
+    for (const auto& m : catalog->memberships) {
+        guild_manager_.setMemberRank(m.guild_id, m.user_id, m.role_rank);
+    }
 
     std::cout << "Hydrated guild catalog: " << catalog->guilds.size() << " guild(s), "
               << catalog->channels.size() << " channel(s)" << std::endl;
+}
+
+void Server::hydrateMessageSequences() {
+    if (!internal_api_client_) {
+        return;
+    }
+
+    const http::LastSequence last_seq = internal_api_client_->fetchLastSequence();
+    chat_handler_.seedMessageCounter(last_seq.lobby_seq);
+    channel_handler_.seedMessageCounter(last_seq.channel_seq);
+
+    std::cout << "Hydrated message sequence counters (lobby=" << last_seq.lobby_seq.value_or(0)
+              << ", channel=" << last_seq.channel_seq.value_or(0) << ")" << std::endl;
 }
 
 void Server::pollRevocationCache() {
@@ -176,11 +270,35 @@ void Server::disconnectRevokedSessions() {
         if (session && !session->app_session_id.empty() &&
             revocation_cache_.isRevoked(session->app_session_id)) {
             std::cout << "Disconnecting revoked session (fd=" << fd << ")" << std::endl;
-            session_manager_.removeSession(fd);
+            removeSessionTrackingPresence(fd);
             it = connections_.erase(it);
             continue;
         }
         ++it;
+    }
+}
+
+protocol::Message Server::makePresenceUpdate(const std::string& user_id, bool online) const {
+    protocol::Message presence;
+    presence.type = "PRESENCE_UPDATE";
+    presence.scope = protocol::Scope::BROADCAST;
+    presence.payload = nlohmann::json{{"type", "PRESENCE_UPDATE"},
+                                      {"user_id", user_id},
+                                      {"status", online ? "online" : "offline"}};
+    return presence;
+}
+
+void Server::removeSessionTrackingPresence(int fd) {
+    const session::Session* session = session_manager_.getSession(fd);
+    const std::string user_id = session ? session->user_id : std::string();
+
+    session_manager_.removeSession(fd);
+
+    // user_id is empty for a connection that disconnected before ever
+    // completing IDENTIFY — it never incremented presence, so there's
+    // nothing to decrement or announce.
+    if (!user_id.empty() && session_manager_.decrementPresence(user_id)) {
+        broadcast(makePresenceUpdate(user_id, false));
     }
 }
 
@@ -194,6 +312,10 @@ void Server::start() {
     std::cout << "CIG Nexus Server starting on port " << port_ << std::endl;
 
     hydrateGuildCatalog();
+    hydrateMessageSequences();
+    if (message_worker_) {
+        message_worker_->start();
+    }
     // docs/security-audit.md §1.5: without this, every restart opens a
     // window of up to kRevocationPollInterval where a session revoked
     // before the restart is valid again, since revocation_cache_ starts
@@ -214,7 +336,7 @@ void Server::start() {
 
             if (!conn->readFromSocket()) {
                 std::cout << "Client disconnected (fd=" << fd << ")" << std::endl;
-                session_manager_.removeSession(fd);
+                removeSessionTrackingPresence(fd);
                 it = connections_.erase(it);
                 continue;
             }
@@ -230,9 +352,9 @@ void Server::start() {
                     continue;
                 }
 
-                protocol::Message response;
+                std::vector<protocol::Message> responses;
                 try {
-                    response = dispatcher_.dispatch(message, fd);
+                    responses = dispatcher_.dispatch(message, fd);
                 } catch (const std::exception& e) {
                     std::cerr << "Dispatch error (fd=" << fd << "): " << e.what() << std::endl;
                     protocol::Message error;
@@ -244,20 +366,45 @@ void Server::start() {
                     continue;
                 }
 
-                switch (response.scope) {
-                case protocol::Scope::BROADCAST:
-                    broadcast(response);
-                    break;
+                // docs/social-presence-design.md §1.9/§6 step 5: a handler
+                // may now return more than one Message (different
+                // recipients, different payloads) — each is delivered
+                // independently by its own scope, same switch as before,
+                // just run once per element instead of once total.
+                bool identified = false;
+                for (const auto& response : responses) {
+                    switch (response.scope) {
+                    case protocol::Scope::BROADCAST:
+                        broadcast(response);
+                        break;
 
-                case protocol::Scope::DIRECT:
-                    sendMessage(fd, response);
-                    break;
+                    case protocol::Scope::DIRECT:
+                        sendMessage(fd, response);
+                        break;
 
-                case protocol::Scope::TARGETED:
-                    for (int target_fd : response.target_fds) {
-                        sendMessage(target_fd, response);
+                    case protocol::Scope::TARGETED:
+                        for (int target_fd : response.target_fds) {
+                            sendMessage(target_fd, response);
+                        }
+                        break;
                     }
-                    break;
+
+                    if (response.type == "IDENTIFIED") {
+                        identified = true;
+                    }
+                }
+
+                // docs/social-presence-design.md §3.2: emitted from here,
+                // after IDENTIFY's own IDENTIFIED response has already been
+                // sent above — a separate, unrelated broadcast to everyone
+                // else, not a replacement for it. Checked by message type
+                // rather than inside IdentifyHandler itself: see
+                // Server::makePresenceUpdate's doc comment for why.
+                if (message.type == "IDENTIFY" && identified) {
+                    const session::Session* session = session_manager_.getSession(fd);
+                    if (session && session_manager_.incrementPresence(session->user_id)) {
+                        broadcast(makePresenceUpdate(session->user_id, true));
+                    }
                 }
             }
             ++it;
@@ -274,6 +421,10 @@ void Server::start() {
         }
 
         std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    }
+
+    if (message_worker_) {
+        message_worker_->stop();
     }
 
     std::cout << "CIG Nexus Server stopped" << std::endl;
