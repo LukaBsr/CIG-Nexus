@@ -635,6 +635,7 @@ Current error codes used by the implementation:
 - Non-chat responses are returned only to the originating client.
 - `PRESENCE_UPDATE` is also broadcast to all connected clients, but unlike `CHAT_MESSAGE` it isn't triggered by any client-sent message — it's emitted by the server's own connection-lifecycle handling (a successful `IDENTIFY`, or a detected disconnect) on a 0↔1 connection-count transition (see [PRESENCE_UPDATE](#presence_update)).
 - Guild/channel responses that need to reach more than one connection but not literally everyone (`MEMBER_LEFT`, `GUILD_DELETED`, `CHANNEL_CREATED`, `CHANNEL_DELETED`, `CHANNEL_MESSAGE`) use a third delivery mode, `TARGETED`: the handler computes the exact set of recipient connections (e.g. "current members of this guild," or "connections with this channel active") and the server delivers only to that set. This is distinct from `BROADCAST`, which always means every connected client.
+- A single client action can trigger more than one outgoing message to different recipients with different payloads — the dispatcher returns a list of messages per incoming message, not just one, and each is delivered independently per its own `scope`.
 
 ## Security and Limits
 
