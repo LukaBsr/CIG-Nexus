@@ -9,6 +9,7 @@ import { MessageList } from "@/components/MessageList";
 import { TabButton, TabGroup } from "@/components/TabGroup";
 import { TextInputWithSubmit } from "@/components/TextInputWithSubmit";
 import { useGatewayConnection } from "@/hooks/useGatewayConnection";
+import { OFFICER_RANK } from "@/lib/roles";
 
 export default function Home() {
   const {
@@ -21,6 +22,7 @@ export default function Home() {
     channels,
     activeChannelId,
     channelMessages,
+    members,
     lastError,
     clearError,
     lastCreatedInvite,
@@ -70,7 +72,11 @@ export default function Home() {
   };
 
   const activeGuild = guilds.find((g) => g.guildId === activeGuildId) ?? null;
-  const isOwner = !!activeGuild && !!myUserId && activeGuild.ownerId === myUserId;
+  // canCreateChannel/canCreateInvite are officer-or-above, not owner-only
+  // (docs/social-presence-design.md §2.2) — gate on the viewer's own
+  // role_rank in the active guild's roster, not guild ownership.
+  const myMembership = members.find((m) => m.userId === myUserId) ?? null;
+  const isOfficerOrAbove = !!myMembership && myMembership.roleRank >= OFFICER_RANK;
 
   if (status === "unauthenticated") {
     return <LandingView />;
@@ -199,7 +205,7 @@ export default function Home() {
                 <div className="flex shrink-0 flex-wrap gap-2 border-b border-slate/20 px-6 py-3">
                   {channels.length === 0 ? (
                     <p className="font-mono text-xs text-ivory/40">
-                      {isOwner
+                      {isOfficerOrAbove
                         ? "No channels yet — create one below."
                         : "This guild has no channels yet."}
                     </p>
@@ -220,7 +226,7 @@ export default function Home() {
                   )}
                 </div>
 
-                {isOwner && (
+                {isOfficerOrAbove && (
                   <div className="shrink-0 border-b border-slate/20 px-6 py-3">
                     <TextInputWithSubmit
                       value={channelNameInput}
@@ -232,7 +238,7 @@ export default function Home() {
                   </div>
                 )}
 
-                {isOwner && (
+                {isOfficerOrAbove && (
                   <div className="shrink-0 border-b border-slate/20 px-6 py-3">
                     <h3 className="mb-2 font-mono text-xs font-semibold tracking-wider text-ivory/40 uppercase">
                       Create Invite

@@ -119,6 +119,14 @@ export function listChannels(guildId: string): void {
   send({ type: "LIST_CHANNELS", guild_id: guildId });
 }
 
+// docs/social-presence-design.md §2.1: fetched alongside listChannels() so
+// the client can gate permission-sensitive UI on the viewer's own
+// role_rank (canCreateInvite/canCreateChannel are officer-or-above, not
+// owner-only — see §2.2).
+export function listMembers(guildId: string): void {
+  send({ type: "LIST_MEMBERS", guild_id: guildId });
+}
+
 export function createChannel(
   guildId: string,
   name: string,

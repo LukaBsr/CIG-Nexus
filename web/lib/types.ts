@@ -117,6 +117,32 @@ export interface WireInviteCreated {
   created_at: string;
 }
 
+// docs/social-presence-design.md §2.1/§2.4. Fetched so the client can gate
+// permission-sensitive UI (e.g. "can I create an invite/channel?") on the
+// viewer's own role_rank instead of guild ownership — canCreateInvite/
+// canCreateChannel are officer-or-above, not owner-only (§2.2).
+export interface WireMember {
+  user_id: string;
+  username: string;
+  role_rank: number;
+  role_label: string;
+  joined_at: string;
+}
+
+export interface WireMemberList {
+  type: "MEMBER_LIST";
+  guild_id: string;
+  members: WireMember[];
+}
+
+export interface WireMemberRoleUpdated {
+  type: "MEMBER_ROLE_UPDATED";
+  guild_id: string;
+  user_id: string;
+  role_rank: number;
+  role_label: string;
+}
+
 export interface WireError {
   type: "ERROR";
   code: string;
@@ -143,6 +169,8 @@ export type WireInboundMessage =
   | WireChannelLeft
   | WireChannelMessage
   | WireInviteCreated
+  | WireMemberList
+  | WireMemberRoleUpdated
   | WireError;
 
 // camelCase types components actually consume. useGatewayConnection
@@ -164,6 +192,14 @@ export interface Invite {
   useCount: number;
   expiresAt: string | null;
   createdAt: string;
+}
+
+export interface Member {
+  userId: string;
+  username: string;
+  roleRank: number;
+  roleLabel: string;
+  joinedAt: string;
 }
 
 export interface Channel {
@@ -202,6 +238,16 @@ export function mapInvite(wire: WireInviteCreated): Invite {
     useCount: wire.use_count,
     expiresAt: wire.expires_at,
     createdAt: wire.created_at
+  };
+}
+
+export function mapMember(wire: WireMember): Member {
+  return {
+    userId: wire.user_id,
+    username: wire.username,
+    roleRank: wire.role_rank,
+    roleLabel: wire.role_label,
+    joinedAt: wire.joined_at
   };
 }
 

@@ -12,6 +12,7 @@ import {
   joinGuild as sendJoinGuild,
   listChannels,
   listGuilds,
+  listMembers,
   sendChannelMessage as sendChannelMessageWire,
   sendChatMessage as sendChatMessageWire
 } from "@/lib/gateway";
@@ -21,11 +22,13 @@ import {
   mapChatMessage,
   mapGuild,
   mapInvite,
+  mapMember,
   type Channel,
   type ChannelMessage,
   type ChatMessage,
   type Guild,
-  type Invite
+  type Invite,
+  type Member
 } from "@/lib/types";
 
 export interface UseGatewayConnectionResult {
@@ -38,6 +41,7 @@ export interface UseGatewayConnectionResult {
   channels: Channel[];
   activeChannelId: string | null;
   channelMessages: ChannelMessage[];
+  members: Member[];
   lastError: string | null;
   clearError: () => void;
   lastCreatedInvite: Invite | null;
@@ -70,6 +74,7 @@ export function useGatewayConnection(): UseGatewayConnectionResult {
   const [channels, setChannels] = useState<Channel[]>([]);
   const [activeChannelId, setActiveChannelId] = useState<string | null>(null);
   const [channelMessages, setChannelMessages] = useState<ChannelMessage[]>([]);
+  const [members, setMembers] = useState<Member[]>([]);
 
   const [lastError, setLastError] = useState<string | null>(null);
   const [lastCreatedInvite, setLastCreatedInvite] = useState<Invite | null>(null);
@@ -118,6 +123,8 @@ export function useGatewayConnection(): UseGatewayConnectionResult {
             setChannels([]);
             setActiveChannelId(null);
             setChannelMessages([]);
+            setMembers([]);
+            listMembers(guild.guildId);
             break;
           }
 
@@ -131,6 +138,8 @@ export function useGatewayConnection(): UseGatewayConnectionResult {
             setChannels(msg.channels.map(mapChannel));
             setActiveChannelId(null);
             setChannelMessages([]);
+            setMembers([]);
+            listMembers(guild.guildId);
             break;
           }
 
@@ -146,7 +155,10 @@ export function useGatewayConnection(): UseGatewayConnectionResult {
                 setChannels([]);
                 setActiveChannelId(null);
                 setChannelMessages([]);
+                setMembers([]);
               }
+            } else if (msg.guild_id === activeGuildIdRef.current) {
+              setMembers((prev) => prev.filter((m) => m.userId !== msg.user_id));
             }
             break;
 
@@ -162,6 +174,7 @@ export function useGatewayConnection(): UseGatewayConnectionResult {
               setChannels([]);
               setActiveChannelId(null);
               setChannelMessages([]);
+              setMembers([]);
             }
             break;
 
@@ -203,6 +216,22 @@ export function useGatewayConnection(): UseGatewayConnectionResult {
             setLastCreatedInvite(mapInvite(msg));
             break;
 
+          case "MEMBER_LIST":
+            if (msg.guild_id === activeGuildIdRef.current) {
+              setMembers(msg.members.map(mapMember));
+            }
+            break;
+
+          case "MEMBER_ROLE_UPDATED":
+            if (msg.guild_id === activeGuildIdRef.current) {
+              setMembers((prev) =>
+                prev.map((m) =>
+                  m.userId === msg.user_id ? { ...m, roleRank: msg.role_rank, roleLabel: msg.role_label } : m
+                )
+              );
+            }
+            break;
+
           case "ERROR":
             setLastError(msg.message ?? msg.code ?? "Unknown error");
             break;
@@ -227,6 +256,7 @@ export function useGatewayConnection(): UseGatewayConnectionResult {
     channels,
     activeChannelId,
     channelMessages,
+    members,
     lastError,
     clearError: () => setLastError(null),
     lastCreatedInvite,
@@ -236,7 +266,9 @@ export function useGatewayConnection(): UseGatewayConnectionResult {
     joinGuild: (guildId) => sendJoinGuild(guildId),
     selectGuild: (guildId) => {
       setActiveGuildId(guildId);
+      setMembers([]);
       listChannels(guildId);
+      listMembers(guildId);
     },
     createChannel: (guildId, name, channelType) => sendCreateChannel(guildId, name, channelType),
     joinChannel: (channelId) => sendJoinChannel(channelId),
