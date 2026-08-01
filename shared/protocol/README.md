@@ -120,6 +120,8 @@ client — and returns:
 }
 ```
 
+The new session's guild memberships are also hydrated immediately from durable state (`docs/social-presence-design.md` §3.4/§1.10) — a client does not need to re-issue `JOIN_GUILD` for every guild it already belongs to just because it reconnected. `LIST_CHANNELS`/`LIST_MEMBERS`/`CHANNEL_MESSAGE` etc. against a guild the identified user already belongs to work immediately after `IDENTIFY`, without an intervening `JOIN_GUILD` call.
+
 ### CHAT_MESSAGE
 
 Client to server:

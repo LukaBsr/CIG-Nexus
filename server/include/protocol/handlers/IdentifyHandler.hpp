@@ -7,6 +7,10 @@ namespace session {
 class SessionManager;
 }
 
+namespace guild {
+class GuildManager;
+}
+
 namespace auth {
 class JwtVerifier;
 class RevocationCache;
@@ -22,6 +26,7 @@ class IdentifyHandler {
     void setSessionManager(session::SessionManager* session_manager);
     void setJwtVerifier(const auth::JwtVerifier* jwt_verifier);
     void setRevocationCache(const auth::RevocationCache* revocation_cache);
+    void setGuildManager(const guild::GuildManager* guild_manager);
 
     Message handle(const Message& message, int fd);
 
@@ -29,6 +34,7 @@ class IdentifyHandler {
     session::SessionManager* session_manager_ = nullptr;
     const auth::JwtVerifier* jwt_verifier_ = nullptr;
     const auth::RevocationCache* revocation_cache_ = nullptr;
+    const guild::GuildManager* guild_manager_ = nullptr;
 };
 
 } // namespace protocol

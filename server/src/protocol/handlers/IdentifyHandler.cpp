@@ -2,6 +2,7 @@
 
 #include "auth/JwtVerifier.hpp"
 #include "auth/RevocationCache.hpp"
+#include "guild/GuildManager.hpp"
 #include "protocol/MessageBuilders.hpp"
 #include "session/SessionManager.hpp"
 
@@ -30,6 +31,10 @@ void IdentifyHandler::setJwtVerifier(const auth::JwtVerifier* jwt_verifier) {
 
 void IdentifyHandler::setRevocationCache(const auth::RevocationCache* revocation_cache) {
     revocation_cache_ = revocation_cache;
+}
+
+void IdentifyHandler::setGuildManager(const guild::GuildManager* guild_manager) {
+    guild_manager_ = guild_manager;
 }
 
 Message IdentifyHandler::handle(const Message& message, int fd) {
@@ -83,6 +88,16 @@ Message IdentifyHandler::handle(const Message& message, int fd) {
     session.username = claims.username;
     session.discord_id = claims.discord_id;
     session.app_session_id = claims.sid;
+
+    // docs/social-presence-design.md §3.4/§1.10: hydrate this connection's
+    // guild_ids immediately from GuildManager's durable-membership index,
+    // rather than leaving it empty until the client re-issues JOIN_GUILD
+    // for every guild it already belongs to. A pure in-memory lookup — no
+    // new internal API call. guild_ids is freshly empty (createSession()
+    // above), so a direct assignment is safe here.
+    if (guild_manager_) {
+        session.guild_ids = guild_manager_->getGuildIdsForUser(session.user_id);
+    }
 
     Message response;
     response.type = "IDENTIFIED";
