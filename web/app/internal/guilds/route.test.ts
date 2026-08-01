@@ -74,4 +74,40 @@ describe("POST /internal/guilds", () => {
     });
     expect((await POST(request)).status).toBe(400);
   });
+
+  it("defaults visibility to open, and accepts an explicit visibility", async () => {
+    const [owner] = await db
+      .insert(users)
+      .values({ discordId: "3", discordUsername: "carol" })
+      .returning();
+
+    const defaultRequest = new NextRequest(URL, {
+      method: "POST",
+      headers: SECRET_HEADERS,
+      body: JSON.stringify({ name: "Default Guild", owner_id: toUserWireId(owner.id) })
+    });
+    const defaultBody = (await (await POST(defaultRequest)).json()) as { visibility: string };
+    expect(defaultBody.visibility).toBe("open");
+
+    const privateRequest = new NextRequest(URL, {
+      method: "POST",
+      headers: SECRET_HEADERS,
+      body: JSON.stringify({ name: "Private Guild", owner_id: toUserWireId(owner.id), visibility: "private" })
+    });
+    const privateBody = (await (await POST(privateRequest)).json()) as { visibility: string };
+    expect(privateBody.visibility).toBe("private");
+  });
+
+  it("returns 400 for an invalid visibility", async () => {
+    const [owner] = await db
+      .insert(users)
+      .values({ discordId: "4", discordUsername: "dave" })
+      .returning();
+    const request = new NextRequest(URL, {
+      method: "POST",
+      headers: SECRET_HEADERS,
+      body: JSON.stringify({ name: "My Guild", owner_id: toUserWireId(owner.id), visibility: "secret" })
+    });
+    expect((await POST(request)).status).toBe(400);
+  });
 });

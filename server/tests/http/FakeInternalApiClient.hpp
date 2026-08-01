@@ -16,22 +16,47 @@ class FakeInternalApiClient : public http::InternalApiClient {
   public:
     std::optional<http::Catalog> fetchCatalog() override { return catalog_to_return; }
 
-    std::optional<http::WireGuild> createGuild(const std::string& name,
-                                               const std::string& owner_id) override {
+    std::optional<http::WireGuild> createGuild(const std::string& name, const std::string& owner_id,
+                                               const std::string& visibility) override {
         if (fail_create_guild) {
             return std::nullopt;
         }
-        return http::WireGuild{"g_fake_" + std::to_string(next_guild_id_++), name, owner_id};
+        return http::WireGuild{"g_fake_" + std::to_string(next_guild_id_++), name, owner_id, visibility};
     }
 
     bool deleteGuild(const std::string&) override { return !fail_delete_guild; }
 
-    bool createMembership(const std::string&, const std::string&, const std::string&) override {
-        return !fail_create_membership;
+    std::optional<std::string> setGuildVisibility(const std::string&, const std::string& visibility) override {
+        if (fail_set_guild_visibility) {
+            return std::nullopt;
+        }
+        return visibility;
+    }
+
+    std::optional<int> createMembership(const std::string&, const std::string&,
+                                        int role_rank) override {
+        if (fail_create_membership) {
+            return std::nullopt;
+        }
+        return create_membership_returns_rank.value_or(role_rank);
     }
 
     bool deleteMembership(const std::string&, const std::string&) override {
         return !fail_delete_membership;
+    }
+
+    std::optional<std::vector<http::WireMember>> fetchGuildMembers(const std::string&) override {
+        if (fail_fetch_guild_members) {
+            return std::nullopt;
+        }
+        return guild_members_to_return;
+    }
+
+    std::optional<std::string> setMemberRole(const std::string&, const std::string&, int) override {
+        if (fail_set_member_role) {
+            return std::nullopt;
+        }
+        return set_member_role_label_to_return;
     }
 
     std::optional<http::WireChannel> createChannel(const std::string& guild_id,
@@ -52,21 +77,120 @@ class FakeInternalApiClient : public http::InternalApiClient {
         return revoked_ids_to_return;
     }
 
+    bool createMessage(const std::optional<std::string>& channel_id, const std::string& user_id,
+                       const std::string& content, int seq) override {
+        if (fail_create_message) {
+            return false;
+        }
+        created_messages.push_back(http::WireMessage{seq, channel_id, 0, user_id, "", content});
+        return true;
+    }
+
+    std::optional<http::HistoryPage> fetchMessages(const std::optional<std::string>&,
+                                                    std::optional<int>, int) override {
+        if (fail_fetch_messages) {
+            return std::nullopt;
+        }
+        return history_page_to_return;
+    }
+
+    http::LastSequence fetchLastSequence() override { return last_sequence_to_return; }
+
+    std::optional<http::WireInvite> createInvite(const std::string&, const std::string&,
+                                                 std::optional<int> max_uses,
+                                                 std::optional<int>) override {
+        if (fail_create_invite) {
+            return std::nullopt;
+        }
+        http::WireInvite invite;
+        invite.code = create_invite_returns_code.empty()
+                          ? "fake-code-" + std::to_string(next_invite_id_++)
+                          : create_invite_returns_code;
+        invite.max_uses = max_uses;
+        invite.use_count = 0;
+        invite.created_at = "2026-01-01T00:00:00Z";
+        return invite;
+    }
+
+    std::optional<std::vector<http::WireInvite>> fetchInvites(const std::string&) override {
+        if (fail_fetch_invites) {
+            return std::nullopt;
+        }
+        return invites_to_return;
+    }
+
+    bool revokeInvite(const std::string&, const std::string&) override {
+        return !fail_revoke_invite;
+    }
+
+    http::RedeemInviteResult redeemInvite(const std::string&, const std::string&) override {
+        return redeem_invite_returns;
+    }
+
+    http::CreateJoinRequestResult createJoinRequest(const std::string&, const std::string&) override {
+        return create_join_request_returns;
+    }
+
+    std::optional<std::vector<http::WireJoinRequest>> fetchJoinRequests(const std::string&) override {
+        if (fail_fetch_join_requests) {
+            return std::nullopt;
+        }
+        return join_requests_to_return;
+    }
+
+    std::optional<int> approveJoinRequest(const std::string&, const std::string&) override {
+        if (fail_approve_join_request) {
+            return std::nullopt;
+        }
+        return approve_join_request_returns_rank;
+    }
+
+    bool rejectJoinRequest(const std::string&, const std::string&) override {
+        return !fail_reject_join_request;
+    }
+
     // Test control: flip one of these to exercise a handler's "internal API
     // call failed" path (should become INTERNAL_ERROR without mutating any
     // local cache/session state).
     bool fail_create_guild = false;
     bool fail_delete_guild = false;
+    bool fail_set_guild_visibility = false;
     bool fail_create_membership = false;
     bool fail_delete_membership = false;
     bool fail_create_channel = false;
     bool fail_delete_channel = false;
+    bool fail_create_message = false;
+    bool fail_fetch_messages = false;
+    bool fail_fetch_guild_members = false;
+    bool fail_set_member_role = false;
+    bool fail_create_invite = false;
+    bool fail_fetch_invites = false;
+    bool fail_revoke_invite = false;
+    bool fail_fetch_join_requests = false;
+    bool fail_approve_join_request = false;
+    bool fail_reject_join_request = false;
     http::Catalog catalog_to_return;
     std::vector<std::string> revoked_ids_to_return;
+    std::vector<http::WireMessage> created_messages;
+    http::HistoryPage history_page_to_return;
+    http::LastSequence last_sequence_to_return;
+    std::vector<http::WireMember> guild_members_to_return;
+    std::string set_member_role_label_to_return = "Officer";
+    // If unset, createMembership echoes back whatever role_rank it was
+    // called with — override to simulate the idempotent-rejoin case where
+    // Postgres already had a different rank for this row.
+    std::optional<int> create_membership_returns_rank;
+    std::string create_invite_returns_code; // empty = auto-generate a fake one
+    std::vector<http::WireInvite> invites_to_return;
+    http::RedeemInviteResult redeem_invite_returns;
+    http::CreateJoinRequestResult create_join_request_returns = http::CreateJoinRequestResult::CREATED;
+    std::vector<http::WireJoinRequest> join_requests_to_return;
+    int approve_join_request_returns_rank = 0;
 
   private:
     int next_guild_id_ = 1;
     int next_channel_id_ = 1;
+    int next_invite_id_ = 1;
 };
 
 } // namespace test_helpers

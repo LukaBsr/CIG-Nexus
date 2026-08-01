@@ -30,6 +30,7 @@ export interface WireGuild {
   guild_id: string;
   name: string;
   owner_id: string;
+  visibility: "open" | "application" | "private";
 }
 
 export interface WireChannel {
@@ -102,6 +103,20 @@ export interface WireChannelMessage {
   content: string;
 }
 
+// docs/social-presence-design.md §1.4. Only INVITE_CREATED is modeled on
+// the wire-inbound side today — the frontend's only invite-related UI is
+// the creation form (§6 step 6's explicit scope); LIST_INVITES/REVOKE_INVITE
+// aren't wired into the client yet.
+export interface WireInviteCreated {
+  type: "INVITE_CREATED";
+  guild_id: string;
+  code: string;
+  max_uses: number | null;
+  use_count: number;
+  expires_at: string | null;
+  created_at: string;
+}
+
 export interface WireError {
   type: "ERROR";
   code: string;
@@ -127,6 +142,7 @@ export type WireInboundMessage =
   | WireChannelJoined
   | WireChannelLeft
   | WireChannelMessage
+  | WireInviteCreated
   | WireError;
 
 // camelCase types components actually consume. useGatewayConnection
@@ -138,6 +154,16 @@ export interface Guild {
   guildId: string;
   name: string;
   ownerId: string;
+  visibility: "open" | "application" | "private";
+}
+
+export interface Invite {
+  guildId: string;
+  code: string;
+  maxUses: number | null;
+  useCount: number;
+  expiresAt: string | null;
+  createdAt: string;
 }
 
 export interface Channel {
@@ -165,7 +191,18 @@ export interface ChannelMessage {
 }
 
 export function mapGuild(wire: WireGuild): Guild {
-  return { guildId: wire.guild_id, name: wire.name, ownerId: wire.owner_id };
+  return { guildId: wire.guild_id, name: wire.name, ownerId: wire.owner_id, visibility: wire.visibility };
+}
+
+export function mapInvite(wire: WireInviteCreated): Invite {
+  return {
+    guildId: wire.guild_id,
+    code: wire.code,
+    maxUses: wire.max_uses,
+    useCount: wire.use_count,
+    expiresAt: wire.expires_at,
+    createdAt: wire.created_at
+  };
 }
 
 export function mapChannel(wire: WireChannel): Channel {

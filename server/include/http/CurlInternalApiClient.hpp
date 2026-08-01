@@ -20,17 +20,41 @@ class CurlInternalApiClient : public InternalApiClient {
     CurlInternalApiClient& operator=(const CurlInternalApiClient&) = delete;
 
     std::optional<Catalog> fetchCatalog() override;
-    std::optional<WireGuild> createGuild(const std::string& name,
-                                         const std::string& owner_id) override;
+    std::optional<WireGuild> createGuild(const std::string& name, const std::string& owner_id,
+                                         const std::string& visibility) override;
     bool deleteGuild(const std::string& guild_id) override;
-    bool createMembership(const std::string& guild_id, const std::string& user_id,
-                          const std::string& role) override;
+    std::optional<std::string> setGuildVisibility(const std::string& guild_id,
+                                                   const std::string& visibility) override;
+    std::optional<int> createMembership(const std::string& guild_id, const std::string& user_id,
+                                        int role_rank) override;
     bool deleteMembership(const std::string& guild_id, const std::string& user_id) override;
+    std::optional<std::vector<WireMember>> fetchGuildMembers(const std::string& guild_id) override;
+    std::optional<std::string> setMemberRole(const std::string& guild_id, const std::string& user_id,
+                                             int role_rank) override;
     std::optional<WireChannel> createChannel(const std::string& guild_id, const std::string& name,
                                              const std::string& channel_type) override;
     bool deleteChannel(const std::string& channel_id) override;
     std::vector<std::string> fetchRevokedSessionIds(const std::string& since_iso8601,
                                                     std::string& out_as_of) override;
+    bool createMessage(const std::optional<std::string>& channel_id, const std::string& user_id,
+                       const std::string& content, int seq) override;
+    std::optional<HistoryPage> fetchMessages(const std::optional<std::string>& channel_id,
+                                             std::optional<int> before_seq, int limit) override;
+    LastSequence fetchLastSequence() override;
+
+    std::optional<WireInvite> createInvite(const std::string& guild_id, const std::string& created_by,
+                                           std::optional<int> max_uses,
+                                           std::optional<int> expires_in_seconds) override;
+    std::optional<std::vector<WireInvite>> fetchInvites(const std::string& guild_id) override;
+    bool revokeInvite(const std::string& guild_id, const std::string& code) override;
+    RedeemInviteResult redeemInvite(const std::string& code, const std::string& user_id) override;
+
+    CreateJoinRequestResult createJoinRequest(const std::string& guild_id,
+                                              const std::string& user_id) override;
+    std::optional<std::vector<WireJoinRequest>> fetchJoinRequests(const std::string& guild_id) override;
+    std::optional<int> approveJoinRequest(const std::string& guild_id,
+                                          const std::string& user_id) override;
+    bool rejectJoinRequest(const std::string& guild_id, const std::string& user_id) override;
 
   private:
     struct HttpResponse {

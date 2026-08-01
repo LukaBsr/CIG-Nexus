@@ -7,6 +7,7 @@ import {
   type ConnectionStatus,
   createChannel as sendCreateChannel,
   createGuild as sendCreateGuild,
+  createInvite as sendCreateInvite,
   joinChannel as sendJoinChannel,
   joinGuild as sendJoinGuild,
   listChannels,
@@ -19,10 +20,12 @@ import {
   mapChannelMessage,
   mapChatMessage,
   mapGuild,
+  mapInvite,
   type Channel,
   type ChannelMessage,
   type ChatMessage,
-  type Guild
+  type Guild,
+  type Invite
 } from "@/lib/types";
 
 export interface UseGatewayConnectionResult {
@@ -37,13 +40,16 @@ export interface UseGatewayConnectionResult {
   channelMessages: ChannelMessage[];
   lastError: string | null;
   clearError: () => void;
+  lastCreatedInvite: Invite | null;
+  clearLastCreatedInvite: () => void;
   sendChatMessage: (content: string) => void;
-  createGuild: (name: string) => void;
+  createGuild: (name: string, visibility?: "open" | "application" | "private") => void;
   joinGuild: (guildId: string) => void;
   selectGuild: (guildId: string) => void;
   createChannel: (guildId: string, name: string, channelType: "TEXT" | "VOICE") => void;
   joinChannel: (channelId: string) => void;
   sendChannelMessage: (content: string) => void;
+  createInvite: (guildId: string, maxUses: number | null, expiresInSeconds: number | null) => void;
 }
 
 // Owns the WebSocket connection's entire lifecycle: opening it
@@ -66,6 +72,7 @@ export function useGatewayConnection(): UseGatewayConnectionResult {
   const [channelMessages, setChannelMessages] = useState<ChannelMessage[]>([]);
 
   const [lastError, setLastError] = useState<string | null>(null);
+  const [lastCreatedInvite, setLastCreatedInvite] = useState<Invite | null>(null);
 
   // onMessage is captured once by connect() in the effect below, so it can't
   // see later state directly (stale closure) — these refs mirror the state
@@ -192,6 +199,10 @@ export function useGatewayConnection(): UseGatewayConnectionResult {
             setChannelMessages((prev) => [...prev, mapChannelMessage(msg)]);
             break;
 
+          case "INVITE_CREATED":
+            setLastCreatedInvite(mapInvite(msg));
+            break;
+
           case "ERROR":
             setLastError(msg.message ?? msg.code ?? "Unknown error");
             break;
@@ -218,8 +229,10 @@ export function useGatewayConnection(): UseGatewayConnectionResult {
     channelMessages,
     lastError,
     clearError: () => setLastError(null),
+    lastCreatedInvite,
+    clearLastCreatedInvite: () => setLastCreatedInvite(null),
     sendChatMessage: (content) => sendChatMessageWire(content),
-    createGuild: (name) => sendCreateGuild(name),
+    createGuild: (name, visibility) => sendCreateGuild(name, visibility),
     joinGuild: (guildId) => sendJoinGuild(guildId),
     selectGuild: (guildId) => {
       setActiveGuildId(guildId);
@@ -227,6 +240,7 @@ export function useGatewayConnection(): UseGatewayConnectionResult {
     },
     createChannel: (guildId, name, channelType) => sendCreateChannel(guildId, name, channelType),
     joinChannel: (channelId) => sendJoinChannel(channelId),
-    sendChannelMessage: (content) => sendChannelMessageWire(content)
+    sendChannelMessage: (content) => sendChannelMessageWire(content),
+    createInvite: (guildId, maxUses, expiresInSeconds) => sendCreateInvite(guildId, maxUses, expiresInSeconds)
   };
 }

@@ -95,8 +95,8 @@ export function sendChatMessage(content: string): void {
   send({ type: "CHAT_MESSAGE", content: content });
 }
 
-export function createGuild(name: string): void {
-  send({ type: "CREATE_GUILD", name: name });
+export function createGuild(name: string, visibility: "open" | "application" | "private" = "open"): void {
+  send({ type: "CREATE_GUILD", name: name, visibility: visibility });
 }
 
 export function listGuilds(): void {
@@ -146,4 +146,21 @@ export function leaveChannel(): void {
 
 export function sendChannelMessage(content: string): void {
   send({ type: "CHANNEL_MESSAGE", content: content });
+}
+
+// docs/social-presence-design.md §1.4/§6 step 6: maxUses/expiresInSeconds
+// are the two fields the custom invite-creation UI exposes instead of a
+// client hardcoding null/null — both stay optional (null = unlimited
+// uses / never expires, §1.6's reusable-by-default recommendation).
+export function createInvite(
+  guildId: string,
+  maxUses: number | null,
+  expiresInSeconds: number | null
+): void {
+  send({
+    type: "CREATE_INVITE",
+    guild_id: guildId,
+    max_uses: maxUses,
+    expires_in_seconds: expiresInSeconds
+  });
 }
