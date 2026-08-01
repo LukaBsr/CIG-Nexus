@@ -136,6 +136,16 @@ std::vector<int> SessionManager::getFdsWithActiveChannel(const std::string& chan
     return fds;
 }
 
+std::vector<int> SessionManager::getFdsForUser(const std::string& user_id) const {
+    std::vector<int> fds;
+    for (const auto& [fd, session] : sessions_) {
+        if (session.user_id == user_id) {
+            fds.push_back(fd);
+        }
+    }
+    return fds;
+}
+
 void SessionManager::purgeGuildMembership(const std::string& guild_id,
                                           const std::vector<std::string>& channel_ids) {
     for (auto& [fd, session] : sessions_) {
@@ -155,6 +165,28 @@ void SessionManager::clearActiveChannelEverywhere(const std::string& channel_id)
             session.active_channel_id.clear();
         }
     }
+}
+
+bool SessionManager::incrementPresence(const std::string& user_id) {
+    const int count = ++presence_counts_[user_id];
+    return count == 1;
+}
+
+bool SessionManager::decrementPresence(const std::string& user_id) {
+    const auto it = presence_counts_.find(user_id);
+    if (it == presence_counts_.end()) {
+        return false; // defensive: decrement without a matching increment
+    }
+
+    if (--it->second <= 0) {
+        presence_counts_.erase(it);
+        return true;
+    }
+    return false;
+}
+
+bool SessionManager::isOnline(const std::string& user_id) const {
+    return presence_counts_.find(user_id) != presence_counts_.end();
 }
 
 } // namespace session

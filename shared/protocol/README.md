@@ -165,6 +165,23 @@ Field meanings:
 
 If a non-identified client sends `CHAT_MESSAGE`, server returns `ERROR` with code `NOT_IDENTIFIED`.
 
+### PRESENCE_UPDATE
+
+Server to client only — there is no client-sent message for this; presence is derived entirely from connection lifecycle events the server already observes.
+
+```json
+{ "type": "PRESENCE_UPDATE", "user_id": "u_1", "status": "online" }
+```
+
+`status` is `"online"` or `"offline"`. Presence is tracked as a connection count per `user_id`, not per connection — a user can have multiple simultaneous connections (multiple tabs/devices), and only the transitions matter:
+
+- `"online"`: broadcast when a user's connection count goes `0 → 1` (their first connection completes `IDENTIFY`).
+- `"offline"`: broadcast when it goes `1 → 0` (their last connection disconnects, whether a clean close or a detected reset).
+
+A second or third connection for the same user connecting or disconnecting emits nothing — no visible state change occurred. Delivery is `Scope::BROADCAST` (`docs/social-presence-design.md` §3.4) — every connected client receives every `PRESENCE_UPDATE`, including the user whose own status just changed and regardless of shared guild membership; there is no per-guild-scoped variant.
+
+**Known limitation**: detecting a peer that stops responding without a clean close (network partition, laptop sleep) relies on TCP keepalive (`SO_KEEPALIVE`, tuned to a ~30s idle timeout / 10s probe interval / 3 probes — well under Linux's default of several hours), not an application-level heartbeat. A user can appear `"online"` for up to roughly that keepalive window after actually going dark.
+
 ### Guilds and Channels
 
 A **guild** is a container owned by its creator, holding a set of **channels**. A **channel** belongs to exactly one guild and has a `channel_type` of `TEXT` or `VOICE`; only `TEXT` channels are functional today (see [Security and Limits](#security-and-limits)). All guild/channel actions below require the connection to be identified first (`ERROR` / `NOT_IDENTIFIED` otherwise), independent of `CHAT_MESSAGE`.
@@ -616,6 +633,7 @@ Current error codes used by the implementation:
 - The gateway is transport-only and does not validate protocol payloads.
 - Valid `CHAT_MESSAGE` responses are broadcast to all connected clients.
 - Non-chat responses are returned only to the originating client.
+- `PRESENCE_UPDATE` is also broadcast to all connected clients, but unlike `CHAT_MESSAGE` it isn't triggered by any client-sent message — it's emitted by the server's own connection-lifecycle handling (a successful `IDENTIFY`, or a detected disconnect) on a 0↔1 connection-count transition (see [PRESENCE_UPDATE](#presence_update)).
 - Guild/channel responses that need to reach more than one connection but not literally everyone (`MEMBER_LEFT`, `GUILD_DELETED`, `CHANNEL_CREATED`, `CHANNEL_DELETED`, `CHANNEL_MESSAGE`) use a third delivery mode, `TARGETED`: the handler computes the exact set of recipient connections (e.g. "current members of this guild," or "connections with this channel active") and the server delivers only to that set. This is distinct from `BROADCAST`, which always means every connected client.
 
 ## Security and Limits
@@ -624,6 +642,7 @@ Current implementation limitations:
 
 - authorization is rank-based (`role_rank`, [Roles](#roles)) with exactly three reachable tiers today (crew/officer/owner) — no general, delegable permission system yet (see `docs/guilds/design.md`, "Future Permission Hook")
 - no guild privacy — `LIST_GUILDS` returns every guild, and any identified client can `JOIN_GUILD` any of them (see `docs/guilds/design.md`, "Deferred: Guild Privacy")
+- presence (`PRESENCE_UPDATE`) leaks online/offline status across guild boundaries — every connected client learns it for every other identified user, regardless of shared guild membership. Consistent with, not a regression from, the existing baseline above (guild existence and membership-by-id are already visible to every identified client with no privacy model)
 - `VOICE` channels are metadata-only: the type is modeled and validated, but there is no audio transport or voice presence
 - no TLS
 - no rate limiting

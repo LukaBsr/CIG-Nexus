@@ -4,9 +4,41 @@
 #include <cstring>
 #include <fcntl.h>
 #include <netinet/in.h>
+#include <netinet/tcp.h>
 #include <stdexcept>
 #include <sys/socket.h>
 #include <unistd.h>
+
+namespace {
+
+// docs/social-presence-design.md §3.3: mitigates the half-open-connection
+// gap (a peer that stops responding without the OS ever surfacing a read
+// failure — network partition, laptop sleep). Not a full fix: a user can
+// show "online" for up to ~kKeepaliveIdleSeconds +
+// kKeepaliveIntervalSeconds * kKeepaliveProbeCount after actually going
+// dark. Explicitly tuned rather than left at OS defaults, which are often
+// hours on Linux — that would make presence's offline transition
+// practically unusable for anything but a clean close.
+constexpr int kKeepaliveIdleSeconds = 30;     // idle time before the first probe
+constexpr int kKeepaliveIntervalSeconds = 10; // time between probes
+constexpr int kKeepaliveProbeCount = 3;       // failed probes before the OS reports the fd dead
+
+// Best-effort: a failure to enable/tune keepalive shouldn't fail accept()
+// itself — it's a mitigation for a gap that already existed, not a
+// correctness requirement for the connection to function.
+void enableKeepalive(int fd) {
+    int enable = 1;
+    ::setsockopt(fd, SOL_SOCKET, SO_KEEPALIVE, &enable, sizeof(enable));
+
+    int idle = kKeepaliveIdleSeconds;
+    int interval = kKeepaliveIntervalSeconds;
+    int count = kKeepaliveProbeCount;
+    ::setsockopt(fd, IPPROTO_TCP, TCP_KEEPIDLE, &idle, sizeof(idle));
+    ::setsockopt(fd, IPPROTO_TCP, TCP_KEEPINTVL, &interval, sizeof(interval));
+    ::setsockopt(fd, IPPROTO_TCP, TCP_KEEPCNT, &count, sizeof(count));
+}
+
+} // namespace
 
 TcpListener::TcpListener(uint16_t port) : port_(port), socket_fd_(-1) {}
 
@@ -102,6 +134,8 @@ int TcpListener::accept() {
         throw std::runtime_error(std::string("Failed to set client non-blocking: ") +
                                  strerror(errno));
     }
+
+    enableKeepalive(client_fd);
 
     return client_fd;
 }

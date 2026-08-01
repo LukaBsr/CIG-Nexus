@@ -172,3 +172,59 @@ TEST_CASE("SessionManager clearActiveChannelEverywhere only clears the matching 
     REQUIRE(manager.getSession(1)->active_channel_id.empty());
     REQUIRE(manager.getSession(2)->active_channel_id == "c_2");
 }
+
+TEST_CASE("SessionManager incrementPresence reports only the 0->1 transition") {
+    session::SessionManager manager;
+
+    REQUIRE_FALSE(manager.isOnline("u_1"));
+
+    REQUIRE(manager.incrementPresence("u_1"));       // 0 -> 1: first connection
+    REQUIRE(manager.isOnline("u_1"));
+    REQUIRE_FALSE(manager.incrementPresence("u_1")); // 1 -> 2: second tab, no transition
+    REQUIRE_FALSE(manager.incrementPresence("u_1")); // 2 -> 3: third tab, no transition
+    REQUIRE(manager.isOnline("u_1"));
+}
+
+TEST_CASE("SessionManager decrementPresence reports only the 1->0 transition") {
+    session::SessionManager manager;
+    manager.incrementPresence("u_1");
+    manager.incrementPresence("u_1");
+    manager.incrementPresence("u_1");
+
+    REQUIRE_FALSE(manager.decrementPresence("u_1")); // 3 -> 2: one tab closed, still online
+    REQUIRE(manager.isOnline("u_1"));
+    REQUIRE_FALSE(manager.decrementPresence("u_1")); // 2 -> 1: still online
+    REQUIRE(manager.isOnline("u_1"));
+    REQUIRE(manager.decrementPresence("u_1"));        // 1 -> 0: last connection closed
+    REQUIRE_FALSE(manager.isOnline("u_1"));
+}
+
+TEST_CASE("SessionManager decrementPresence without a matching increment is a safe no-op") {
+    session::SessionManager manager;
+
+    REQUIRE_FALSE(manager.decrementPresence("u_ghost"));
+    REQUIRE_FALSE(manager.isOnline("u_ghost"));
+}
+
+TEST_CASE("SessionManager presence is tracked independently per user") {
+    session::SessionManager manager;
+
+    REQUIRE(manager.incrementPresence("u_1"));
+    REQUIRE(manager.incrementPresence("u_2"));
+
+    REQUIRE(manager.isOnline("u_1"));
+    REQUIRE(manager.isOnline("u_2"));
+
+    REQUIRE(manager.decrementPresence("u_1"));
+    REQUIRE_FALSE(manager.isOnline("u_1"));
+    REQUIRE(manager.isOnline("u_2")); // untouched
+}
+
+TEST_CASE("SessionManager a user can go offline then online again") {
+    session::SessionManager manager;
+
+    REQUIRE(manager.incrementPresence("u_1"));
+    REQUIRE(manager.decrementPresence("u_1"));
+    REQUIRE(manager.incrementPresence("u_1")); // 0 -> 1 again: a fresh transition
+    REQUIRE(manager.isOnline("u_1"));
+}

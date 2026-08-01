@@ -10,11 +10,14 @@
 #include "protocol/handlers/GuildHandler.hpp"
 #include "protocol/handlers/HelloHandler.hpp"
 #include "protocol/handlers/IdentifyHandler.hpp"
+#include "protocol/handlers/InviteHandler.hpp"
+#include "protocol/handlers/JoinRequestHandler.hpp"
 
 #include "auth/JwtVerifier.hpp"
 #include "auth/RevocationCache.hpp"
 #include "guild/GuildManager.hpp"
 #include "http/InternalApiClient.hpp"
+#include "persistence/MessagePersistenceWorker.hpp"
 #include "session/SessionManager.hpp"
 
 #include <atomic>
@@ -60,6 +63,27 @@ class Server {
     void pollRevocationCache();
     void disconnectRevokedSessions();
 
+    // docs/social-presence-design.md §4.3: seeds both handlers' message
+    // counters from Postgres's durable high-water mark at startup — no-op
+    // if internal_api_client_ is unset.
+    void hydrateMessageSequences();
+
+    // docs/social-presence-design.md §3.2/§3.3: presence transitions are
+    // orchestrated here, not inside IdentifyHandler — this is the one place
+    // that already owns both connect (via a successful IDENTIFY dispatch)
+    // and disconnect (both the clean/RST readFromSocket() failure path and
+    // the revocation sweep), and already has broadcast() available. A
+    // handler could compute the transition but has no way to also emit a
+    // second, unrelated broadcast message through today's one-Message-per-
+    // dispatch return path (that's Step 5's job, and it's scoped to a
+    // different problem — two *different* payloads to two different
+    // audiences, not one extra uniform broadcast).
+    protocol::Message makePresenceUpdate(const std::string& user_id, bool online) const;
+    // Wraps SessionManager::removeSession() so every disconnect path
+    // consistently checks the 1->0 presence transition — never call
+    // session_manager_.removeSession() directly outside this.
+    void removeSessionTrackingPresence(int fd);
+
     // Server runtime state
     uint16_t port_;
     std::atomic<bool> running_;
@@ -72,6 +96,8 @@ class Server {
     protocol::IdentifyHandler identify_handler_;
     protocol::GuildHandler guild_handler_;
     protocol::ChannelHandler channel_handler_;
+    protocol::InviteHandler invite_handler_;
+    protocol::JoinRequestHandler join_request_handler_;
 
     // In-memory connection/session/guild state
     session::SessionManager session_manager_;
@@ -87,6 +113,11 @@ class Server {
     std::unique_ptr<http::InternalApiClient> internal_api_client_;
     std::string revocation_poll_as_of_; // empty = "since the beginning" for the first poll
     std::chrono::steady_clock::time_point last_revocation_poll_;
+
+    // Declared after internal_api_client_ so it destructs (and stops its
+    // thread) first — it holds a raw pointer into internal_api_client_ and
+    // must never outlive it (docs/social-presence-design.md §4.5).
+    std::unique_ptr<persistence::MessagePersistenceWorker> message_worker_;
 };
 
 #endif // CIG_NEXUS_SERVER_HPP
