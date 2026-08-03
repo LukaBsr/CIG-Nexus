@@ -5,7 +5,7 @@ import { isAuthorizedInternalRequest } from "@/lib/internal/auth";
 
 const VALID_VISIBILITIES: GuildVisibility[] = ["open", "application", "private"];
 
-// docs/social-presence-design.md §1.10 (SET_GUILD_VISIBILITY).
+// docs/guilds/social-presence-design.md §1.10 (SET_GUILD_VISIBILITY).
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }

@@ -23,7 +23,7 @@ class GuildManager {
     Guild& upsertGuild(const std::string& id, const std::string& name, const std::string& owner_id,
                        GuildVisibility visibility = GuildVisibility::OPEN);
 
-    // docs/social-presence-design.md §1.10 (SET_GUILD_VISIBILITY). No-op if
+    // docs/guilds/social-presence-design.md §1.10 (SET_GUILD_VISIBILITY). No-op if
     // the guild doesn't exist (callers already check hasGuild() first).
     void setGuildVisibility(const std::string& guild_id, GuildVisibility visibility);
 
@@ -50,7 +50,7 @@ class GuildManager {
 
     bool isOwner(const std::string& guild_id, const std::string& user_id) const;
 
-    // docs/social-presence-design.md §2.2/§2.3: a minimal role_rank cache,
+    // docs/guilds/social-presence-design.md §2.2/§2.3: a minimal role_rank cache,
     // deliberately NOT the full roster (username, role_label) LIST_MEMBERS
     // needs — that stays a live internal-API read per §2.3's "fetch live"
     // recommendation, a cold UI-driven path. This exists only to keep the
@@ -64,7 +64,7 @@ class GuildManager {
     void removeMember(const std::string& guild_id, const std::string& user_id);
     std::optional<int> getMemberRank(const std::string& guild_id, const std::string& user_id) const;
 
-    // docs/social-presence-design.md §3.4/§1.10: the Session.guild_ids
+    // docs/guilds/social-presence-design.md §3.4/§1.10: the Session.guild_ids
     // hydration-on-IDENTIFY fix. user_id -> every guild_id they belong to,
     // kept current by setMemberRank/removeMember/deleteGuild above (the
     // same mutation points that already maintain member_ranks_) — no
@@ -79,7 +79,7 @@ class GuildManager {
     // means adding a constant to RoleRank.hpp; nothing in ChannelHandler,
     // GuildHandler, or the protocol itself should need to change.
     // See docs/guilds/design.md, "Future Permission Hook", and
-    // docs/social-presence-design.md §2.2's predicate table.
+    // docs/guilds/social-presence-design.md §2.2's predicate table.
     bool isOfficerOrAbove(const std::string& guild_id, const std::string& user_id) const;
     bool canCreateChannel(const std::string& guild_id, const std::string& user_id) const;
     bool canDeleteChannel(const std::string& guild_id, const std::string& user_id) const;

@@ -9,7 +9,7 @@
    var(--color-...), so a [data-theme="..."] block later in this file that
    redeclares one of these custom properties overrides it for every utility
    class at once, with no per-component changes
-   (docs/settings-appearance-design.md §2.1). No [data-theme="abyss"] block
+   (docs/settings/appearance-design.md §2.1). No [data-theme="abyss"] block
    exists below because these @theme defaults already are that theme —
    declaring them a second time would just be a second place for the same
    values to drift out of sync. */

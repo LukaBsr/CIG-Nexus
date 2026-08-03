@@ -119,7 +119,7 @@ export function listChannels(guildId: string): void {
   send({ type: "LIST_CHANNELS", guild_id: guildId });
 }
 
-// docs/social-presence-design.md §2.1: fetched alongside listChannels() so
+// docs/guilds/social-presence-design.md §2.1: fetched alongside listChannels() so
 // the client can gate permission-sensitive UI on the viewer's own
 // role_rank (canCreateInvite/canCreateChannel are officer-or-above, not
 // owner-only — see §2.2).
@@ -156,7 +156,7 @@ export function sendChannelMessage(content: string): void {
   send({ type: "CHANNEL_MESSAGE", content: content });
 }
 
-// docs/social-presence-design.md §1.4/§6 step 6: maxUses/expiresInSeconds
+// docs/guilds/social-presence-design.md §1.4/§6 step 6: maxUses/expiresInSeconds
 // are the two fields the custom invite-creation UI exposes instead of a
 // client hardcoding null/null — both stay optional (null = unlimited
 // uses / never expires, §1.6's reusable-by-default recommendation).

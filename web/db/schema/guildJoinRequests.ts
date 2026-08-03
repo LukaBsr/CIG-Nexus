@@ -3,7 +3,7 @@ import { pgTable, uuid, timestamp, index, unique } from "drizzle-orm/pg-core";
 import { guilds } from "./guilds";
 import { users } from "./users";
 
-// docs/social-presence-design.md §1.9.
+// docs/guilds/social-presence-design.md §1.9.
 export const guildJoinRequests = pgTable(
   "guild_join_requests",
   {

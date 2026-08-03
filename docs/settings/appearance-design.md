@@ -35,7 +35,7 @@ Two related but separable pieces:
   devices pick it up **on their next login**, not in real time over the
   open WebSocket. Real-time propagation is a reasonable future addition
   (the protocol already has the machinery — see
-  `docs/social-presence-design.md`'s `TARGETED`/`BROADCAST` delivery
+  `docs/guilds/social-presence-design.md`'s `TARGETED`/`BROADCAST` delivery
   modes) but isn't designed here.
 
 ---
@@ -95,7 +95,7 @@ things that don't change shape as sections are added:
 Adding "Account" or "Notifications" later means appending one entry to
 `SETTINGS_SECTIONS` and writing that one component — the modal shell,
 section-switching logic, and open/close state never change. This is the
-same reason `docs/social-presence-design.md` §2.2 fixes the
+same reason `docs/guilds/social-presence-design.md` §2.2 fixes the
 authorization *model* in place (rank thresholds) so adding a tier later
 is additive rather than a rework: here the *shell* is fixed in place so
 adding a section is additive rather than a rework.
@@ -197,7 +197,7 @@ but the color change itself doesn't depend on a re-render completing.
 
 ### 2.2 Theme registry: mechanism decoupled from content
 
-Mirroring `docs/social-presence-design.md` §2.2's `role_rank`/`role_theme`
+Mirroring `docs/guilds/social-presence-design.md` §2.2's `role_rank`/`role_theme`
 split — the *mechanism* (an integer rank, a `data-theme` attribute) is
 fixed in place once; the *content* (how many themes exist, what they're
 called) is free to grow without touching the mechanism:
@@ -221,7 +221,7 @@ export const DEFAULT_THEME_ID = "abyss";
 Adding a third theme is: one new `[data-theme="..."]` CSS block, one new
 `THEMES` entry, zero changes to the picker component, the persistence
 code (§3), or any consuming component's `bg-teal`/`text-violet` classes.
-This is deliberately the same shape as `docs/social-presence-design.md`
+This is deliberately the same shape as `docs/guilds/social-presence-design.md`
 §2.2's `ROLE_THEMES` static registry (recommended there over a DB table
 "since exactly one theme exists in this iteration" and a table would buy
 data-driven themes nothing in the request asks for yet) — same
@@ -239,7 +239,7 @@ If a stored theme id (local or synced) doesn't match any entry in
 value predates a registry change — the picker and the `data-theme`
 application both fall back to `DEFAULT_THEME_ID` rather than rendering
 broken/unstyled UI or throwing. Same "a display gap should degrade, not
-break the response" principle `docs/social-presence-design.md` §2.2
+break the response" principle `docs/guilds/social-presence-design.md` §2.2
 applies to an unmapped `role_rank`/`role_theme` combination.
 
 ---
@@ -253,7 +253,7 @@ regardless of the sync toggle's state — `sync` only ever controls
 whether that same value *also* gets written to the account. This keeps
 the product usable offline and keeps theme changes feeling instant (no
 network round trip gates the visual change), matching how
-`docs/social-presence-design.md` §4.5 already chose to keep the hottest
+`docs/guilds/social-presence-design.md` §4.5 already chose to keep the hottest
 path (message send) independent of Postgres availability where
 possible.
 
@@ -334,9 +334,9 @@ having `theme` simultaneously carry a non-NULL default fights that).
 
 `theme` is **free text, not a Postgres `ENUM`** — deliberately mirroring
 `guild_memberships`' move *away* from a string-literal role model
-(`docs/social-presence-design.md` §2.2) but in the *other* direction
+(`docs/guilds/social-presence-design.md` §2.2) but in the *other* direction
 from `guilds.visibility`'s `guild_visibility` `ENUM`
-(`docs/social-presence-design.md` §1.7). The difference is what each
+(`docs/guilds/social-presence-design.md` §1.7). The difference is what each
 value's cardinality/change-rate looks like going forward: guild
 visibility is a small, fixed, behaviorally-load-bearing set (each value
 branches real server logic) unlikely to grow — a closed `ENUM` fits.
@@ -520,7 +520,7 @@ instead of assuming the value sent was the value that stuck.
   handled by §2.3's fallback-to-default, not an error state.
 - **Rate limiting**: `PATCH /api/user/appearance`, like every other
   authenticated mutation endpoint, should sit behind the existing
-  per-user rate-limiting mechanism (`docs/social-presence-design.md` §5
+  per-user rate-limiting mechanism (`docs/guilds/social-presence-design.md` §5
   established this as standing guidance for authenticated internal-API-
   adjacent mutations); a generous limit is appropriate here given the
   low stakes, mainly to blunt accidental client bugs (a runaway retry
@@ -552,20 +552,20 @@ instead of assuming the value sent was the value that stuck.
    the new `/api/user/appearance` route is exercised by whatever test
    coverage already asserts on the shape of `web/app/api/*` vs.
    `web/app/internal/*` (not a new isolation mechanism, just extending
-   existing coverage to the new route, per `docs/social-presence-design.md`
+   existing coverage to the new route, per `docs/guilds/social-presence-design.md`
    §5's closing checklist item on this same point).
 
 ## Related Documentation
 
-- [`social-presence-design.md`](social-presence-design.md) — the
-  `role_rank`/`role_theme` decoupling (§2.2) and static-registry-vs-DB-
-  table reasoning (§2.2, §2.3) this document's theme registry (§2.2) and
-  data-model choice (§3.4) directly mirror.
-- [`auth/discord-design.md`](auth/discord-design.md) — the session/
+- [`../guilds/social-presence-design.md`](../guilds/social-presence-design.md) —
+  the `role_rank`/`role_theme` decoupling (§2.2) and
+  static-registry-vs-DB-table reasoning (§2.2, §2.3) this document's theme
+  registry (§2.2) and data-model choice (§3.4) directly mirror.
+- [`../auth/discord-design.md`](../auth/discord-design.md) — the session/
   cookie model (§6) and `/internal/*` isolation requirement (§8.1/§9.1)
   this document's persistence design (§3.2, §3.5) builds on and stays
   consistent with.
-- [`guilds/design.md`](guilds/design.md) — origin of the
+- [`../guilds/design.md`](../guilds/design.md) — origin of the
   `guilds.visibility`-style `ENUM` precedent this document's §3.4
   contrasts against when explaining why `users.theme` is free text
   instead.

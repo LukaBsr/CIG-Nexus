@@ -4,7 +4,7 @@ import { pgTable, uuid, text, timestamp, bigint, check, uniqueIndex, index } fro
 import { channels } from "./channels";
 import { users } from "./users";
 
-// docs/social-presence-design.md §4.2: one table for both CHAT_MESSAGE
+// docs/guilds/social-presence-design.md §4.2: one table for both CHAT_MESSAGE
 // (channel_id NULL, the global lobby) and CHANNEL_MESSAGE (channel_id set)
 // — both share an identical shape and differ only in scope.
 //

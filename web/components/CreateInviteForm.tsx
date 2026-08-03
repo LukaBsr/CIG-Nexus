@@ -7,7 +7,7 @@ interface CreateInviteFormProps {
   onSubmit: (maxUses: number | null, expiresInSeconds: number | null) => void;
 }
 
-// docs/social-presence-design.md §1.4/§6 step 6: exposes max_uses and
+// docs/guilds/social-presence-design.md §1.4/§6 step 6: exposes max_uses and
 // expires_in_seconds instead of a client hardcoding null/null — both stay
 // optional, matching §1.6's reusable/never-expiring-by-default
 // recommendation. expires_in_seconds is entered here as days for a more

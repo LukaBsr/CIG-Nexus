@@ -1,4 +1,4 @@
-// docs/social-presence-design.md §2.2. Mirrored from
+// docs/guilds/social-presence-design.md §2.2. Mirrored from
 // server/include/guild/RoleRank.hpp and web/lib/internal/roleThemes.ts —
 // kept in sync manually, no shared-schema codegen between the two. Not
 // importing from lib/internal/ here on purpose: that tree is server-only

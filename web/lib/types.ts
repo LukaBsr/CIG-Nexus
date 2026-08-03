@@ -103,7 +103,7 @@ export interface WireChannelMessage {
   content: string;
 }
 
-// docs/social-presence-design.md §1.4. Only INVITE_CREATED is modeled on
+// docs/guilds/social-presence-design.md §1.4. Only INVITE_CREATED is modeled on
 // the wire-inbound side today — the frontend's only invite-related UI is
 // the creation form (§6 step 6's explicit scope); LIST_INVITES/REVOKE_INVITE
 // aren't wired into the client yet.
@@ -117,7 +117,7 @@ export interface WireInviteCreated {
   created_at: string;
 }
 
-// docs/social-presence-design.md §2.1/§2.4. Fetched so the client can gate
+// docs/guilds/social-presence-design.md §2.1/§2.4. Fetched so the client can gate
 // permission-sensitive UI (e.g. "can I create an invite/channel?") on the
 // viewer's own role_rank instead of guild ownership — canCreateInvite/
 // canCreateChannel are officer-or-above, not owner-only (§2.2).

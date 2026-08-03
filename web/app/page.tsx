@@ -75,7 +75,7 @@ export default function Home() {
 
   const activeGuild = guilds.find((g) => g.guildId === activeGuildId) ?? null;
   // canCreateChannel/canCreateInvite are officer-or-above, not owner-only
-  // (docs/social-presence-design.md §2.2) — gate on the viewer's own
+  // (docs/guilds/social-presence-design.md §2.2) — gate on the viewer's own
   // role_rank in the active guild's roster, not guild ownership.
   const myMembership = members.find((m) => m.userId === myUserId) ?? null;
   const isOfficerOrAbove = !!myMembership && myMembership.roleRank >= OFFICER_RANK;

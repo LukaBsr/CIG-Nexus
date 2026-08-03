@@ -36,7 +36,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   }
 }
 
-// docs/social-presence-design.md §2.3 (LIST_MEMBERS): live read, never
+// docs/guilds/social-presence-design.md §2.3 (LIST_MEMBERS): live read, never
 // cached. ?guild_id=g_... — matches this document's own query-param naming
 // (cf. FETCH_HISTORY's channel_id), not the guildId camelCase the path-param
 // route below uses, since that one mirrors its URL segment name instead.

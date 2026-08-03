@@ -1,4 +1,4 @@
-// docs/settings-appearance-design.md §3.5. Session-cookie authenticated
+// docs/settings/appearance-design.md §3.5. Session-cookie authenticated
 // (same __session refresh cookie every other browser-facing auth flow
 // uses) — this is a web/app/api/* route, not web/app/internal/*, since a
 // browser calls it directly and the C++/WebSocket protocol has no

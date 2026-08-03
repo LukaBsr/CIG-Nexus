@@ -11,7 +11,7 @@
 
 namespace {
 
-// docs/social-presence-design.md §3.3: mitigates the half-open-connection
+// docs/guilds/social-presence-design.md §3.3: mitigates the half-open-connection
 // gap (a peer that stops responding without the OS ever surfacing a read
 // failure — network partition, laptop sleep). Not a full fix: a user can
 // show "online" for up to ~kKeepaliveIdleSeconds +

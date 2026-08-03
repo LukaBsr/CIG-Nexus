@@ -21,7 +21,7 @@ class InternalApiClient;
 namespace protocol {
 
 // Guild invites: CREATE_INVITE, JOIN_VIA_INVITE, LIST_INVITES, REVOKE_INVITE.
-// See docs/social-presence-design.md §1.
+// See docs/guilds/social-presence-design.md §1.
 class InviteHandler {
   public:
     void setSessionManager(session::SessionManager* session_manager);

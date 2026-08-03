@@ -36,7 +36,7 @@ function toEpochSeconds(date: Date): number {
   return Math.floor(date.getTime() / 1000);
 }
 
-// docs/social-presence-design.md §4.5: the persistence write-through call
+// docs/guilds/social-presence-design.md §4.5: the persistence write-through call
 // for CHAT_MESSAGE/CHANNEL_MESSAGE — fire-and-forget from the C++ side, so
 // the caller here (the C++ worker) already has and broadcast every field
 // this message needs; the response only needs to confirm what was stored,

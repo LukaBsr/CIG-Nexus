@@ -57,7 +57,7 @@ std::string recv_frame_raw(int fd) {
     return buf;
 }
 
-// docs/social-presence-design.md §3.2: PRESENCE_UPDATE broadcasts to every
+// docs/guilds/social-presence-design.md §3.2: PRESENCE_UPDATE broadcasts to every
 // open connection, including the one whose own IDENTIFY just triggered it
 // (same delivery model CHAT_MESSAGE already uses) and every other already-
 // connected socket. The tests below that predate presence, and every test
@@ -434,7 +434,7 @@ TEST_CASE("Server rejects an already-revoked session immediately at startup, wit
 }
 
 // ----------------------------------------------------------------------------
-// docs/social-presence-design.md §3: PRESENCE_UPDATE is a lobby-wide
+// docs/guilds/social-presence-design.md §3: PRESENCE_UPDATE is a lobby-wide
 // broadcast (Scope::BROADCAST, same delivery model CHAT_MESSAGE uses) fired
 // only on a connection-count transition (0->1 online, 1->0 offline) — a
 // second/third tab for the same user must not flicker anything, and an

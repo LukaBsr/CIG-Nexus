@@ -6,7 +6,7 @@ import { users } from "@/db/schema";
 import { THEMES } from "@/lib/appearance/themes";
 import { findActiveSessionByRefreshToken, REFRESH_COOKIE } from "@/lib/auth/session";
 
-// docs/settings-appearance-design.md §3.5. Session-cookie authenticated
+// docs/settings/appearance-design.md §3.5. Session-cookie authenticated
 // (same __session refresh cookie as GET /api/auth/session-token) — this
 // lives under web/app/api/*, not web/app/internal/*, since a browser calls
 // it directly and the C++/WebSocket protocol has no involvement in

@@ -8,7 +8,7 @@ interface SettingsModalProps {
   onClose: () => void;
 }
 
-// docs/settings-appearance-design.md §1.1: a centered overlay, not a
+// docs/settings/appearance-design.md §1.1: a centered overlay, not a
 // TabGroup entry — settings is a transient surface on top of unchanged
 // state underneath, not a peer view of Lobby/Guilds. §1.2's section rail
 // is built as a list even with one entry today (Appearance) so a second

@@ -7,7 +7,7 @@ import { isConstraintViolation } from "@/lib/internal/pgErrors";
 const DEFAULT_LIMIT = 50;
 const MAX_LIMIT = 100;
 
-// docs/social-presence-design.md §4.5: called fire-and-forget, after the
+// docs/guilds/social-presence-design.md §4.5: called fire-and-forget, after the
 // C++ server has already broadcast the message — this only needs to
 // confirm persistence, nothing downstream is waiting on a rich response.
 export async function POST(request: NextRequest): Promise<NextResponse> {

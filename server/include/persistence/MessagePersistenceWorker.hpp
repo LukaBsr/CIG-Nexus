@@ -21,7 +21,7 @@ struct PendingMessage {
     int seq;
 };
 
-// docs/social-presence-design.md §4.5: the fire-and-forget persistence
+// docs/guilds/social-presence-design.md §4.5: the fire-and-forget persistence
 // path for CHAT_MESSAGE/CHANNEL_MESSAGE — ChatHandler/ChannelHandler call
 // enqueue() right after broadcasting, from the single-threaded
 // Server::start() loop, so the hot path never waits on this. This worker's

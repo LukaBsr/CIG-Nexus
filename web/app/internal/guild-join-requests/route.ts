@@ -5,7 +5,7 @@ import { isAuthorizedInternalRequest } from "@/lib/internal/auth";
 import { InvalidReferenceError } from "@/lib/internal/catalog";
 import { isConstraintViolation } from "@/lib/internal/pgErrors";
 
-// docs/social-presence-design.md §1.9 (REQUEST_JOIN).
+// docs/guilds/social-presence-design.md §1.9 (REQUEST_JOIN).
 export async function POST(request: NextRequest): Promise<NextResponse> {
   if (!isAuthorizedInternalRequest(request)) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
@@ -27,7 +27,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   }
 }
 
-// docs/social-presence-design.md §1.9 (LIST_JOIN_REQUESTS).
+// docs/guilds/social-presence-design.md §1.9 (LIST_JOIN_REQUESTS).
 export async function GET(request: NextRequest): Promise<NextResponse> {
   if (!isAuthorizedInternalRequest(request)) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });

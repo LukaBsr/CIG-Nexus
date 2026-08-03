@@ -40,7 +40,7 @@ struct Fixture {
     }
 
     // canCreateChannel/canDeleteChannel now read GuildManager's role_rank
-    // cache (docs/social-presence-design.md §2.2), not owner_id directly —
+    // cache (docs/guilds/social-presence-design.md §2.2), not owner_id directly —
     // tests exercising owner-gated behavior must seed it explicitly, same
     // as they already seed session-level guild membership.
     void makeOwner(const std::string& guild_id, const std::string& user_id) {

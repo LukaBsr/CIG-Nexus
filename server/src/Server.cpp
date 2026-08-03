@@ -49,7 +49,7 @@ Server::Server(uint16_t port) : port_(port), running_(false), listener_(port) {
     // (setInternalApiClient()), which are constructed with runtime config
     // that isn't available yet at Server construction time.
     identify_handler_.setRevocationCache(&revocation_cache_);
-    // docs/social-presence-design.md §3.4/§1.10: hydrates Session.guild_ids
+    // docs/guilds/social-presence-design.md §3.4/§1.10: hydrates Session.guild_ids
     // on successful IDENTIFY from GuildManager's membership index.
     identify_handler_.setGuildManager(&guild_manager_);
     guild_handler_.setSessionManager(&session_manager_);
@@ -61,7 +61,7 @@ Server::Server(uint16_t port) : port_(port), running_(false), listener_(port) {
     join_request_handler_.setSessionManager(&session_manager_);
     join_request_handler_.setGuildManager(&guild_manager_);
 
-    // docs/social-presence-design.md §1.9/§6 step 5: most registrations below
+    // docs/guilds/social-presence-design.md §1.9/§6 step 5: most registrations below
     // wrap their handler's single Message in a one-element vector — the
     // dispatcher contract is std::vector<Message>, but only the handlers
     // that actually need to notify two different recipients with two
@@ -185,7 +185,7 @@ void Server::setInternalApiClient(std::unique_ptr<http::InternalApiClient> clien
     invite_handler_.setInternalApiClient(internal_api_client_.get());
     join_request_handler_.setInternalApiClient(internal_api_client_.get());
 
-    // docs/social-presence-design.md §4.5: constructed here (not at Server
+    // docs/guilds/social-presence-design.md §4.5: constructed here (not at Server
     // construction) because it needs internal_api_client_.get(), which
     // isn't available yet at that point. Started in start(), stopped
     // explicitly at the end of start()'s loop.
@@ -220,7 +220,7 @@ void Server::hydrateGuildCatalog() {
     // per-connection SessionManager state established via JOIN_GUILD, not
     // hydrated from the catalog (design doc §8.1) — catalog->memberships is
     // NOT used to populate that. It IS consulted here for role_rank
-    // (docs/social-presence-design.md §2.2/§2.3): a minimal predicate cache,
+    // (docs/guilds/social-presence-design.md §2.2/§2.3): a minimal predicate cache,
     // not the delivery-eligibility roster, and not the full LIST_MEMBERS
     // roster either (that stays a live read, §2.3).
     for (const auto& m : catalog->memberships) {
@@ -366,7 +366,7 @@ void Server::start() {
                     continue;
                 }
 
-                // docs/social-presence-design.md §1.9/§6 step 5: a handler
+                // docs/guilds/social-presence-design.md §1.9/§6 step 5: a handler
                 // may now return more than one Message (different
                 // recipients, different payloads) — each is delivered
                 // independently by its own scope, same switch as before,
@@ -394,7 +394,7 @@ void Server::start() {
                     }
                 }
 
-                // docs/social-presence-design.md §3.2: emitted from here,
+                // docs/guilds/social-presence-design.md §3.2: emitted from here,
                 // after IDENTIFY's own IDENTIFIED response has already been
                 // sent above — a separate, unrelated broadcast to everyone
                 // else, not a replacement for it. Checked by message type

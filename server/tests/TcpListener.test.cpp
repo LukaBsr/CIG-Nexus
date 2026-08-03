@@ -43,7 +43,7 @@ int accept_with_retry(TcpListener& listener) {
 
 } // namespace
 
-// docs/social-presence-design.md §3.3: SO_KEEPALIVE mitigation for the
+// docs/guilds/social-presence-design.md §3.3: SO_KEEPALIVE mitigation for the
 // half-open-connection gap, shipped alongside presence rather than deferred.
 TEST_CASE("TcpListener enables and tunes SO_KEEPALIVE on accepted sockets") {
     TcpListener listener(0);

@@ -4,7 +4,7 @@ import { redeemInvite } from "@/lib/internal/invites";
 import { isAuthorizedInternalRequest } from "@/lib/internal/auth";
 import { InvalidReferenceError } from "@/lib/internal/catalog";
 
-// docs/social-presence-design.md §1.5: POST /internal/guild-invites/:code/redeem
+// docs/guilds/social-presence-design.md §1.5: POST /internal/guild-invites/:code/redeem
 // — one atomic call. Always 200 with a discriminated JSON body when the
 // call itself completes (ok: true/false plus kind/error) — this is a
 // domain-level result with five distinct outcomes, not a REST resource

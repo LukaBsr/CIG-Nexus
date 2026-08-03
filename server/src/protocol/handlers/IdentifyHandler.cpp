@@ -89,7 +89,7 @@ Message IdentifyHandler::handle(const Message& message, int fd) {
     session.discord_id = claims.discord_id;
     session.app_session_id = claims.sid;
 
-    // docs/social-presence-design.md §3.4/§1.10: hydrate this connection's
+    // docs/guilds/social-presence-design.md §3.4/§1.10: hydrate this connection's
     // guild_ids immediately from GuildManager's durable-membership index,
     // rather than leaving it empty until the client re-issues JOIN_GUILD
     // for every guild it already belongs to. A pure in-memory lookup — no

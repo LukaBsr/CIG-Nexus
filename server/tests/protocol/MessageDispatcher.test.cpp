@@ -52,7 +52,7 @@ TEST_CASE("MessageDispatcher returns handler response") {
     REQUIRE(responses[0].type == "PONG");
 }
 
-// docs/social-presence-design.md §1.9's ARBITRATION: the whole point of the
+// docs/guilds/social-presence-design.md §1.9's ARBITRATION: the whole point of the
 // widened contract — a handler notifying two different recipients with two
 // different payloads from one client action (e.g. a future
 // APPROVE_JOIN_REQUEST). Nothing shipped today actually returns more than

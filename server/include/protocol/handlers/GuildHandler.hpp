@@ -23,7 +23,7 @@ namespace protocol {
 // the full protocol shapes, docs/auth/discord-design.md §8.1 for the
 // write-through-cache/internal-API pattern every mutation below follows
 // (call InternalApiClient first, only touch GuildManager/SessionManager if
-// that call succeeds), and docs/social-presence-design.md §2 for the
+// that call succeeds), and docs/guilds/social-presence-design.md §2 for the
 // roster/rank-based-role protocol messages.
 class GuildHandler {
   public:
