@@ -400,9 +400,18 @@ under the identical `secure`/`sameSite: "lax"`/`httpOnly: false` flags
 `THEME_COOKIE_OPTIONS` already defines for `theme` (§3.2) — same
 non-sensitive, non-authorization-bearing security posture, just a
 second single-purpose flag rather than a second copy of account state.
-It's updated wherever `theme` is: on every successful
-`PATCH /api/user/appearance` sync-flag change, and (once §3.6 lands) as
-part of pull-on-login alongside the theme cookie itself.
+It's updated on every successful `PATCH /api/user/appearance` sync-flag
+change, and — per §3.6 below — unconditionally on every login, always set
+to the account's real `theme_sync_enabled` value regardless of whether
+it's true or false. Unconditional, not "wherever `theme` is": `theme`
+itself is only pulled on login when sync is actually on (so a sync-off
+account never overrides a device's own local choice), but `theme_sync`
+still needs correcting even in the off case — e.g. sync was turned off
+from a *different* device, and this device's local cookie would
+otherwise keep showing the toggle as checked until it happened to be
+touched locally again. The row is already being read regardless of
+which branch applies, so unconditionally correcting `theme_sync` costs
+nothing extra.
 
 ### 3.6 Pull-on-login happens in the OAuth callback, not on every page load
 

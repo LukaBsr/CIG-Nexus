@@ -93,6 +93,62 @@ describe("GET /api/auth/discord/callback", () => {
     expect(userSessions).toHaveLength(1);
   });
 
+  // docs/settings-appearance-design.md §3.6: pull-on-login.
+  it("sets theme_sync=0 and does not touch the theme cookie for a sync-off account", async () => {
+    mockDiscordApi("50");
+    const request = await requestWithTxn({ code: "auth-code", state: "matching-state" });
+
+    const response = await GET(request);
+    const cookies = response.headers.getSetCookie();
+
+    expect(cookies.some((c) => c.startsWith("theme_sync=0"))).toBe(true);
+    expect(cookies.some((c) => c.startsWith("theme="))).toBe(false);
+  });
+
+  it("pulls the account's theme and sets theme_sync=1 for a sync-on account", async () => {
+    await db
+      .insert(users)
+      .values({ discordId: "51", discordUsername: "prior", theme: "ember", themeSyncEnabled: true });
+    mockDiscordApi("51");
+    const request = await requestWithTxn({ code: "auth-code", state: "matching-state" });
+
+    const response = await GET(request);
+    const cookies = response.headers.getSetCookie();
+
+    expect(cookies.some((c) => c.startsWith("theme_sync=1"))).toBe(true);
+    expect(cookies.some((c) => c.startsWith("theme=ember"))).toBe(true);
+  });
+
+  it("resolves a sync-on account with no theme yet set to the default, not a literal null", async () => {
+    await db
+      .insert(users)
+      .values({ discordId: "52", discordUsername: "prior", themeSyncEnabled: true });
+    mockDiscordApi("52");
+    const request = await requestWithTxn({ code: "auth-code", state: "matching-state" });
+
+    const response = await GET(request);
+    const cookies = response.headers.getSetCookie();
+
+    expect(cookies.some((c) => c.startsWith("theme=abyss"))).toBe(true);
+  });
+
+  it("corrects a stale local theme_sync=1 to 0 when the account has since disabled sync", async () => {
+    // Simulates: sync was on, this device's local cookie still says "1",
+    // but a *different* device turned sync off in between. theme_sync must
+    // be corrected even though theme itself isn't touched in this branch.
+    await db
+      .insert(users)
+      .values({ discordId: "53", discordUsername: "prior", theme: "ember", themeSyncEnabled: false });
+    mockDiscordApi("53");
+    const request = await requestWithTxn({ code: "auth-code", state: "matching-state" });
+
+    const response = await GET(request);
+    const cookies = response.headers.getSetCookie();
+
+    expect(cookies.some((c) => c.startsWith("theme_sync=0"))).toBe(true);
+    expect(cookies.some((c) => c.startsWith("theme="))).toBe(false);
+  });
+
   it("never persists the Discord access/refresh token (design doc §5)", async () => {
     mockDiscordApi("43");
     const request = await requestWithTxn({ code: "auth-code", state: "matching-state" });
