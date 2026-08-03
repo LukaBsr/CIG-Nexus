@@ -1,5 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server";
 
+import { THEME_COOKIE, THEME_COOKIE_OPTIONS, THEME_SYNC_COOKIE } from "@/lib/appearance/cookie";
+import { resolveThemeId } from "@/lib/appearance/themes";
 import { clientIp as rateLimitClientIp, trustedRemoteAddress } from "@/lib/auth/clientIp";
 import { constantTimeEqual } from "@/lib/auth/constantTimeEqual";
 import { OAUTH_TXN_COOKIE, verifyOAuthTxn } from "@/lib/auth/oauthTxnCookie";
@@ -59,6 +61,19 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     const response = NextResponse.redirect(new URL("/", request.url));
     response.cookies.set(REFRESH_COOKIE, refreshToken, REFRESH_COOKIE_OPTIONS);
     response.cookies.delete(OAUTH_TXN_COOKIE);
+
+    // docs/settings-appearance-design.md §3.6: pull-on-login, done here
+    // rather than on every page load — this is the one server-side moment
+    // that already has a fresh row and an outgoing response to attach
+    // cookies to. theme_sync always gets set to the account's real value
+    // (correcting any local drift, e.g. sync turned off on a different
+    // device); theme itself is only overwritten when sync is actually on,
+    // so a sync-off account never overrides this device's own choice.
+    response.cookies.set(THEME_SYNC_COOKIE, user.themeSyncEnabled ? "1" : "0", THEME_COOKIE_OPTIONS);
+    if (user.themeSyncEnabled) {
+      response.cookies.set(THEME_COOKIE, resolveThemeId(user.theme), THEME_COOKIE_OPTIONS);
+    }
+
     return response;
   } catch {
     return redirectToError(request);

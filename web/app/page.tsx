@@ -6,6 +6,7 @@ import { CreateInviteForm } from "@/components/CreateInviteForm";
 import { Header } from "@/components/Header";
 import { LandingView } from "@/components/LandingView";
 import { MessageList } from "@/components/MessageList";
+import { SettingsModal } from "@/components/SettingsModal";
 import { TabButton, TabGroup } from "@/components/TabGroup";
 import { TextInputWithSubmit } from "@/components/TextInputWithSubmit";
 import { useGatewayConnection } from "@/hooks/useGatewayConnection";
@@ -38,6 +39,7 @@ export default function Home() {
   } = useGatewayConnection();
 
   const [view, setView] = useState<"lobby" | "guilds">("lobby");
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [input, setInput] = useState("");
   const [guildNameInput, setGuildNameInput] = useState("");
   const [channelNameInput, setChannelNameInput] = useState("");
@@ -84,7 +86,8 @@ export default function Home() {
 
   return (
     <div className="flex h-screen flex-col bg-ink text-ivory">
-      <Header status={status} />
+      <Header status={status} onOpenSettings={() => setIsSettingsOpen(true)} />
+      {isSettingsOpen && <SettingsModal onClose={() => setIsSettingsOpen(false)} />}
 
       <div className="flex shrink-0 flex-col gap-3 border-b border-slate/20 px-6 py-3">
         <TabGroup>

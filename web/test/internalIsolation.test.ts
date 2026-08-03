@@ -99,6 +99,21 @@ describe("web Docker image: /internal/* isolation", () => {
     expect(response.status).toBe(200);
   });
 
+  it("routes /api/user/appearance on the published port (session-authenticated, not /internal/*)", async () => {
+    // docs/settings-appearance-design.md §3.5: a browser-facing
+    // web/app/api/* route, deliberately not under web/app/internal/* —
+    // confirms it was never accidentally swept into the /internal/*
+    // isolation boundary below. A 401 (no session cookie) rather than a
+    // 404 proves the route exists and is reachable on the public port;
+    // it's rejected by the endpoint's own session check, not by routing.
+    const response = await fetch(baseUrl + "/api/user/appearance", {
+      method: "PATCH",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ theme: "ember" })
+    });
+    expect(response.status).toBe(401);
+  });
+
   it("returns 404 for /internal/* on the published (public) port", async () => {
     const response = await fetch(baseUrl + "/internal/catalog");
     expect(response.status).toBe(404);

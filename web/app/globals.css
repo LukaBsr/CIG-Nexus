@@ -2,7 +2,17 @@
 
 /* CIG Nexus brand palette (web/public/branding/icon.svg, lockup.svg) — the
    product is dark-only by design (the mark's own background is baked-in
-   dark), so this isn't a "dark theme option," it's the one theme. */
+   dark), so this isn't a "dark theme option," it's the one theme's dark
+   base. These values are also this stylesheet's single source of truth for
+   the "abyss" theme (web/lib/appearance/themes.ts) — Tailwind v4 compiles
+   every color utility below (bg-, text-, border-, etc.) against
+   var(--color-...), so a [data-theme="..."] block later in this file that
+   redeclares one of these custom properties overrides it for every utility
+   class at once, with no per-component changes
+   (docs/settings-appearance-design.md §2.1). No [data-theme="abyss"] block
+   exists below because these @theme defaults already are that theme —
+   declaring them a second time would just be a second place for the same
+   values to drift out of sync. */
 @theme {
   --color-ink: #0d0e18; /* page background */
   --color-surface: #1a1c2e; /* panel / rail / card background */
@@ -13,6 +23,11 @@
 
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+}
+
+[data-theme="ember"] {
+  --color-teal: #f87171;
+  --color-violet: #fb923c;
 }
 
 body {
