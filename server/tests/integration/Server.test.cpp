@@ -359,7 +359,8 @@ TEST_CASE("Server survives broadcasting to a connection reset by its peer") {
 TEST_CASE("Server hydrates the guild catalog from InternalApiClient at startup") {
     test_helpers::TestRsaKeyPair keys;
     auto api = std::make_unique<test_helpers::FakeInternalApiClient>();
-    api->catalog_to_return.guilds.push_back({"g_preexisting", "Pre-existing Guild", "u_owner", "open"});
+    api->catalog_to_return.guilds.push_back(
+        {"g_preexisting", "Pre-existing Guild", "u_owner", "open"});
 
     Server server(0);
     server.configureAuth(keys.publicKeyPem());
@@ -506,6 +507,77 @@ TEST_CASE("Server broadcasts PRESENCE_UPDATE online/offline only on real transit
     REQUIRE(alice_offline["status"] == "offline");
 
     ::close(fd_bob);
+    server.stop();
+    t.join();
+}
+
+// ----------------------------------------------------------------------------
+// Regression: a user reconnecting repeatedly (every browser reload is a
+// fresh TCP connection) must reliably see their own online transition every
+// single time, not just the first. A leaked presence count — some disconnect
+// path failing to reach decrementPresence() for one of the earlier
+// connections — would manifest as later reconnects silently failing to
+// broadcast online, since the count never actually returns to 0.
+// ----------------------------------------------------------------------------
+
+TEST_CASE("Server broadcasts online on every reconnect, not just the first, across repeated "
+          "connect/disconnect cycles") {
+    test_helpers::TestRsaKeyPair keys;
+    Server server(0);
+    server.configureAuth(keys.publicKeyPem());
+
+    std::thread t([&server] { server.start(); });
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+
+    // A pure observer, same role bob plays above: proves the broadcast is
+    // real (lobby-wide), not just alice's own connection echoing itself.
+    int fd_observer = tcp_connect(server.bound_port());
+    REQUIRE(fd_observer >= 0);
+    send_framed(fd_observer, R"({"type":"HELLO","version":"0.1","client":"web"})");
+    REQUIRE(!recv_frame_raw(fd_observer).empty()); // WELCOME
+    send_framed(fd_observer, R"({"type":"IDENTIFY","session_token":")" +
+                                 make_session_token(keys.key, "u_observer", "observer") + R"("})");
+    REQUIRE(!recv_frame_raw(fd_observer).empty()); // IDENTIFIED
+    REQUIRE(!recv_frame_raw(fd_observer).empty()); // observer's own online broadcast
+
+    for (int cycle = 0; cycle < 5; ++cycle) {
+        INFO("reconnect cycle " << cycle);
+
+        int fd_alice = tcp_connect(server.bound_port());
+        REQUIRE(fd_alice >= 0);
+        send_framed(fd_alice, R"({"type":"HELLO","version":"0.1","client":"web"})");
+        REQUIRE(!recv_frame_raw(fd_alice).empty()); // WELCOME
+        send_framed(fd_alice, R"({"type":"IDENTIFY","session_token":")" +
+                                  make_session_token(keys.key, "u_alice", "alice") + R"("})");
+        REQUIRE(!recv_frame_raw(fd_alice).empty()); // IDENTIFIED
+        REQUIRE(!recv_frame_raw(fd_alice).empty()); // alice's own online broadcast, drained
+
+        // The observer must see alice come online on *every* cycle — this
+        // is the assertion that fails if an earlier cycle's disconnect
+        // leaked its presence count.
+        set_recv_timeout(fd_observer, 2, 0);
+        std::string raw = recv_frame_raw(fd_observer);
+        REQUIRE(!raw.empty());
+        auto alice_online = nlohmann::json::parse(raw);
+        REQUIRE(alice_online["type"] == "PRESENCE_UPDATE");
+        REQUIRE(alice_online["user_id"] == "u_alice");
+        REQUIRE(alice_online["status"] == "online");
+
+        ::close(fd_alice);
+
+        // Alice must also be seen going offline before the next cycle's
+        // reconnect — otherwise a slow-to-notice disconnect could make the
+        // *next* cycle's "come online" assertion above pass for the wrong
+        // reason (a fresh 0->1 that raced a stale, not-yet-processed close).
+        std::string offline_raw = recv_frame_raw(fd_observer);
+        REQUIRE(!offline_raw.empty());
+        auto alice_offline = nlohmann::json::parse(offline_raw);
+        REQUIRE(alice_offline["type"] == "PRESENCE_UPDATE");
+        REQUIRE(alice_offline["user_id"] == "u_alice");
+        REQUIRE(alice_offline["status"] == "offline");
+    }
+
+    ::close(fd_observer);
     server.stop();
     t.join();
 }
