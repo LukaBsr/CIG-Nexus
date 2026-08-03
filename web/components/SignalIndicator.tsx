@@ -7,9 +7,14 @@ interface StatusConfig {
   pulse: boolean;
 }
 
+// connected/error are status semantics (green = good, red = bad), not
+// theme decoration — fixed Tailwind literals, not the swappable
+// --color-teal/--color-violet accent tokens (web/app/globals.css), so
+// switching themes (docs/settings-appearance-design.md §2) never makes
+// "connected" read as "error" or vice versa.
 const STATUS_CONFIG: Record<ConnectionStatus, StatusConfig> = {
-  connected: { label: "connected", dot: "bg-teal", ring: "ring-teal/30", pulse: true },
-  connecting: { label: "connecting…", dot: "bg-teal/50", ring: "ring-teal/10", pulse: true },
+  connected: { label: "connected", dot: "bg-green-400", ring: "ring-green-400/30", pulse: true },
+  connecting: { label: "connecting…", dot: "bg-green-400/50", ring: "ring-green-400/10", pulse: true },
   disconnected: { label: "disconnected", dot: "bg-slate", ring: "ring-slate/20", pulse: false },
   unauthenticated: { label: "signed out", dot: "bg-slate", ring: "ring-slate/20", pulse: false },
   error: { label: "connection error", dot: "bg-red-400", ring: "ring-red-400/20", pulse: false }
