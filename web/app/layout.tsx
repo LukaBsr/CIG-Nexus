@@ -29,7 +29,7 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  // docs/settings-appearance-design.md §3.2: read server-side so the very
+  // docs/settings/appearance-design.md §3.2: read server-side so the very
   // first byte of HTML already carries the right data-theme — no flash of
   // the wrong theme, no blocking inline script needed. resolveThemeId
   // degrades an absent/unrecognized cookie value to the default (§2.3).

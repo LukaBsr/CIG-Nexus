@@ -3,7 +3,7 @@ import { type NextRequest, NextResponse } from "next/server";
 import { rejectJoinRequest } from "@/lib/internal/joinRequests";
 import { isAuthorizedInternalRequest } from "@/lib/internal/auth";
 
-// docs/social-presence-design.md §1.9 (REJECT_JOIN_REQUEST). Keyed by
+// docs/guilds/social-presence-design.md §1.9 (REJECT_JOIN_REQUEST). Keyed by
 // (guildId, userId) rather than the join request's own row id — the
 // protocol message itself (REJECT_JOIN_REQUEST { guild_id, user_id }) never
 // carries a request id, and LIST_JOIN_REQUESTS's response doesn't expose

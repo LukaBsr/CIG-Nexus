@@ -62,7 +62,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     response.cookies.set(REFRESH_COOKIE, refreshToken, REFRESH_COOKIE_OPTIONS);
     response.cookies.delete(OAUTH_TXN_COOKIE);
 
-    // docs/settings-appearance-design.md §3.6: pull-on-login, done here
+    // docs/settings/appearance-design.md §3.6: pull-on-login, done here
     // rather than on every page load — this is the one server-side moment
     // that already has a fresh row and an outgoing response to attach
     // cookies to. theme_sync always gets set to the account's real value

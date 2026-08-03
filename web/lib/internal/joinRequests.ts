@@ -15,7 +15,7 @@ export interface WireJoinRequest {
 
 export type CreateJoinRequestResult = "created" | "already_pending";
 
-// docs/social-presence-design.md §1.9 (REQUEST_JOIN). Visibility/membership
+// docs/guilds/social-presence-design.md §1.9 (REQUEST_JOIN). Visibility/membership
 // checks (guild is `application`, caller isn't already a member) happen in
 // C++ against GuildManager's cache and Session state before this is ever
 // called — this only owns the row itself and its uniqueness.
@@ -37,7 +37,7 @@ export async function createJoinRequest(
   return inserted.length > 0 ? "created" : "already_pending";
 }
 
-// docs/social-presence-design.md §1.9 (LIST_JOIN_REQUESTS). Returns null
+// docs/guilds/social-presence-design.md §1.9 (LIST_JOIN_REQUESTS). Returns null
 // only when the guild itself doesn't exist.
 export async function listJoinRequests(guildWireId: string): Promise<WireJoinRequest[] | null> {
   const guildId = fromGuildWireId(guildWireId);
@@ -67,7 +67,7 @@ export async function listJoinRequests(guildWireId: string): Promise<WireJoinReq
   }));
 }
 
-// docs/social-presence-design.md §1.9 (APPROVE_JOIN_REQUEST). Creates the
+// docs/guilds/social-presence-design.md §1.9 (APPROVE_JOIN_REQUEST). Creates the
 // membership and deletes the request row atomically — same
 // single-internal-call pattern §1.3 established for invite redemption.
 // Returns null if no such request exists.
@@ -99,7 +99,7 @@ export async function approveJoinRequest(
   });
 }
 
-// docs/social-presence-design.md §1.9 (REJECT_JOIN_REQUEST).
+// docs/guilds/social-presence-design.md §1.9 (REJECT_JOIN_REQUEST).
 export async function rejectJoinRequest(guildWireId: string, userWireId: string): Promise<boolean> {
   const guildId = fromGuildWireId(guildWireId);
   const userId = fromUserWireId(userWireId);

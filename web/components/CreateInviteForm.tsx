@@ -7,7 +7,7 @@ interface CreateInviteFormProps {
   onSubmit: (maxUses: number | null, expiresInSeconds: number | null) => void;
 }
 
-// docs/social-presence-design.md §1.4/§6 step 6: exposes max_uses and
+// docs/guilds/social-presence-design.md §1.4/§6 step 6: exposes max_uses and
 // expires_in_seconds instead of a client hardcoding null/null — both stay
 // optional, matching §1.6's reusable/never-expiring-by-default
 // recommendation. expires_in_seconds is entered here as days for a more
@@ -25,14 +25,13 @@ export function CreateInviteForm({ onSubmit }: CreateInviteFormProps) {
   };
 
   return (
-    <div className="flex flex-wrap items-center gap-2">
+    <div className="flex flex-col gap-2">
       <TextInput
         type="number"
         min={1}
         value={maxUses}
         onChange={(e) => setMaxUses(e.target.value)}
         placeholder="Max uses (blank = unlimited)"
-        className="w-48 flex-none"
       />
       <TextInput
         type="number"
@@ -40,9 +39,10 @@ export function CreateInviteForm({ onSubmit }: CreateInviteFormProps) {
         value={expiresInDays}
         onChange={(e) => setExpiresInDays(e.target.value)}
         placeholder="Expires in days (blank = never)"
-        className="w-56 flex-none"
       />
-      <Button onClick={handleSubmit}>Create Invite</Button>
+      <Button onClick={handleSubmit} className="w-full">
+        Create Invite
+      </Button>
     </div>
   );
 }

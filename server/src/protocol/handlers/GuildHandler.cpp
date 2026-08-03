@@ -72,7 +72,7 @@ Message GuildHandler::handleCreateGuild(const Message& message, int fd) const {
         return makeError("MALFORMED_MESSAGE", "CREATE_GUILD name must be <= 64 characters");
     }
 
-    // docs/social-presence-design.md §1.7: optional, defaults to 'open'.
+    // docs/guilds/social-presence-design.md §1.7: optional, defaults to 'open'.
     guild::GuildVisibility visibility = guild::GuildVisibility::OPEN;
     if (message.payload.contains("visibility") && !message.payload["visibility"].is_null()) {
         if (!message.payload["visibility"].is_string()) {
@@ -105,7 +105,7 @@ Message GuildHandler::handleCreateGuild(const Message& message, int fd) const {
         created->guild_id, created->name, created->owner_id, created_visibility.value_or(visibility));
     session_manager_->addGuildMembership(fd, new_guild.id);
     // Maintained by construction, not by trusting a role_rank the internal
-    // API would otherwise have to echo back (docs/social-presence-design.md
+    // API would otherwise have to echo back (docs/guilds/social-presence-design.md
     // §2.2): CREATE_GUILD always creates the owner's row at kOwnerRank.
     guild_manager_->setMemberRank(new_guild.id, new_guild.owner_id, guild::kOwnerRank);
 
@@ -134,7 +134,7 @@ Message GuildHandler::handleListGuilds(const Message& message, int fd) const {
 
     // Served entirely from the local write-through cache — no internal API
     // call per read (design doc §8.1).
-    // docs/social-presence-design.md §1.8: a `private` guild is filtered
+    // docs/guilds/social-presence-design.md §1.8: a `private` guild is filtered
     // out of LIST_GUILDS for everyone except its own members — "private
     // means private, not private except to whichever error code you
     // trigger" applies here too, so this is a silent omission, not an
@@ -187,7 +187,7 @@ Message GuildHandler::handleJoinGuild(const Message& message, int fd) const {
         return makeError("PROTOCOL_VIOLATION", "Already a member of this guild");
     }
 
-    // docs/social-presence-design.md §1.8: `private` returns the same
+    // docs/guilds/social-presence-design.md §1.8: `private` returns the same
     // GUILD_NOT_FOUND a genuinely nonexistent id would — indistinguishable
     // to a non-member, by design (the ARBITRATION there). `application`
     // tells the client to use REQUEST_JOIN instead.
@@ -381,7 +381,7 @@ Message GuildHandler::handleListMembers(const Message& message, int fd) const {
         return makeError("GUILD_NOT_FOUND", "No guild with that id");
     }
 
-    // docs/social-presence-design.md §2.1: same precedent as LIST_CHANNELS —
+    // docs/guilds/social-presence-design.md §2.1: same precedent as LIST_CHANNELS —
     // roster is gated behind membership, one step further than bare
     // existence (already visible via LIST_GUILDS).
     if (!session_manager_->isMemberOfGuild(fd, guild_id)) {
@@ -447,7 +447,7 @@ Message GuildHandler::handleSetMemberRole(const Message& message, int fd) const 
         return makeError("GUILD_NOT_FOUND", "No guild with that id");
     }
 
-    // docs/social-presence-design.md §2.2/§2.4: canSetMemberRole is
+    // docs/guilds/social-presence-design.md §2.2/§2.4: canSetMemberRole is
     // owner-tier — NOT_GUILD_OWNER stays the right code for it, same as
     // canDeleteChannel/canDeleteGuild's owner-tier failures, unlike
     // canCreateChannel's officer-tier widening below.
@@ -527,7 +527,7 @@ Message GuildHandler::handleSetGuildVisibility(const Message& message, int fd) c
         return makeError("GUILD_NOT_FOUND", "No guild with that id");
     }
 
-    // docs/social-presence-design.md §1.10/§5: captain-only, deliberately
+    // docs/guilds/social-presence-design.md §1.10/§5: captain-only, deliberately
     // not widened to officer-or-above — a guild-wide structural decision,
     // same reasoning DELETE_GUILD already uses.
     if (!guild_manager_->canSetGuildVisibility(guild_id, session->user_id)) {

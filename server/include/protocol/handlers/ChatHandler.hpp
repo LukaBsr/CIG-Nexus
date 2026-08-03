@@ -21,7 +21,7 @@ class ChatHandler {
     void setSessionManager(session::SessionManager* session_manager);
     void setMessagePersistenceWorker(persistence::MessagePersistenceWorker* worker);
 
-    // docs/social-presence-design.md §4.3: seeds the counter from the
+    // docs/guilds/social-presence-design.md §4.3: seeds the counter from the
     // durable high-water mark at startup, instead of always starting at 0.
     // std::nullopt (nothing ever persisted yet) leaves it at the default.
     void seedMessageCounter(std::optional<int> last_seq);

@@ -15,7 +15,7 @@ import {
 
 export class InvalidReferenceError extends Error {}
 
-// docs/social-presence-design.md §1.7.
+// docs/guilds/social-presence-design.md §1.7.
 export type GuildVisibility = "open" | "application" | "private";
 
 export interface WireGuild {
@@ -109,7 +109,7 @@ export async function createGuild(
   });
 }
 
-// docs/social-presence-design.md §1.10 (SET_GUILD_VISIBILITY). Deleting
+// docs/guilds/social-presence-design.md §1.10 (SET_GUILD_VISIBILITY). Deleting
 // pending join requests is folded into the same transaction as the
 // visibility UPDATE — only when leaving `application` mode, per the
 // ARBITRATION there (an officer's silence on a pending request shouldn't
@@ -212,7 +212,7 @@ export async function deleteMembership(guildWireId: string, userWireId: string):
   return deleted.length > 0;
 }
 
-// docs/social-presence-design.md §2.3: LIST_MEMBERS is a live read, not
+// docs/guilds/social-presence-design.md §2.3: LIST_MEMBERS is a live read, not
 // cached anywhere — a cold, UI-driven path, unlike the guild/channel
 // catalog. Resolves role_label here (not in C++) so the theme mapping
 // stays a single server-side concern. Returns null when the guild itself
@@ -248,7 +248,7 @@ export async function getGuildMembers(guildWireId: string): Promise<WireMember[]
   }));
 }
 
-// docs/social-presence-design.md §2.4 (SET_MEMBER_ROLE). Structurally
+// docs/guilds/social-presence-design.md §2.4 (SET_MEMBER_ROLE). Structurally
 // cannot target the owner's row: C++ refuses the request before this is
 // ever called (GuildManager::isOwner check), so this only ever runs
 // against a non-owner membership — not re-enforced here as a second gate,

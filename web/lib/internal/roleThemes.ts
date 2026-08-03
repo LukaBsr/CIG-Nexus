@@ -1,4 +1,4 @@
-// docs/social-presence-design.md §2.2: named rank constants, mirrored from
+// docs/guilds/social-presence-design.md §2.2: named rank constants, mirrored from
 // server/include/guild/RoleRank.hpp. Kept in sync manually — there is no
 // shared-schema codegen between the two languages for this value.
 export const kMemberRank = 0;

@@ -10,7 +10,7 @@
 
 namespace protocol {
 
-// docs/social-presence-design.md §1.9's ARBITRATION: widened from a single
+// docs/guilds/social-presence-design.md §1.9's ARBITRATION: widened from a single
 // Message to a vector so a handler can notify two different recipients with
 // two different payloads from one client action (e.g. a future
 // APPROVE_JOIN_REQUEST: "done" to the approver, "you're in" to the approved

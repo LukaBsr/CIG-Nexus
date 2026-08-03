@@ -7,7 +7,7 @@ import { applyTheme } from "@/lib/appearance/applyTheme";
 import { readClientCookie, THEME_SYNC_COOKIE, writeClientCookie } from "@/lib/appearance/cookie";
 import { DEFAULT_THEME_ID, THEMES } from "@/lib/appearance/themes";
 
-// docs/settings-appearance-design.md §5 step 4. Local application (§3.1)
+// docs/settings/appearance-design.md §5 step 4. Local application (§3.1)
 // stays unconditional regardless of sync state — the toggle only ever
 // controls whether a change *also* gets pushed to the account (§3.3).
 export function AppearanceSettings() {

@@ -3,7 +3,7 @@ import { type NextRequest, NextResponse } from "next/server";
 import { approveJoinRequest } from "@/lib/internal/joinRequests";
 import { isAuthorizedInternalRequest } from "@/lib/internal/auth";
 
-// docs/social-presence-design.md §1.9 (APPROVE_JOIN_REQUEST). Same
+// docs/guilds/social-presence-design.md §1.9 (APPROVE_JOIN_REQUEST). Same
 // composite-key reasoning as the DELETE route in the parent directory.
 export async function POST(
   request: NextRequest,

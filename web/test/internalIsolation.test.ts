@@ -100,7 +100,7 @@ describe("web Docker image: /internal/* isolation", () => {
   });
 
   it("routes /api/user/appearance on the published port (session-authenticated, not /internal/*)", async () => {
-    // docs/settings-appearance-design.md §3.5: a browser-facing
+    // docs/settings/appearance-design.md §3.5: a browser-facing
     // web/app/api/* route, deliberately not under web/app/internal/* —
     // confirms it was never accidentally swept into the /internal/*
     // isolation boundary below. A 401 (no session cookie) rather than a

@@ -1,4 +1,4 @@
-// docs/settings-appearance-design.md §3.2. Non-httpOnly on purpose — client
+// docs/settings/appearance-design.md §3.2. Non-httpOnly on purpose — client
 // JS must read/write it directly for an instant local theme switch that
 // doesn't wait on a request round trip (contrast with the httpOnly
 // REFRESH_COOKIE in web/lib/auth/session.ts, which must NOT be
@@ -6,7 +6,7 @@
 // selected theme; nothing here talks to the account/sync system (§3.5).
 export const THEME_COOKIE = "theme";
 
-// docs/settings-appearance-design.md §3.3: mirrors the account's
+// docs/settings/appearance-design.md §3.3: mirrors the account's
 // theme_sync_enabled column locally ("1"/"0") purely so the Appearance
 // section can render the toggle's correct state on open without a GET
 // round trip (§3.5 deliberately has no GET endpoint) — kept in sync

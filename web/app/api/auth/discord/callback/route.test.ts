@@ -93,7 +93,7 @@ describe("GET /api/auth/discord/callback", () => {
     expect(userSessions).toHaveLength(1);
   });
 
-  // docs/settings-appearance-design.md §3.6: pull-on-login.
+  // docs/settings/appearance-design.md §3.6: pull-on-login.
   it("sets theme_sync=0 and does not touch the theme cookie for a sync-off account", async () => {
     mockDiscordApi("50");
     const request = await requestWithTxn({ code: "auth-code", state: "matching-state" });

@@ -19,7 +19,7 @@ export async function DELETE(
   return NextResponse.json({ ok: true });
 }
 
-// docs/social-presence-design.md §2.4 (SET_MEMBER_ROLE).
+// docs/guilds/social-presence-design.md §2.4 (SET_MEMBER_ROLE).
 export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ guildId: string; userId: string }> }

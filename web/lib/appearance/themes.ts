@@ -1,4 +1,4 @@
-// docs/settings-appearance-design.md §2.2: the registry is content, the
+// docs/settings/appearance-design.md §2.2: the registry is content, the
 // data-theme attribute + CSS custom properties (web/app/globals.css) are
 // the mechanism — adding a theme means one CSS block plus one entry here,
 // never a change to any consuming component's bg-*/text-*/border-* classes.

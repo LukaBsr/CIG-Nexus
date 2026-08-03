@@ -28,7 +28,7 @@ namespace protocol {
 // Channel lifecycle and messaging: LIST_CHANNELS, CREATE_CHANNEL,
 // DELETE_CHANNEL, JOIN_CHANNEL, LEAVE_CHANNEL, CHANNEL_MESSAGE,
 // FETCH_HISTORY. See docs/guilds/design.md for the guild/channel protocol
-// shapes and docs/social-presence-design.md §4 for FETCH_HISTORY.
+// shapes and docs/guilds/social-presence-design.md §4 for FETCH_HISTORY.
 // CREATE_CHANNEL/DELETE_CHANNEL go through InternalApiClient first (design
 // doc §8.1, write-through cache) — LIST_CHANNELS, JOIN/LEAVE_CHANNEL, and
 // CHANNEL_MESSAGE's broadcast are cache reads or purely per-connection
@@ -41,7 +41,7 @@ class ChannelHandler {
     void setInternalApiClient(http::InternalApiClient* internal_api_client);
     void setMessagePersistenceWorker(persistence::MessagePersistenceWorker* worker);
 
-    // docs/social-presence-design.md §4.3: seeds the counter from the
+    // docs/guilds/social-presence-design.md §4.3: seeds the counter from the
     // durable high-water mark at startup, instead of always starting at 0.
     void seedMessageCounter(std::optional<int> last_seq);
 
@@ -71,7 +71,7 @@ class ChannelHandler {
     // CHAT_MESSAGE's — message_id only needs to be unique within a message
     // kind, matching existing convention. One counter shared across every
     // channel (not per-channel) — matches the persisted schema's two
-    // id-spaces (docs/social-presence-design.md §4.2).
+    // id-spaces (docs/guilds/social-presence-design.md §4.2).
     mutable std::atomic<int> message_counter_{0};
 };
 

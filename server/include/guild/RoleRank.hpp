@@ -3,7 +3,7 @@
 
 namespace guild {
 
-// docs/social-presence-design.md §2.2: every predicate compares against one
+// docs/guilds/social-presence-design.md §2.2: every predicate compares against one
 // of these constants, never a literal — adding a tier later is an additive
 // change here, not a rework of every call site. Deliberately no upper bound
 // in the schema (guild_memberships.role_rank CHECK (role_rank >= 0)) or

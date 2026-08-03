@@ -107,6 +107,26 @@ export function joinGuild(guildId: string): void {
   send({ type: "JOIN_GUILD", guild_id: guildId });
 }
 
+// docs/guilds/social-presence-design.md §1.9: the application-visibility
+// counterpart to joinGuild() above — used instead of JOIN_GUILD when the
+// target guild's visibility is "application" (JOIN_GUILD itself is
+// rejected with GUILD_REQUIRES_APPROVAL for those).
+export function requestJoin(guildId: string): void {
+  send({ type: "REQUEST_JOIN", guild_id: guildId });
+}
+
+export function listJoinRequests(guildId: string): void {
+  send({ type: "LIST_JOIN_REQUESTS", guild_id: guildId });
+}
+
+export function approveJoinRequest(guildId: string, userId: string): void {
+  send({ type: "APPROVE_JOIN_REQUEST", guild_id: guildId, user_id: userId });
+}
+
+export function rejectJoinRequest(guildId: string, userId: string): void {
+  send({ type: "REJECT_JOIN_REQUEST", guild_id: guildId, user_id: userId });
+}
+
 export function leaveGuild(guildId: string): void {
   send({ type: "LEAVE_GUILD", guild_id: guildId });
 }
@@ -119,7 +139,7 @@ export function listChannels(guildId: string): void {
   send({ type: "LIST_CHANNELS", guild_id: guildId });
 }
 
-// docs/social-presence-design.md §2.1: fetched alongside listChannels() so
+// docs/guilds/social-presence-design.md §2.1: fetched alongside listChannels() so
 // the client can gate permission-sensitive UI on the viewer's own
 // role_rank (canCreateInvite/canCreateChannel are officer-or-above, not
 // owner-only — see §2.2).
@@ -156,7 +176,7 @@ export function sendChannelMessage(content: string): void {
   send({ type: "CHANNEL_MESSAGE", content: content });
 }
 
-// docs/social-presence-design.md §1.4/§6 step 6: maxUses/expiresInSeconds
+// docs/guilds/social-presence-design.md §1.4/§6 step 6: maxUses/expiresInSeconds
 // are the two fields the custom invite-creation UI exposes instead of a
 // client hardcoding null/null — both stay optional (null = unlimited
 // uses / never expires, §1.6's reusable-by-default recommendation).

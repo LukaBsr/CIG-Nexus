@@ -22,7 +22,7 @@ namespace protocol {
 
 // `application`-visibility guild join requests: REQUEST_JOIN,
 // LIST_JOIN_REQUESTS, APPROVE_JOIN_REQUEST, REJECT_JOIN_REQUEST. See
-// docs/social-presence-design.md §1.9.
+// docs/guilds/social-presence-design.md §1.9.
 class JoinRequestHandler {
   public:
     void setSessionManager(session::SessionManager* session_manager);

@@ -103,7 +103,7 @@ Message ChatHandler::handle(const Message& message, int fd) const {
                                       {"username", session->username},
                                       {"content", content}};
 
-    // docs/social-presence-design.md §4.5: fire-and-forget — enqueue after
+    // docs/guilds/social-presence-design.md §4.5: fire-and-forget — enqueue after
     // building the broadcast response, never block on it. std::nullopt
     // channel_id means the lobby.
     if (message_worker_) {

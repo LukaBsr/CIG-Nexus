@@ -28,7 +28,7 @@ function toWireInvite(row: typeof guildInvites.$inferSelect): WireInvite {
   };
 }
 
-// docs/social-presence-design.md §1.4/§1.6: max_uses/expires_in_seconds
+// docs/guilds/social-presence-design.md §1.4/§1.6: max_uses/expires_in_seconds
 // both optional, defaulting to unlimited/never-expiring — reusable, no
 // expiry, by default. expiresInSeconds is converted to an absolute
 // expires_at here (server-computed), the same reasoning JWTs already use
@@ -57,7 +57,7 @@ export async function createInvite(
   return toWireInvite(invite);
 }
 
-// docs/social-presence-design.md §1.4 (LIST_INVITES). Returns null only
+// docs/guilds/social-presence-design.md §1.4 (LIST_INVITES). Returns null only
 // when the guild itself doesn't exist — an empty array is a guild with no
 // invites, a distinct, valid state.
 export async function listInvites(guildWireId: string): Promise<WireInvite[] | null> {
@@ -75,7 +75,7 @@ export async function listInvites(guildWireId: string): Promise<WireInvite[] | n
   return rows.map(toWireInvite);
 }
 
-// docs/social-presence-design.md §1.4 (REVOKE_INVITE). Scoped to the given
+// docs/guilds/social-presence-design.md §1.4 (REVOKE_INVITE). Scoped to the given
 // guild — a code belonging to a different guild must not be revocable via
 // this call, matching "invite exists and belongs to guild_id" (§1.4).
 export async function revokeInvite(guildWireId: string, code: string): Promise<boolean> {
@@ -94,14 +94,14 @@ export async function revokeInvite(guildWireId: string, code: string): Promise<b
 
 export type RedeemInviteResult =
   | { ok: true; kind: "member"; guild_id: string; role_rank: number }
-  // docs/social-presence-design.md §1.8's ARBITRATION (invite still
+  // docs/guilds/social-presence-design.md §1.8's ARBITRATION (invite still
   // requires approval): redeeming against an `application`-visibility
   // guild consumes the invite but queues a join request instead of
   // granting membership directly.
   | { ok: true; kind: "join_request"; guild_id: string }
   | { ok: false; error: "not_found" | "revoked" | "expired" | "max_uses_reached" | "already_member" };
 
-// docs/social-presence-design.md §1.3/§1.5: one atomic call — validate,
+// docs/guilds/social-presence-design.md §1.3/§1.5: one atomic call — validate,
 // increment use_count, and create the membership (or join request) in the
 // same transaction, guarded by use_count < max_uses OR max_uses IS NULL in
 // the UPDATE's WHERE clause so two concurrent redemptions of the last

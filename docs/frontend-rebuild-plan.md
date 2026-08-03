@@ -1,10 +1,13 @@
 # Frontend Rebuild Plan
 
-**Status: planning only. Nothing in this document has been built.** This
-captures the decisions made for the `web/` rebuild identified as item 7 in
-[`docs/architecture-audit.md`](architecture-audit.md)'s Proposed Action
-List, so they survive into whichever future session actually does the work.
-It does not start the rebuild itself.
+**Status: executed.** The rebuild this document planned — session-token
+`IDENTIFY`, `components/`/`hooks/` extraction, Tailwind, the CIG Nexus
+visual identity — has been built. This document is kept as-written (a
+point-in-time plan, not a changelog) for the
+[wire-message casing convention](#wire-message-casing-convention) it
+decided, which is still live: every new inbound `Wire*` type follows it.
+The [Deferred](#deferred) section below is the one part still updated
+going forward, since deferred items get resolved by later work.
 
 ## Why this rebuild is needed, not optional polish
 
@@ -149,16 +152,28 @@ Matching the discipline already established in `server/` and
 
 ## Deferred
 
-- **Guilds/channels layout rework.** The current structure (a fixed guild
-  rail, a channel-pill row, and a single message pane) is functional and
-  covers today's protocol surface, but several features expected to land
-  before it — guild/member avatars, a real member list, roles/permissions
-  beyond owner-only, `VOICE` channels becoming functional — would each
-  plausibly reshape it. Reworking the layout now, before that surface
-  exists, risks optimizing for a shape that's still moving; revisit once
-  those land rather than iterating on the rail/pill structure speculatively.
-- **Selectable themes.** The visual identity pass settled on one dark
+- **Guilds/channels layout rework — partially unblocked, not yet done.**
+  The current structure (a fixed guild rail, a channel-pill row, and a
+  single message pane) is unchanged. Of the features this item was
+  waiting on, roles/permissions beyond owner-only and a member roster now
+  exist end-to-end (`docs/guilds/social-presence-design.md` — `role_rank`,
+  `LIST_MEMBERS`/`SET_MEMBER_ROLE`), but only as data: `members` is
+  fetched and used for permission gating (`web/app/page.tsx`'s
+  `isOfficerOrAbove`), with no visible member-list UI anywhere yet.
+  Guild/member avatars and functional `VOICE` channels are still entirely
+  unbuilt. Revisit the layout once a real member-list panel is worth
+  building, not before — this item stays deferred, just with less
+  remaining to wait on than when it was written.
+- **Selectable themes — done.** `docs/settings/appearance-design.md`
+  built this: a settings modal with an Appearance section, a
+  `data-theme`-attribute token system, and two themes (`abyss` default,
+  `ember`). The reasoning below turned out to be half right — a *light*
+  theme genuinely would be a second design pass (still out of scope, still
+  no concrete reason for it), but an *accent-only dark variant* was in
+  fact a small, additive change once the palette was expressed as CSS
+  custom properties rather than hardcoded per-component colors. Original
+  note, left for context: "the visual identity pass settled on one dark
   theme, deliberately — the brand mark's own background is baked-in dark,
   so a second (e.g. light) theme isn't a small variant of the first, it's
   a second design pass. Out of scope until there's a concrete reason a
-  user would need it.
+  user would need it."

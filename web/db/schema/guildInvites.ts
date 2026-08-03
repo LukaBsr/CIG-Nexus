@@ -4,7 +4,7 @@ import { pgTable, uuid, text, integer, timestamp, index, check } from "drizzle-o
 import { guilds } from "./guilds";
 import { users } from "./users";
 
-// docs/social-presence-design.md §1.2. No per-redemption audit table this
+// docs/guilds/social-presence-design.md §1.2. No per-redemption audit table this
 // iteration — use_count is an aggregate counter, not a log of who redeemed
 // when.
 export const guildInvites = pgTable(

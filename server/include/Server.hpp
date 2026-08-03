@@ -63,12 +63,12 @@ class Server {
     void pollRevocationCache();
     void disconnectRevokedSessions();
 
-    // docs/social-presence-design.md §4.3: seeds both handlers' message
+    // docs/guilds/social-presence-design.md §4.3: seeds both handlers' message
     // counters from Postgres's durable high-water mark at startup — no-op
     // if internal_api_client_ is unset.
     void hydrateMessageSequences();
 
-    // docs/social-presence-design.md §3.2/§3.3: presence transitions are
+    // docs/guilds/social-presence-design.md §3.2/§3.3: presence transitions are
     // orchestrated here, not inside IdentifyHandler — this is the one place
     // that already owns both connect (via a successful IDENTIFY dispatch)
     // and disconnect (both the clean/RST readFromSocket() failure path and
@@ -116,7 +116,7 @@ class Server {
 
     // Declared after internal_api_client_ so it destructs (and stops its
     // thread) first — it holds a raw pointer into internal_api_client_ and
-    // must never outlive it (docs/social-presence-design.md §4.5).
+    // must never outlive it (docs/guilds/social-presence-design.md §4.5).
     std::unique_ptr<persistence::MessagePersistenceWorker> message_worker_;
 };
 

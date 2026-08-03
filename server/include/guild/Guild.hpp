@@ -7,7 +7,7 @@
 
 namespace guild {
 
-// docs/social-presence-design.md §1.7/§1.8.
+// docs/guilds/social-presence-design.md §1.7/§1.8.
 enum class GuildVisibility { OPEN, APPLICATION, PRIVATE };
 
 struct Guild {

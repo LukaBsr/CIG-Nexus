@@ -3,7 +3,7 @@ import { type NextRequest, NextResponse } from "next/server";
 import { revokeInvite } from "@/lib/internal/invites";
 import { isAuthorizedInternalRequest } from "@/lib/internal/auth";
 
-// docs/social-presence-design.md §1.5: DELETE /internal/guild-invites/:code
+// docs/guilds/social-presence-design.md §1.5: DELETE /internal/guild-invites/:code
 // — revoke. guild_id is a query param (not in the path, matching the
 // doc's literal path shape) so revocation can be scoped to "this code
 // belongs to this guild" (§1.4's REVOKE_INVITE validation) without a

@@ -110,7 +110,7 @@ Message InviteHandler::handleCreateInvite(const Message& message, int fd) const 
         return makeError("GUILD_NOT_FOUND", "No guild with that id");
     }
 
-    // docs/social-presence-design.md §2.2/§5: officer-or-above, not
+    // docs/guilds/social-presence-design.md §2.2/§5: officer-or-above, not
     // owner-only — "if you can create invites, you can see the ones that
     // exist" (§1.4) applies the same predicate to LIST_INVITES/REVOKE_INVITE
     // below.

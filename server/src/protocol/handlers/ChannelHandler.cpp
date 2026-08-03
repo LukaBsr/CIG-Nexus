@@ -157,7 +157,7 @@ Message ChannelHandler::handleCreateChannel(const Message& message, int fd) cons
         return makeError("GUILD_NOT_FOUND", "No guild with that id");
     }
 
-    // docs/social-presence-design.md §2.2: widened from owner-only to
+    // docs/guilds/social-presence-design.md §2.2: widened from owner-only to
     // officer-or-above — NOT_GUILD_OWNER would misdescribe this failure now
     // that non-owner officers can pass this check.
     if (!guild_manager_->canCreateChannel(guild_id, session->user_id)) {
@@ -370,7 +370,7 @@ Message ChannelHandler::handleChannelMessage(const Message& message, int fd) con
                                       {"username", session->username},
                                       {"content", content}};
 
-    // docs/social-presence-design.md §4.5: fire-and-forget — enqueue after
+    // docs/guilds/social-presence-design.md §4.5: fire-and-forget — enqueue after
     // building the broadcast response, never block on it.
     if (message_worker_) {
         message_worker_->enqueue({channel_id, session->user_id, content, message_id});
@@ -393,7 +393,7 @@ Message ChannelHandler::handleFetchHistory(const Message& message, int fd) const
         return makeError("NOT_IDENTIFIED", "Client must IDENTIFY before fetching history");
     }
 
-    // channel_id omitted or JSON null = the lobby (docs/social-presence-design.md §4.4).
+    // channel_id omitted or JSON null = the lobby (docs/guilds/social-presence-design.md §4.4).
     std::optional<std::string> channel_id;
     if (message.payload.contains("channel_id") && !message.payload["channel_id"].is_null()) {
         if (!message.payload["channel_id"].is_string()) {

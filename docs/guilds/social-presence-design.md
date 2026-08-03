@@ -1281,15 +1281,15 @@ not batched to the end.
 
 ## Related Documentation
 
-- [`guilds/design.md`](guilds/design.md) — the guild/channel domain model
-  this document extends; source of the "Deferred: Guild Privacy" and
-  "Future Permission Hook" notes referenced throughout.
-- [`auth/discord-design.md`](auth/discord-design.md) — the write-through
-  cache pattern (§8.1), the `/internal/*` isolation requirement (§8.1/§9.1),
-  and the self-validation-vs-delegate-live arbitration (§9) this document's
-  §4.5 mirrors.
-- [`../shared/protocol/README.md`](../shared/protocol/README.md) — current
-  wire protocol; every section above is a proposed delta against it.
+- [`design.md`](design.md) — the guild/channel domain model this document
+  extends; source of the "Deferred: Guild Privacy" and "Future Permission
+  Hook" notes referenced throughout.
+- [`../auth/discord-design.md`](../auth/discord-design.md) — the
+  write-through cache pattern (§8.1), the `/internal/*` isolation
+  requirement (§8.1/§9.1), and the self-validation-vs-delegate-live
+  arbitration (§9) this document's §4.5 mirrors.
+- [`../../shared/protocol/README.md`](../../shared/protocol/README.md) —
+  current wire protocol; every section above is a proposed delta against it.
 
 ## What Changed From the Previous Version
 

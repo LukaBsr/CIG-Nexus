@@ -11,7 +11,7 @@ struct WireGuild {
     std::string guild_id;
     std::string name;
     std::string owner_id;
-    std::string visibility; // "open" | "application" | "private" (docs/social-presence-design.md §1.7)
+    std::string visibility; // "open" | "application" | "private" (docs/guilds/social-presence-design.md §1.7)
 };
 
 struct WireMembership {
@@ -20,7 +20,7 @@ struct WireMembership {
     int role_rank;
 };
 
-// docs/social-presence-design.md §2.1 (LIST_MEMBERS). role_label is
+// docs/guilds/social-presence-design.md §2.1 (LIST_MEMBERS). role_label is
 // pre-resolved server-side (Next.js) against the guild's role_theme — C++
 // never resolves it itself. joined_at is relayed as an opaque ISO 8601
 // string; unlike WireMessage's timestamp, C++ never assigns or interprets
@@ -40,7 +40,7 @@ struct WireChannel {
     std::string channel_type; // "TEXT" | "VOICE"
 };
 
-// docs/social-presence-design.md §1.2/§1.4. Timestamps relayed as opaque
+// docs/guilds/social-presence-design.md §1.2/§1.4. Timestamps relayed as opaque
 // ISO 8601 strings, same treatment as WireMember's joined_at — C++ never
 // assigns or interprets them.
 struct WireInvite {
@@ -84,7 +84,7 @@ struct Catalog {
     std::vector<WireChannel> channels;
 };
 
-// design doc (docs/social-presence-design.md) §4: channel_id is unset for
+// design doc (docs/guilds/social-presence-design.md) §4: channel_id is unset for
 // the global lobby (CHAT_MESSAGE), set for a specific channel
 // (CHANNEL_MESSAGE) — mirrors the Postgres schema's nullable channel_id.
 struct WireMessage {
@@ -141,7 +141,7 @@ class InternalApiClient {
                                                 const std::string& user_id, int role_rank) = 0;
     virtual bool deleteMembership(const std::string& guild_id, const std::string& user_id) = 0;
 
-    // docs/social-presence-design.md §2.3: a live read, never cached here —
+    // docs/guilds/social-presence-design.md §2.3: a live read, never cached here —
     // LIST_MEMBERS calls this directly on every request.
     virtual std::optional<std::vector<WireMember>> fetchGuildMembers(const std::string& guild_id) = 0;
 
@@ -160,7 +160,7 @@ class InternalApiClient {
     virtual std::vector<std::string> fetchRevokedSessionIds(const std::string& since_iso8601,
                                                             std::string& out_as_of) = 0;
 
-    // docs/social-presence-design.md §4.5: called fire-and-forget from
+    // docs/guilds/social-presence-design.md §4.5: called fire-and-forget from
     // MessagePersistenceWorker, after the message has already been
     // broadcast — not on the hot dispatch path itself. channel_id unset =
     // the global lobby.

@@ -120,7 +120,7 @@ client — and returns:
 }
 ```
 
-The new session's guild memberships are also hydrated immediately from durable state (`docs/social-presence-design.md` §3.4/§1.10) — a client does not need to re-issue `JOIN_GUILD` for every guild it already belongs to just because it reconnected. `LIST_CHANNELS`/`LIST_MEMBERS`/`CHANNEL_MESSAGE` etc. against a guild the identified user already belongs to work immediately after `IDENTIFY`, without an intervening `JOIN_GUILD` call.
+The new session's guild memberships are also hydrated immediately from durable state (`docs/guilds/social-presence-design.md` §3.4/§1.10) — a client does not need to re-issue `JOIN_GUILD` for every guild it already belongs to just because it reconnected. `LIST_CHANNELS`/`LIST_MEMBERS`/`CHANNEL_MESSAGE` etc. against a guild the identified user already belongs to work immediately after `IDENTIFY`, without an intervening `JOIN_GUILD` call.
 
 ### CHAT_MESSAGE
 
@@ -178,7 +178,7 @@ Server to client only — there is no client-sent message for this; presence is 
 - `"online"`: broadcast when a user's connection count goes `0 → 1` (their first connection completes `IDENTIFY`).
 - `"offline"`: broadcast when it goes `1 → 0` (their last connection disconnects, whether a clean close or a detected reset).
 
-A second or third connection for the same user connecting or disconnecting emits nothing — no visible state change occurred. Delivery is `Scope::BROADCAST` (`docs/social-presence-design.md` §3.4) — every connected client receives every `PRESENCE_UPDATE`, including the user whose own status just changed and regardless of shared guild membership; there is no per-guild-scoped variant. A client wanting a per-guild "who's online" view computes it locally by intersecting the globally-received online set against the roster it already has for that guild (`LIST_MEMBERS`).
+A second or third connection for the same user connecting or disconnecting emits nothing — no visible state change occurred. Delivery is `Scope::BROADCAST` (`docs/guilds/social-presence-design.md` §3.4) — every connected client receives every `PRESENCE_UPDATE`, including the user whose own status just changed and regardless of shared guild membership; there is no per-guild-scoped variant. A client wanting a per-guild "who's online" view computes it locally by intersecting the globally-received online set against the roster it already has for that guild (`LIST_MEMBERS`).
 
 **Known limitation**: detecting a peer that stops responding without a clean close (network partition, laptop sleep) relies on TCP keepalive (`SO_KEEPALIVE`, tuned to a ~30s idle timeout / 10s probe interval / 3 probes — well under Linux's default of several hours), not an application-level heartbeat. A user can appear `"online"` for up to roughly that keepalive window after actually going dark.
 
@@ -823,7 +823,7 @@ Server to client:
 
 `channel_id` in the response echoes the request (`null` for the lobby). `messages` is chronological (oldest first). `has_more` is `true` when older messages exist beyond this page — pass the oldest returned message's `message_id` as the next request's `before_seq` to page further back (keyset pagination, not offset-based).
 
-This is a live read-through call to the internal API on every request — results are never cached by the server. See `docs/social-presence-design.md` §4 for the persistence design (write-side: `CHAT_MESSAGE`/`CHANNEL_MESSAGE` persist asynchronously, fire-and-forget with bounded retry, after the broadcast — a client can in principle receive a message before it's durably persisted).
+This is a live read-through call to the internal API on every request — results are never cached by the server. See `docs/guilds/social-presence-design.md` §4 for the persistence design (write-side: `CHAT_MESSAGE`/`CHANNEL_MESSAGE` persist asynchronously, fire-and-forget with bounded retry, after the broadcast — a client can in principle receive a message before it's durably persisted).
 
 ### ERROR
 

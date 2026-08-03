@@ -208,7 +208,7 @@ TEST_CASE("IdentifyHandler returns INTERNAL_ERROR when the JWT verifier is missi
 }
 
 TEST_CASE("IdentifyHandler hydrates Session.guild_ids from GuildManager on success "
-          "(docs/social-presence-design.md §3.4/§1.10)") {
+          "(docs/guilds/social-presence-design.md §3.4/§1.10)") {
     test_helpers::TestRsaKeyPair keys;
     auth::JwtVerifier verifier(keys.publicKeyPem());
     guild::GuildManager guilds;

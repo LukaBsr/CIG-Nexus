@@ -3,7 +3,7 @@ import { type NextRequest, NextResponse } from "next/server";
 import { getLastSequence } from "@/lib/internal/messages";
 import { isAuthorizedInternalRequest } from "@/lib/internal/auth";
 
-// docs/social-presence-design.md §4.3: fetched once at C++ server startup,
+// docs/guilds/social-presence-design.md §4.3: fetched once at C++ server startup,
 // alongside catalog hydration, to seed ChatHandler's/ChannelHandler's
 // message_id counters from the durable high-water mark instead of always
 // starting at 0.

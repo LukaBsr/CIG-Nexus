@@ -4,7 +4,7 @@ import { pgTable, uuid, integer, timestamp, index, unique, check } from "drizzle
 import { guilds } from "./guilds";
 import { users } from "./users";
 
-// docs/social-presence-design.md §2.2: `role` (string, owner/member) is
+// docs/guilds/social-presence-design.md §2.2: `role` (string, owner/member) is
 // replaced by `roleRank` (integer, no upper bound or enumeration —
 // deliberately, so adding a tier is an additive constants change, never a
 // migration touching this constraint). See server/include/guild/RoleRank.hpp

@@ -9,11 +9,11 @@ export const users = pgTable("users", {
   discordUsername: text("discord_username").notNull(),
   discordGlobalName: text("discord_global_name"),
   discordAvatarHash: text("discord_avatar_hash"),
-  // docs/settings-appearance-design.md §3.4: nullable, no DEFAULT — NULL
+  // docs/settings/appearance-design.md §3.4: nullable, no DEFAULT — NULL
   // means "sync has never been turned on," treated identically to the
   // default theme by every reader (§2.3's degrade-not-error). Free text,
   // not an enum, deliberately mirroring role_theme
-  // (docs/social-presence-design.md §2.2) rather than guild_visibility's
+  // (docs/guilds/social-presence-design.md §2.2) rather than guild_visibility's
   // ENUM — themes are purely cosmetic and expected to grow, so adding one
   // should never require a migration.
   theme: text("theme"),

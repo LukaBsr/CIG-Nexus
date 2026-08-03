@@ -83,7 +83,7 @@ std::vector<Message> JoinRequestHandler::handleRequestJoin(const Message& messag
         return {makeError("PROTOCOL_VIOLATION", "Already a member of this guild")};
     }
 
-    // docs/social-presence-design.md §1.8: same information-hiding as
+    // docs/guilds/social-presence-design.md §1.8: same information-hiding as
     // JOIN_GUILD — a non-member probing a `private` guild's id gets the
     // same GUILD_NOT_FOUND a nonexistent id would.
     if (target_guild->visibility == guild::GuildVisibility::PRIVATE) {

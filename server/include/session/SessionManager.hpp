@@ -36,7 +36,7 @@ class SessionManager {
     void setActiveChannel(int socket_fd, const std::string& channel_id);
     void clearActiveChannel(int socket_fd);
 
-    // docs/social-presence-design.md §3.1: presence is derived from
+    // docs/guilds/social-presence-design.md §3.1: presence is derived from
     // connection count, not "does a Session exist for this fd" — a user can
     // have multiple simultaneous connections (multiple tabs/devices), and a
     // second/third one connecting or closing must not flicker online/offline
@@ -52,7 +52,7 @@ class SessionManager {
     // Recipient lists for Scope::TARGETED delivery.
     std::vector<int> getFdsInGuild(const std::string& guild_id) const;
     std::vector<int> getFdsWithActiveChannel(const std::string& channel_id) const;
-    // docs/social-presence-design.md §1.9: every fd currently identified as
+    // docs/guilds/social-presence-design.md §1.9: every fd currently identified as
     // user_id (handles multiple tabs/devices, same reasoning as presence's
     // connection-count tracking, §3.1). Needed for APPROVE_JOIN_REQUEST to
     // reach the approved user's connection(s) even though they're not yet
