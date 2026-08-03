@@ -143,6 +143,53 @@ export interface WireMemberRoleUpdated {
   role_label: string;
 }
 
+// docs/guilds/social-presence-design.md §3.2/§3.4: lobby-wide broadcast,
+// not per-guild — the client intersects the globally-received online set
+// against whichever guild's roster (LIST_MEMBERS) it already has locally.
+export interface WirePresenceUpdate {
+  type: "PRESENCE_UPDATE";
+  user_id: string;
+  status: "online" | "offline";
+}
+
+// docs/guilds/social-presence-design.md §1.9: the join-request flow for
+// application-visibility guilds.
+export interface WireJoinRequested {
+  type: "JOIN_REQUESTED";
+  guild_id: string;
+}
+
+export interface WireJoinRequestReceived {
+  type: "JOIN_REQUEST_RECEIVED";
+  guild_id: string;
+  user_id: string;
+  username: string;
+}
+
+export interface WireJoinRequestEntry {
+  user_id: string;
+  username: string;
+  requested_at: string;
+}
+
+export interface WireJoinRequestList {
+  type: "JOIN_REQUEST_LIST";
+  guild_id: string;
+  requests: WireJoinRequestEntry[];
+}
+
+export interface WireJoinRequestApproved {
+  type: "JOIN_REQUEST_APPROVED";
+  guild_id: string;
+  user_id: string;
+}
+
+export interface WireJoinRequestRejected {
+  type: "JOIN_REQUEST_REJECTED";
+  guild_id: string;
+  user_id: string;
+}
+
 export interface WireError {
   type: "ERROR";
   code: string;
@@ -171,6 +218,12 @@ export type WireInboundMessage =
   | WireInviteCreated
   | WireMemberList
   | WireMemberRoleUpdated
+  | WirePresenceUpdate
+  | WireJoinRequested
+  | WireJoinRequestReceived
+  | WireJoinRequestList
+  | WireJoinRequestApproved
+  | WireJoinRequestRejected
   | WireError;
 
 // camelCase types components actually consume. useGatewayConnection
@@ -192,6 +245,12 @@ export interface Invite {
   useCount: number;
   expiresAt: string | null;
   createdAt: string;
+}
+
+export interface JoinRequest {
+  userId: string;
+  username: string;
+  requestedAt: string;
 }
 
 export interface Member {
@@ -228,6 +287,10 @@ export interface ChannelMessage {
 
 export function mapGuild(wire: WireGuild): Guild {
   return { guildId: wire.guild_id, name: wire.name, ownerId: wire.owner_id, visibility: wire.visibility };
+}
+
+export function mapJoinRequest(wire: WireJoinRequestEntry): JoinRequest {
+  return { userId: wire.user_id, username: wire.username, requestedAt: wire.requested_at };
 }
 
 export function mapInvite(wire: WireInviteCreated): Invite {

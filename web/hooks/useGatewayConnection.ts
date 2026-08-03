@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 
 import {
+  approveJoinRequest as sendApproveJoinRequest,
   connect,
   type ConnectionStatus,
   createChannel as sendCreateChannel,
@@ -12,7 +13,10 @@ import {
   joinGuild as sendJoinGuild,
   listChannels,
   listGuilds,
+  listJoinRequests as sendListJoinRequests,
   listMembers,
+  rejectJoinRequest as sendRejectJoinRequest,
+  requestJoin as sendRequestJoin,
   sendChannelMessage as sendChannelMessageWire,
   sendChatMessage as sendChatMessageWire
 } from "@/lib/gateway";
@@ -22,12 +26,14 @@ import {
   mapChatMessage,
   mapGuild,
   mapInvite,
+  mapJoinRequest,
   mapMember,
   type Channel,
   type ChannelMessage,
   type ChatMessage,
   type Guild,
   type Invite,
+  type JoinRequest,
   type Member
 } from "@/lib/types";
 
@@ -37,11 +43,14 @@ export interface UseGatewayConnectionResult {
   chatMessages: ChatMessage[];
   guilds: Guild[];
   myGuildIds: Set<string>;
+  myPendingJoinRequestGuildIds: Set<string>;
   activeGuildId: string | null;
   channels: Channel[];
   activeChannelId: string | null;
   channelMessages: ChannelMessage[];
   members: Member[];
+  onlineUserIds: Set<string>;
+  joinRequests: JoinRequest[];
   lastError: string | null;
   clearError: () => void;
   lastCreatedInvite: Invite | null;
@@ -49,11 +58,15 @@ export interface UseGatewayConnectionResult {
   sendChatMessage: (content: string) => void;
   createGuild: (name: string, visibility?: "open" | "application" | "private") => void;
   joinGuild: (guildId: string) => void;
+  requestJoin: (guildId: string) => void;
   selectGuild: (guildId: string) => void;
   createChannel: (guildId: string, name: string, channelType: "TEXT" | "VOICE") => void;
   joinChannel: (channelId: string) => void;
   sendChannelMessage: (content: string) => void;
   createInvite: (guildId: string, maxUses: number | null, expiresInSeconds: number | null) => void;
+  listJoinRequests: (guildId: string) => void;
+  approveJoinRequest: (guildId: string, userId: string) => void;
+  rejectJoinRequest: (guildId: string, userId: string) => void;
 }
 
 // Owns the WebSocket connection's entire lifecycle: opening it
@@ -69,12 +82,20 @@ export function useGatewayConnection(): UseGatewayConnectionResult {
 
   const [guilds, setGuilds] = useState<Guild[]>([]);
   const [myGuildIds, setMyGuildIds] = useState<Set<string>>(new Set());
+  const [myPendingJoinRequestGuildIds, setMyPendingJoinRequestGuildIds] = useState<Set<string>>(
+    new Set()
+  );
   const [activeGuildId, setActiveGuildId] = useState<string | null>(null);
 
   const [channels, setChannels] = useState<Channel[]>([]);
   const [activeChannelId, setActiveChannelId] = useState<string | null>(null);
   const [channelMessages, setChannelMessages] = useState<ChannelMessage[]>([]);
   const [members, setMembers] = useState<Member[]>([]);
+  // docs/guilds/social-presence-design.md §3.2: lobby-wide, not per-guild —
+  // every identified connection's user_id currently online, intersected
+  // against `members` client-side wherever a per-guild view is needed.
+  const [onlineUserIds, setOnlineUserIds] = useState<Set<string>>(new Set());
+  const [joinRequests, setJoinRequests] = useState<JoinRequest[]>([]);
 
   const [lastError, setLastError] = useState<string | null>(null);
   const [lastCreatedInvite, setLastCreatedInvite] = useState<Invite | null>(null);
@@ -124,6 +145,7 @@ export function useGatewayConnection(): UseGatewayConnectionResult {
             setActiveChannelId(null);
             setChannelMessages([]);
             setMembers([]);
+            setJoinRequests([]);
             listMembers(guild.guildId);
             break;
           }
@@ -134,11 +156,18 @@ export function useGatewayConnection(): UseGatewayConnectionResult {
               prev.some((g) => g.guildId === guild.guildId) ? prev : [...prev, guild]
             );
             setMyGuildIds((prev) => new Set(prev).add(guild.guildId));
+            setMyPendingJoinRequestGuildIds((prev) => {
+              if (!prev.has(guild.guildId)) return prev;
+              const next = new Set(prev);
+              next.delete(guild.guildId);
+              return next;
+            });
             setActiveGuildId(guild.guildId);
             setChannels(msg.channels.map(mapChannel));
             setActiveChannelId(null);
             setChannelMessages([]);
             setMembers([]);
+            setJoinRequests([]);
             listMembers(guild.guildId);
             break;
           }
@@ -156,6 +185,7 @@ export function useGatewayConnection(): UseGatewayConnectionResult {
                 setActiveChannelId(null);
                 setChannelMessages([]);
                 setMembers([]);
+                setJoinRequests([]);
               }
             } else if (msg.guild_id === activeGuildIdRef.current) {
               setMembers((prev) => prev.filter((m) => m.userId !== msg.user_id));
@@ -175,6 +205,7 @@ export function useGatewayConnection(): UseGatewayConnectionResult {
               setActiveChannelId(null);
               setChannelMessages([]);
               setMembers([]);
+              setJoinRequests([]);
             }
             break;
 
@@ -232,6 +263,62 @@ export function useGatewayConnection(): UseGatewayConnectionResult {
             }
             break;
 
+          case "PRESENCE_UPDATE":
+            setOnlineUserIds((prev) => {
+              const next = new Set(prev);
+              if (msg.status === "online") {
+                next.add(msg.user_id);
+              } else {
+                next.delete(msg.user_id);
+              }
+              return next;
+            });
+            break;
+
+          case "JOIN_REQUESTED":
+            setMyPendingJoinRequestGuildIds((prev) => new Set(prev).add(msg.guild_id));
+            break;
+
+          case "JOIN_REQUEST_RECEIVED":
+            if (msg.guild_id === activeGuildIdRef.current) {
+              setJoinRequests((prev) =>
+                prev.some((r) => r.userId === msg.user_id)
+                  ? prev
+                  : [...prev, { userId: msg.user_id, username: msg.username, requestedAt: new Date().toISOString() }]
+              );
+            }
+            break;
+
+          case "JOIN_REQUEST_LIST":
+            if (msg.guild_id === activeGuildIdRef.current) {
+              setJoinRequests(msg.requests.map(mapJoinRequest));
+            }
+            break;
+
+          case "JOIN_REQUEST_APPROVED":
+            if (msg.guild_id === activeGuildIdRef.current) {
+              setJoinRequests((prev) => prev.filter((r) => r.userId !== msg.user_id));
+              // JOIN_REQUEST_APPROVED carries only guild_id/user_id, not
+              // enough to construct a full Member locally — refetch, same
+              // pattern selectGuild() already uses.
+              listMembers(msg.guild_id);
+            }
+            break;
+
+          case "JOIN_REQUEST_REJECTED":
+            if (msg.guild_id === activeGuildIdRef.current) {
+              setJoinRequests((prev) => prev.filter((r) => r.userId !== msg.user_id));
+            }
+            if (msg.user_id === myUserIdRef.current) {
+              setMyPendingJoinRequestGuildIds((prev) => {
+                if (!prev.has(msg.guild_id)) return prev;
+                const next = new Set(prev);
+                next.delete(msg.guild_id);
+                return next;
+              });
+            }
+            break;
+
           case "ERROR":
             setLastError(msg.message ?? msg.code ?? "Unknown error");
             break;
@@ -252,11 +339,14 @@ export function useGatewayConnection(): UseGatewayConnectionResult {
     chatMessages,
     guilds,
     myGuildIds,
+    myPendingJoinRequestGuildIds,
     activeGuildId,
     channels,
     activeChannelId,
     channelMessages,
     members,
+    onlineUserIds,
+    joinRequests,
     lastError,
     clearError: () => setLastError(null),
     lastCreatedInvite,
@@ -264,15 +354,20 @@ export function useGatewayConnection(): UseGatewayConnectionResult {
     sendChatMessage: (content) => sendChatMessageWire(content),
     createGuild: (name, visibility) => sendCreateGuild(name, visibility),
     joinGuild: (guildId) => sendJoinGuild(guildId),
+    requestJoin: (guildId) => sendRequestJoin(guildId),
     selectGuild: (guildId) => {
       setActiveGuildId(guildId);
       setMembers([]);
+      setJoinRequests([]);
       listChannels(guildId);
       listMembers(guildId);
     },
     createChannel: (guildId, name, channelType) => sendCreateChannel(guildId, name, channelType),
     joinChannel: (channelId) => sendJoinChannel(channelId),
     sendChannelMessage: (content) => sendChannelMessageWire(content),
-    createInvite: (guildId, maxUses, expiresInSeconds) => sendCreateInvite(guildId, maxUses, expiresInSeconds)
+    createInvite: (guildId, maxUses, expiresInSeconds) => sendCreateInvite(guildId, maxUses, expiresInSeconds),
+    listJoinRequests: (guildId) => sendListJoinRequests(guildId),
+    approveJoinRequest: (guildId, userId) => sendApproveJoinRequest(guildId, userId),
+    rejectJoinRequest: (guildId, userId) => sendRejectJoinRequest(guildId, userId)
   };
 }

@@ -107,6 +107,26 @@ export function joinGuild(guildId: string): void {
   send({ type: "JOIN_GUILD", guild_id: guildId });
 }
 
+// docs/guilds/social-presence-design.md §1.9: the application-visibility
+// counterpart to joinGuild() above — used instead of JOIN_GUILD when the
+// target guild's visibility is "application" (JOIN_GUILD itself is
+// rejected with GUILD_REQUIRES_APPROVAL for those).
+export function requestJoin(guildId: string): void {
+  send({ type: "REQUEST_JOIN", guild_id: guildId });
+}
+
+export function listJoinRequests(guildId: string): void {
+  send({ type: "LIST_JOIN_REQUESTS", guild_id: guildId });
+}
+
+export function approveJoinRequest(guildId: string, userId: string): void {
+  send({ type: "APPROVE_JOIN_REQUEST", guild_id: guildId, user_id: userId });
+}
+
+export function rejectJoinRequest(guildId: string, userId: string): void {
+  send({ type: "REJECT_JOIN_REQUEST", guild_id: guildId, user_id: userId });
+}
+
 export function leaveGuild(guildId: string): void {
   send({ type: "LEAVE_GUILD", guild_id: guildId });
 }
