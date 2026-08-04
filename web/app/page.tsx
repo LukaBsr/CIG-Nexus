@@ -125,7 +125,7 @@ export default function Home() {
   return (
     <div className="flex h-screen flex-col bg-ink text-ivory">
       <Header status={status} onOpenSettings={() => setIsSettingsOpen(true)} />
-      {isSettingsOpen && <SettingsModal onClose={() => setIsSettingsOpen(false)} />}
+      {isSettingsOpen && <SettingsModal userId={myUserId} onClose={() => setIsSettingsOpen(false)} />}
 
       <div className="flex shrink-0 items-center justify-between gap-3 border-b border-slate/20 px-5 py-2.5">
         <TabGroup>

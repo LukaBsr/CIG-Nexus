@@ -2,6 +2,7 @@
 #include "protocol/MessageBuilders.hpp"
 #include "protocol/MessageParser.hpp"
 
+#include <algorithm>
 #include <arpa/inet.h>
 #include <chrono>
 #include <cstddef>
@@ -60,6 +61,9 @@ Server::Server(uint16_t port) : port_(port), running_(false), listener_(port) {
     invite_handler_.setGuildManager(&guild_manager_);
     join_request_handler_.setSessionManager(&session_manager_);
     join_request_handler_.setGuildManager(&guild_manager_);
+    friend_handler_.setSessionManager(&session_manager_);
+    block_handler_.setSessionManager(&session_manager_);
+    dm_handler_.setSessionManager(&session_manager_);
 
     // docs/guilds/social-presence-design.md §1.9/§6 step 5: most registrations below
     // wrap their handler's single Message in a one-element vector — the
@@ -136,7 +140,26 @@ Server::Server(uint16_t port) : port_(port), running_(false), listener_(port) {
         return std::vector<protocol::Message>{channel_handler_.handleChannelMessage(msg, fd)};
     });
 
+    // docs/social/friends-dms-design.md §3.5: FETCH_HISTORY gains a third,
+    // mutually-exclusive scope (peer_id, alongside channel_id/lobby) —
+    // dispatched here to DMHandler instead of ChannelHandler based on
+    // which field the payload carries, rather than teaching ChannelHandler
+    // about DMs or vice versa.
     dispatcher_.registerHandler("FETCH_HISTORY", [this](const protocol::Message& msg, int fd) {
+        const bool has_peer_id =
+            msg.payload.is_object() && msg.payload.contains("peer_id") && !msg.payload["peer_id"].is_null();
+        const bool has_channel_id =
+            msg.payload.is_object() && msg.payload.contains("channel_id") && !msg.payload["channel_id"].is_null();
+        if (has_peer_id && has_channel_id) {
+            protocol::Message error;
+            error.type = "ERROR";
+            error.payload = protocol::make_error("MALFORMED_MESSAGE",
+                                                 "FETCH_HISTORY: channel_id and peer_id are mutually exclusive");
+            return std::vector<protocol::Message>{error};
+        }
+        if (has_peer_id) {
+            return std::vector<protocol::Message>{dm_handler_.handleFetchHistory(msg, fd)};
+        }
         return std::vector<protocol::Message>{channel_handler_.handleFetchHistory(msg, fd)};
     });
 
@@ -171,6 +194,66 @@ Server::Server(uint16_t port) : port_(port), running_(false), listener_(port) {
     dispatcher_.registerHandler("REJECT_JOIN_REQUEST", [this](const protocol::Message& msg, int fd) {
         return join_request_handler_.handleRejectJoinRequest(msg, fd);
     });
+
+    dispatcher_.registerHandler("SEND_FRIEND_REQUEST", [this](const protocol::Message& msg, int fd) {
+        return friend_handler_.handleSendFriendRequest(msg, fd);
+    });
+
+    dispatcher_.registerHandler("ADD_FRIEND_BY_CODE", [this](const protocol::Message& msg, int fd) {
+        return friend_handler_.handleAddFriendByCode(msg, fd);
+    });
+
+    dispatcher_.registerHandler("ACCEPT_FRIEND_REQUEST", [this](const protocol::Message& msg, int fd) {
+        return friend_handler_.handleAcceptFriendRequest(msg, fd);
+    });
+
+    dispatcher_.registerHandler("REJECT_FRIEND_REQUEST", [this](const protocol::Message& msg, int fd) {
+        return friend_handler_.handleRejectFriendRequest(msg, fd);
+    });
+
+    dispatcher_.registerHandler("CANCEL_FRIEND_REQUEST", [this](const protocol::Message& msg, int fd) {
+        return friend_handler_.handleCancelFriendRequest(msg, fd);
+    });
+
+    dispatcher_.registerHandler("REMOVE_FRIEND", [this](const protocol::Message& msg, int fd) {
+        return friend_handler_.handleRemoveFriend(msg, fd);
+    });
+
+    dispatcher_.registerHandler("LIST_FRIENDS", [this](const protocol::Message& msg, int fd) {
+        return std::vector<protocol::Message>{friend_handler_.handleListFriends(msg, fd)};
+    });
+
+    dispatcher_.registerHandler("LIST_FRIEND_REQUESTS", [this](const protocol::Message& msg, int fd) {
+        return std::vector<protocol::Message>{friend_handler_.handleListFriendRequests(msg, fd)};
+    });
+
+    dispatcher_.registerHandler("FETCH_FRIEND_CODE", [this](const protocol::Message& msg, int fd) {
+        return std::vector<protocol::Message>{friend_handler_.handleFetchFriendCode(msg, fd)};
+    });
+
+    dispatcher_.registerHandler("REGENERATE_FRIEND_CODE", [this](const protocol::Message& msg, int fd) {
+        return std::vector<protocol::Message>{friend_handler_.handleRegenerateFriendCode(msg, fd)};
+    });
+
+    dispatcher_.registerHandler("BLOCK_USER", [this](const protocol::Message& msg, int fd) {
+        return std::vector<protocol::Message>{block_handler_.handleBlockUser(msg, fd)};
+    });
+
+    dispatcher_.registerHandler("UNBLOCK_USER", [this](const protocol::Message& msg, int fd) {
+        return std::vector<protocol::Message>{block_handler_.handleUnblockUser(msg, fd)};
+    });
+
+    dispatcher_.registerHandler("LIST_BLOCKS", [this](const protocol::Message& msg, int fd) {
+        return std::vector<protocol::Message>{block_handler_.handleListBlocks(msg, fd)};
+    });
+
+    dispatcher_.registerHandler("DM_SEND", [this](const protocol::Message& msg, int fd) {
+        return std::vector<protocol::Message>{dm_handler_.handleDmSend(msg, fd)};
+    });
+
+    dispatcher_.registerHandler("LIST_DM_CONVERSATIONS", [this](const protocol::Message& msg, int fd) {
+        return std::vector<protocol::Message>{dm_handler_.handleListDmConversations(msg, fd)};
+    });
 }
 
 void Server::configureAuth(const std::string& jwt_public_key_pem) {
@@ -184,6 +267,10 @@ void Server::setInternalApiClient(std::unique_ptr<http::InternalApiClient> clien
     channel_handler_.setInternalApiClient(internal_api_client_.get());
     invite_handler_.setInternalApiClient(internal_api_client_.get());
     join_request_handler_.setInternalApiClient(internal_api_client_.get());
+    friend_handler_.setInternalApiClient(internal_api_client_.get());
+    block_handler_.setInternalApiClient(internal_api_client_.get());
+    dm_handler_.setInternalApiClient(internal_api_client_.get());
+    identify_handler_.setInternalApiClient(internal_api_client_.get());
 
     // docs/guilds/social-presence-design.md §4.5: constructed here (not at Server
     // construction) because it needs internal_api_client_.get(), which
@@ -193,6 +280,7 @@ void Server::setInternalApiClient(std::unique_ptr<http::InternalApiClient> clien
         std::make_unique<persistence::MessagePersistenceWorker>(internal_api_client_.get());
     chat_handler_.setMessagePersistenceWorker(message_worker_.get());
     channel_handler_.setMessagePersistenceWorker(message_worker_.get());
+    dm_handler_.setMessagePersistenceWorker(message_worker_.get());
 }
 
 void Server::hydrateGuildCatalog() {
@@ -239,9 +327,11 @@ void Server::hydrateMessageSequences() {
     const http::LastSequence last_seq = internal_api_client_->fetchLastSequence();
     chat_handler_.seedMessageCounter(last_seq.lobby_seq);
     channel_handler_.seedMessageCounter(last_seq.channel_seq);
+    dm_handler_.seedMessageCounter(last_seq.dm_seq);
 
     std::cout << "Hydrated message sequence counters (lobby=" << last_seq.lobby_seq.value_or(0)
-              << ", channel=" << last_seq.channel_seq.value_or(0) << ")" << std::endl;
+              << ", channel=" << last_seq.channel_seq.value_or(0) << ", dm=" << last_seq.dm_seq.value_or(0)
+              << ")" << std::endl;
 }
 
 void Server::pollRevocationCache() {
@@ -288,9 +378,22 @@ protocol::Message Server::makePresenceUpdate(const std::string& user_id, bool on
     return presence;
 }
 
+std::vector<int> Server::computePresenceExclusionFds(const std::vector<std::string>& blocked_user_ids) const {
+    std::vector<int> excluded;
+    for (const auto& blocked_user_id : blocked_user_ids) {
+        const std::vector<int> fds = session_manager_.getFdsForUser(blocked_user_id);
+        excluded.insert(excluded.end(), fds.begin(), fds.end());
+    }
+    return excluded;
+}
+
 void Server::removeSessionTrackingPresence(int fd) {
     const session::Session* session = session_manager_.getSession(fd);
     const std::string user_id = session ? session->user_id : std::string();
+    // docs/social/friends-dms-design.md §2.5: captured *before*
+    // removeSession() below erases this connection's Session — the
+    // exclusion set still needs to reflect who this user had blocked.
+    const std::vector<std::string> blocked_user_ids = session ? session->blocked_user_ids : std::vector<std::string>();
 
     session_manager_.removeSession(fd);
 
@@ -298,7 +401,7 @@ void Server::removeSessionTrackingPresence(int fd) {
     // completing IDENTIFY — it never incremented presence, so there's
     // nothing to decrement or announce.
     if (!user_id.empty() && session_manager_.decrementPresence(user_id)) {
-        broadcast(makePresenceUpdate(user_id, false));
+        broadcastExcluding(makePresenceUpdate(user_id, false), computePresenceExclusionFds(blocked_user_ids));
     }
 }
 
@@ -403,7 +506,8 @@ void Server::start() {
                 if (message.type == "IDENTIFY" && identified) {
                     const session::Session* session = session_manager_.getSession(fd);
                     if (session && session_manager_.incrementPresence(session->user_id)) {
-                        broadcast(makePresenceUpdate(session->user_id, true));
+                        broadcastExcluding(makePresenceUpdate(session->user_id, true),
+                                          computePresenceExclusionFds(session->blocked_user_ids));
                     }
                 }
             }
@@ -448,6 +552,21 @@ bool Server::sendMessage(int fd, const protocol::Message& message) {
 void Server::broadcast(const protocol::Message& message) {
     for (const auto& [fd, conn] : connections_) {
         (void)conn;
+        (void)sendMessage(fd, message);
+    }
+}
+
+void Server::broadcastExcluding(const protocol::Message& message, const std::vector<int>& excluded_fds) {
+    if (excluded_fds.empty()) {
+        broadcast(message);
+        return;
+    }
+
+    for (const auto& [fd, conn] : connections_) {
+        (void)conn;
+        if (std::find(excluded_fds.begin(), excluded_fds.end(), fd) != excluded_fds.end()) {
+            continue;
+        }
         (void)sendMessage(fd, message);
     }
 }

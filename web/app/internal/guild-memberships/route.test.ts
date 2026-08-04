@@ -118,4 +118,32 @@ describe("GET /internal/guild-memberships", () => {
     const memberRow = body.members.find((m) => m.user_id === toUserWireId(member.id));
     expect(memberRow?.role_label).toBe("Officer");
   });
+
+  // docs/social/friends-dms-design.md §3.3: the ?user_id= variant used by
+  // canSendDm()'s disconnected-peer fallback.
+  it("returns a user's guild ids via ?user_id=", async () => {
+    const [owner] = await db.insert(users).values({ discordId: "7", discordUsername: "frank" }).returning();
+    const guildA = await createGuild("Guild A", toUserWireId(owner.id));
+    const guildB = await createGuild("Guild B", toUserWireId(owner.id));
+
+    const request = new NextRequest(`${URL}?user_id=${toUserWireId(owner.id)}`, {
+      method: "GET",
+      headers: SECRET_HEADERS
+    });
+    const response = await GET(request);
+    expect(response.status).toBe(200);
+    const body = (await response.json()) as { guild_ids: string[] };
+    expect(body.guild_ids.sort()).toEqual([guildA.guild_id, guildB.guild_id].sort());
+  });
+
+  it("returns an empty array (not 404) for a user with no guilds", async () => {
+    const [owner] = await db.insert(users).values({ discordId: "8", discordUsername: "gail" }).returning();
+    const request = new NextRequest(`${URL}?user_id=${toUserWireId(owner.id)}`, {
+      method: "GET",
+      headers: SECRET_HEADERS
+    });
+    const response = await GET(request);
+    expect(response.status).toBe(200);
+    expect((await response.json()) as { guild_ids: string[] }).toEqual({ guild_ids: [] });
+  });
 });

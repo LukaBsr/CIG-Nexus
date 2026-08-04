@@ -5,8 +5,11 @@
 #include "TcpListener.hpp"
 
 #include "protocol/MessageDispatcher.hpp"
+#include "protocol/handlers/BlockHandler.hpp"
 #include "protocol/handlers/ChannelHandler.hpp"
 #include "protocol/handlers/ChatHandler.hpp"
+#include "protocol/handlers/DMHandler.hpp"
+#include "protocol/handlers/FriendHandler.hpp"
 #include "protocol/handlers/GuildHandler.hpp"
 #include "protocol/handlers/HelloHandler.hpp"
 #include "protocol/handlers/IdentifyHandler.hpp"
@@ -56,6 +59,19 @@ class Server {
     // Network send helpers
     bool sendMessage(int fd, const protocol::Message& message);
     void broadcast(const protocol::Message& message);
+    // docs/social/friends-dms-design.md §2.5: broadcast() minus a set of
+    // fds to skip — the mechanism presence delivery uses to exclude a
+    // blocked user's connections (broadcast() itself is unchanged, and
+    // stays the plain "every connection" version other callers still use).
+    void broadcastExcluding(const protocol::Message& message, const std::vector<int>& excluded_fds);
+    // Every fd currently identified as any user in blocked_user_ids — the
+    // exclusion set for the presence-subject's own PRESENCE_UPDATE
+    // broadcasts. Takes the list directly (not a user_id to look up)
+    // because the offline call site must capture it *before*
+    // SessionManager::removeSession() erases the subject's own Session.
+    // Empty input returns empty output — the common case costs one
+    // no-op loop, not a lookup.
+    std::vector<int> computePresenceExclusionFds(const std::vector<std::string>& blocked_user_ids) const;
 
     // Startup catalog hydration and the periodic revocation poll/sweep
     // (design doc §8.1, §9) — no-ops if internal_api_client_ is unset.
@@ -98,6 +114,9 @@ class Server {
     protocol::ChannelHandler channel_handler_;
     protocol::InviteHandler invite_handler_;
     protocol::JoinRequestHandler join_request_handler_;
+    protocol::FriendHandler friend_handler_;
+    protocol::BlockHandler block_handler_;
+    protocol::DMHandler dm_handler_;
 
     // In-memory connection/session/guild state
     session::SessionManager session_manager_;

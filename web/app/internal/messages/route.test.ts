@@ -3,7 +3,7 @@ import { NextRequest } from "next/server";
 import { afterEach, beforeAll, describe, expect, it } from "vitest";
 
 import { db } from "@/db/client";
-import { channels, guilds, messages, users } from "@/db/schema";
+import { channels, dmConversations, guilds, messages, users } from "@/db/schema";
 import { createGuild, createChannel } from "@/lib/internal/catalog";
 import { toUserWireId } from "@/lib/internal/wireIds";
 
@@ -17,7 +17,9 @@ beforeAll(() => {
 });
 
 afterEach(async () => {
-  await db.execute(sql`TRUNCATE TABLE ${messages}, ${channels}, ${guilds}, ${users} RESTART IDENTITY CASCADE`);
+  await db.execute(
+    sql`TRUNCATE TABLE ${messages}, ${channels}, ${guilds}, ${dmConversations}, ${users} RESTART IDENTITY CASCADE`
+  );
 });
 
 async function insertUser(discordId: string) {
@@ -165,5 +167,72 @@ describe("GET /internal/messages", () => {
   it("returns 400 for an out-of-range limit", async () => {
     const response = await GET(getRequest("?limit=1000"));
     expect(response.status).toBe(400);
+  });
+});
+
+// docs/social/friends-dms-design.md §3.4/§3.6: the DM scope, addressed by
+// peer_id (never a raw dm_conversation_id).
+describe("DM scope (peer_id)", () => {
+  it("POST creates the conversation on first send and persists the message", async () => {
+    const alice = await insertUser("20");
+    const bob = await insertUser("21");
+
+    const response = await POST(
+      postRequest({ peer_id: toUserWireId(bob.id), user_id: toUserWireId(alice.id), content: "hi", seq: 1 })
+    );
+    expect(response.status).toBe(201);
+
+    const conversations = await db.select().from(dmConversations);
+    expect(conversations).toHaveLength(1);
+    const rows = await db.select().from(messages);
+    expect(rows).toHaveLength(1);
+    expect(rows[0].dmConversationId).toBe(conversations[0].id);
+    expect(rows[0].channelId).toBeNull();
+  });
+
+  it("GET returns empty history (not an error) when no conversation exists yet", async () => {
+    const alice = await insertUser("22");
+    const bob = await insertUser("23");
+
+    const response = await GET(
+      getRequest(`?peer_id=${toUserWireId(bob.id)}&requester_id=${toUserWireId(alice.id)}`)
+    );
+    expect(response.status).toBe(200);
+    const body = (await response.json()) as { messages: unknown[]; has_more: boolean };
+    expect(body).toEqual({ messages: [], has_more: false });
+  });
+
+  it("GET returns messages from the resolved conversation, either participant as requester", async () => {
+    const alice = await insertUser("24");
+    const bob = await insertUser("25");
+    await POST(
+      postRequest({ peer_id: toUserWireId(bob.id), user_id: toUserWireId(alice.id), content: "hi", seq: 1 })
+    );
+
+    const asAlice = await GET(
+      getRequest(`?peer_id=${toUserWireId(bob.id)}&requester_id=${toUserWireId(alice.id)}`)
+    );
+    const asBob = await GET(
+      getRequest(`?peer_id=${toUserWireId(alice.id)}&requester_id=${toUserWireId(bob.id)}`)
+    );
+    const aliceBody = (await asAlice.json()) as { messages: { content: string }[] };
+    const bobBody = (await asBob.json()) as { messages: { content: string }[] };
+    expect(aliceBody.messages).toHaveLength(1);
+    expect(bobBody.messages).toHaveLength(1);
+    expect(aliceBody.messages[0].content).toBe("hi");
+  });
+
+  it("keeps DM and lobby seq id-spaces independent", async () => {
+    const alice = await insertUser("26");
+    const bob = await insertUser("27");
+    await POST(postRequest({ channel_id: null, user_id: toUserWireId(alice.id), content: "lobby-1", seq: 1 }));
+    await POST(
+      postRequest({ peer_id: toUserWireId(bob.id), user_id: toUserWireId(alice.id), content: "dm-1", seq: 1 })
+    );
+
+    const lobbyRows = await db.select().from(messages).where(sql`${messages.channelId} IS NULL AND ${messages.dmConversationId} IS NULL`);
+    const dmRows = await db.select().from(messages).where(sql`${messages.dmConversationId} IS NOT NULL`);
+    expect(lobbyRows).toHaveLength(1);
+    expect(dmRows).toHaveLength(1);
   });
 });

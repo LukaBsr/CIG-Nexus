@@ -16,6 +16,9 @@ namespace persistence {
 
 struct PendingMessage {
     std::optional<std::string> channel_id;
+    // docs/social/friends-dms-design.md §3.4: mutually exclusive with
+    // channel_id — the other DM participant, when this is a DM_SEND.
+    std::optional<std::string> dm_peer_id;
     std::string user_id;
     std::string content;
     int seq;

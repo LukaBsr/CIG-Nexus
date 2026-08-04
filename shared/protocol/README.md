@@ -178,7 +178,7 @@ Server to client only — there is no client-sent message for this; presence is 
 - `"online"`: broadcast when a user's connection count goes `0 → 1` (their first connection completes `IDENTIFY`).
 - `"offline"`: broadcast when it goes `1 → 0` (their last connection disconnects, whether a clean close or a detected reset).
 
-A second or third connection for the same user connecting or disconnecting emits nothing — no visible state change occurred. Delivery is `Scope::BROADCAST` (`docs/guilds/social-presence-design.md` §3.4) — every connected client receives every `PRESENCE_UPDATE`, including the user whose own status just changed and regardless of shared guild membership; there is no per-guild-scoped variant. A client wanting a per-guild "who's online" view computes it locally by intersecting the globally-received online set against the roster it already has for that guild (`LIST_MEMBERS`).
+A second or third connection for the same user connecting or disconnecting emits nothing — no visible state change occurred. Delivery is `Scope::BROADCAST` (`docs/guilds/social-presence-design.md` §3.4) — every connected client receives every `PRESENCE_UPDATE`, including the user whose own status just changed and regardless of shared guild membership; there is no per-guild-scoped variant. A client wanting a per-guild "who's online" view computes it locally by intersecting the globally-received online set against the roster it already has for that guild (`LIST_MEMBERS`). One exception: a user who has blocked at least one other user excludes that user's connections specifically — see [Presence exclusion mechanism](#presence-exclusion-mechanism) under [Blocking](#blocking).
 
 **Known limitation**: detecting a peer that stops responding without a clean close (network partition, laptop sleep) relies on TCP keepalive (`SO_KEEPALIVE`, tuned to a ~30s idle timeout / 10s probe interval / 3 probes — well under Linux's default of several hours), not an application-level heartbeat. A user can appear `"online"` for up to roughly that keepalive window after actually going dark.
 
@@ -825,6 +825,235 @@ Server to client:
 
 This is a live read-through call to the internal API on every request — results are never cached by the server. See `docs/guilds/social-presence-design.md` §4 for the persistence design (write-side: `CHAT_MESSAGE`/`CHANNEL_MESSAGE` persist asynchronously, fire-and-forget with bounded retry, after the broadcast — a client can in principle receive a message before it's durably persisted).
 
+### Friends
+
+Not guild-scoped — a friendship is a relationship between two accounts, independent of any guild either is in. See `docs/social/friends-dms-design.md` §1 for the full design (data model, the invite-redemption-pattern reuse for friend codes, and the reverse-pending auto-accept case below). All require the connection to be identified first.
+
+#### SEND_FRIEND_REQUEST
+
+Client to server:
+
+```json
+{ "type": "SEND_FRIEND_REQUEST", "user_id": "u_2" }
+```
+
+Validation: `user_id` must reference an existing user (`USER_NOT_FOUND` otherwise); must not be the caller's own id (`PROTOCOL_VIOLATION`); caller and target must not already be friends (`PROTOCOL_VIOLATION`).
+
+On success, two messages: `Scope::DIRECT` to the caller and `Scope::TARGETED` to every connection identified as the target (only sent if at least one exists):
+
+```json
+{ "type": "FRIEND_REQUEST_SENT", "user_id": "u_2" }
+```
+
+```json
+{ "type": "FRIEND_REQUEST_RECEIVED", "user_id": "u_1" }
+```
+
+**Reverse-pending auto-accept**: if the target already has a pending request to the caller (i.e. the two were about to cross), no second request is created — the two become friends immediately instead, and both messages above are `FRIEND_ADDED` (see `ACCEPT_FRIEND_REQUEST` below) rather than `FRIEND_REQUEST_SENT`/`FRIEND_REQUEST_RECEIVED`.
+
+#### ADD_FRIEND_BY_CODE
+
+Client to server:
+
+```json
+{ "type": "ADD_FRIEND_BY_CODE", "code": "aB3kD9qP2x" }
+```
+
+Resolves `code` to a target user, then behaves exactly like `SEND_FRIEND_REQUEST` against that user — same validation, same response shapes (including the reverse-pending auto-accept case), plus `FRIEND_CODE_NOT_FOUND` if the code doesn't belong to any account.
+
+#### ACCEPT_FRIEND_REQUEST
+
+Client to server (`user_id` is the original requester):
+
+```json
+{ "type": "ACCEPT_FRIEND_REQUEST", "user_id": "u_1" }
+```
+
+Validation: a pending request from `user_id` to the caller must exist (`FRIEND_REQUEST_NOT_FOUND` otherwise).
+
+On success, `Scope::TARGETED` to each participant's connections, same shape from each side:
+
+```json
+{ "type": "FRIEND_ADDED", "user_id": "u_2" }
+```
+
+#### REJECT_FRIEND_REQUEST / CANCEL_FRIEND_REQUEST
+
+Client to server — `REJECT_FRIEND_REQUEST` is sent by the recipient of a pending request (`user_id` is the original requester); `CANCEL_FRIEND_REQUEST` is sent by the requester who sent it (`user_id` is the recipient):
+
+```json
+{ "type": "REJECT_FRIEND_REQUEST", "user_id": "u_1" }
+```
+
+```json
+{ "type": "CANCEL_FRIEND_REQUEST", "user_id": "u_2" }
+```
+
+Validation: a matching pending request must exist (`FRIEND_REQUEST_NOT_FOUND` otherwise) — `REJECT_FRIEND_REQUEST` and `CANCEL_FRIEND_REQUEST` both delete the same row; only which party must be which distinguishes them.
+
+On success, delivered to both participants (`Scope::DIRECT` to the caller, `Scope::TARGETED` to the other party):
+
+```json
+{ "type": "FRIEND_REQUEST_REJECTED", "user_id": "u_2" }
+```
+
+```json
+{ "type": "FRIEND_REQUEST_CANCELED", "user_id": "u_1" }
+```
+
+#### REMOVE_FRIEND
+
+Client to server:
+
+```json
+{ "type": "REMOVE_FRIEND", "user_id": "u_2" }
+```
+
+Validation: caller and `user_id` must currently be friends (`FRIEND_NOT_FOUND` otherwise).
+
+On success, delivered to both participants:
+
+```json
+{ "type": "FRIEND_REMOVED", "user_id": "u_2" }
+```
+
+#### LIST_FRIENDS
+
+Client to server: `{ "type": "LIST_FRIENDS" }`. Response (`Scope::DIRECT`):
+
+```json
+{ "type": "FRIEND_LIST", "friends": [ { "user_id": "u_2", "username": "web_user" } ] }
+```
+
+No online/offline status embedded — a client intersects this against the `PRESENCE_UPDATE` stream it already receives, the same way a per-guild "who's online" view is computed from `LIST_MEMBERS`.
+
+#### LIST_FRIEND_REQUESTS
+
+Client to server: `{ "type": "LIST_FRIEND_REQUESTS" }`. Response (`Scope::DIRECT`):
+
+```json
+{
+  "type": "FRIEND_REQUEST_LIST",
+  "incoming": [ { "user_id": "u_3", "username": "web_user", "created_at": "2026-08-01T12:00:00Z" } ],
+  "outgoing": []
+}
+```
+
+#### FETCH_FRIEND_CODE / REGENERATE_FRIEND_CODE
+
+Client to server: `{ "type": "FETCH_FRIEND_CODE" }` or `{ "type": "REGENERATE_FRIEND_CODE" }`. Response (`Scope::DIRECT`) either way:
+
+```json
+{ "type": "FRIEND_CODE", "code": "aB3kD9qP2x" }
+```
+
+`REGENERATE_FRIEND_CODE` immediately invalidates the previous code — there is no grace period, and no `revoked_at`/`use_count` the way guild invites have, since a friend code has no multi-use-tracking concept: exactly one code is live per account at a time.
+
+### Blocking
+
+See `docs/social/friends-dms-design.md` §2 for the full design (what blocking does, the silent-failure rationale below, and the presence-exclusion mechanism). All three require the connection to be identified first.
+
+#### BLOCK_USER
+
+Client to server:
+
+```json
+{ "type": "BLOCK_USER", "user_id": "u_2" }
+```
+
+Validation: `user_id` must not be the caller's own id (`PROTOCOL_VIOLATION`); must reference an existing user (`USER_NOT_FOUND`). Blocking an already-blocked user is idempotent success, not an error.
+
+On success, in the same transaction: any pending friend request between the two (either direction) is deleted, and an existing friendship is removed. Response (`Scope::DIRECT`, to the caller only — **the target receives no notification**, silent per the recommendation below):
+
+```json
+{ "type": "USER_BLOCKED", "user_id": "u_2" }
+```
+
+From this point on, the blocked user (`u_2` here) cannot send the blocker a new friend request, cannot start or continue a DM with them, and stops receiving the blocker's `PRESENCE_UPDATE`s — all silently (see below).
+
+#### UNBLOCK_USER
+
+Client to server: `{ "type": "UNBLOCK_USER", "user_id": "u_2" }`. Validation: an active block from the caller to `user_id` must exist (`USER_NOT_FOUND` otherwise — reused, not a distinct "no such block" code). Response (`Scope::DIRECT`, silent to the target, same as `BLOCK_USER`):
+
+```json
+{ "type": "USER_UNBLOCKED", "user_id": "u_2" }
+```
+
+Does **not** restore any friendship or pending request that existed before the block — both parties start from "no relationship."
+
+#### LIST_BLOCKS
+
+Client to server: `{ "type": "LIST_BLOCKS" }`. Response (`Scope::DIRECT`):
+
+```json
+{ "type": "BLOCK_LIST", "blocked": [ { "user_id": "u_2", "username": "web_user", "blocked_at": "2026-08-01T12:00:00Z" } ] }
+```
+
+#### Silent failure, not an explicit error
+
+A blocked user reaching for the blocker gets exactly the response an unrelated, ordinary failure would produce — never a distinguishing `BLOCKED`-style code:
+
+- `SEND_FRIEND_REQUEST`/`ADD_FRIEND_BY_CODE` against a blocked pair returns `USER_NOT_FOUND`, identical to targeting a `user_id` that doesn't exist.
+- `DM_SEND` against a blocked pair returns `DM_NOT_PERMITTED`, identical to an ordinary stranger with no shared friendship or guild (see [Direct Messages](#direct-messages)).
+- Presence: the blocked user simply never receives the blocker's `PRESENCE_UPDATE` — no error, no signal, indistinguishable from the blocker never having been online.
+- Profile: `GET /api/users/:id/profile` (a REST endpoint, not part of this WebSocket protocol) returns the same 404 a nonexistent user would.
+
+No code path anywhere reveals "you're blocked" as distinct from "this wouldn't have worked anyway" — deliberately, to avoid the harassment feedback loop an explicit signal would enable (a blocked user probing whether a specific action's failure means "blocked" vs. "ordinary" would otherwise get a confirming answer).
+
+#### Presence exclusion mechanism
+
+`PRESENCE_UPDATE` is normally `Scope::BROADCAST` (see [PRESENCE_UPDATE](#presence_update)) — every connected client gets every transition. When the presence subject has blocked at least one user, their `PRESENCE_UPDATE` is instead delivered to every currently-connected connection *except* those identified as a user they've blocked — still effectively broadcast-shaped for everyone else, just with that one exclusion. A user with no active blocks is entirely unaffected; this never applies in the other direction (a blocked user's own presence is still broadcast normally, including to the person who blocked them — see the Scope note above on why full bidirectional invisibility isn't built).
+
+### Direct Messages
+
+1:1 conversations only — no group DMs (see `docs/social/friends-dms-design.md`'s Scope section for that as a future extension). A DM conversation is addressed by the other participant's `user_id` on every message here — never a separate conversation id; the server resolves/creates the underlying conversation record internally. See `docs/social/friends-dms-design.md` §3 for the full design, including the permission model's re-check-on-every-send resolution and how this reuses (not reinvents) `docs/guilds/social-presence-design.md` §4's message-persistence architecture. All three require the connection to be identified first.
+
+#### DM_SEND
+
+Client to server:
+
+```json
+{ "type": "DM_SEND", "user_id": "u_2", "content": "hello" }
+```
+
+Validation: `content` must be non-empty and at most 500 characters (`MALFORMED_MESSAGE`, same limit as `CHAT_MESSAGE`); `user_id` must not be the caller's own id (`PROTOCOL_VIOLATION`); the caller and `user_id` must be friends or share at least one guild membership, and neither must have blocked the other (`DM_NOT_PERMITTED` otherwise — this single code covers both "no shared context" and "blocked," deliberately indistinguishable, same reasoning as [Blocking](#blocking)'s silent-failure section). This permission check runs fresh on **every** `DM_SEND`, not once when a conversation starts — a thread that was legitimately opened while the two shared a guild goes silently inert (new sends rejected) if that guild is later left and the two never became friends; existing history stays fully readable regardless.
+
+On success, `Scope::TARGETED` to every connection identified as either participant:
+
+```json
+{ "type": "DM_MESSAGE", "message_id": 7, "timestamp": 1741104000, "user_id": "u_1", "content": "hello" }
+```
+
+Same shape `CHAT_MESSAGE`'s broadcast already uses — no separate `recipient_id`/`conversation_id` field. A receiving client determines which conversation this belongs to exactly the way it already determines "is this my own echo or someone else's" for `CHAT_MESSAGE`: compare `user_id` to its own identified id.
+
+Persisted fire-and-forget with bounded retry, reusing `docs/guilds/social-presence-design.md` §4.5's Option B directly — nothing about DMs changes that tradeoff.
+
+#### FETCH_HISTORY (DM scope)
+
+[FETCH_HISTORY](#fetch_history) gains a `peer_id` field, mutually exclusive with `channel_id` (send at most one; both omitted still means the lobby):
+
+```json
+{ "type": "FETCH_HISTORY", "peer_id": "u_2", "before_seq": null, "limit": 50 }
+```
+
+No permission check beyond identification — reading history never depends on `DM_SEND`'s permission check being currently true, only on the caller actually being a participant in the resolved conversation, which is automatic (the conversation is always resolved from the caller's own id and `peer_id`, never a client-supplied conversation id). A `peer_id` with no conversation yet yields an empty page, not an error — same "empty is a valid, distinct state" reasoning `LIST_INVITES` already uses.
+
+Response, extended with a `peer_id` echo alongside the existing `channel_id` (exactly one of the two is non-null):
+
+```json
+{ "type": "MESSAGE_HISTORY", "channel_id": null, "peer_id": "u_2", "messages": [], "has_more": false }
+```
+
+#### LIST_DM_CONVERSATIONS
+
+Client to server: `{ "type": "LIST_DM_CONVERSATIONS" }`. Response (`Scope::DIRECT`):
+
+```json
+{ "type": "DM_CONVERSATION_LIST", "conversations": [ { "peer_id": "u_2", "last_message_at": "2026-08-01T12:00:00Z" } ] }
+```
+
+Deliberately minimal — no unread counts or message previews.
+
 ### ERROR
 
 Server to client:
@@ -863,6 +1092,11 @@ Current error codes used by the implementation:
 | `GUILD_REQUIRES_APPROVAL` | `JOIN_GUILD` attempted against an `application`-visibility guild — use `REQUEST_JOIN` instead |
 | `JOIN_REQUEST_ALREADY_PENDING` | `REQUEST_JOIN` sent while a request for that guild is already pending |
 | `JOIN_REQUEST_NOT_FOUND` | `APPROVE_JOIN_REQUEST`/`REJECT_JOIN_REQUEST` referenced a user with no pending request |
+| `USER_NOT_FOUND` | referenced `user_id` does not exist |
+| `FRIEND_REQUEST_NOT_FOUND` | `ACCEPT_FRIEND_REQUEST`/`REJECT_FRIEND_REQUEST`/`CANCEL_FRIEND_REQUEST` referenced no matching pending request |
+| `FRIEND_NOT_FOUND` | `REMOVE_FRIEND` referenced a user the caller isn't currently friends with |
+| `FRIEND_CODE_NOT_FOUND` | `ADD_FRIEND_BY_CODE`'s `code` does not belong to any account |
+| `DM_NOT_PERMITTED` | `DM_SEND` sent to a user who isn't a friend and shares no guild with the caller, or where either party has blocked the other (deliberately indistinguishable — see [Blocking](#blocking)) |
 
 ## Behavior Notes
 
@@ -871,8 +1105,8 @@ Current error codes used by the implementation:
 - Valid `CHAT_MESSAGE` responses are broadcast to all connected clients.
 - Non-chat responses are returned only to the originating client.
 - `PRESENCE_UPDATE` is also broadcast to all connected clients, but unlike `CHAT_MESSAGE` it isn't triggered by any client-sent message — it's emitted by the server's own connection-lifecycle handling (a successful `IDENTIFY`, or a detected disconnect) on a 0↔1 connection-count transition (see [PRESENCE_UPDATE](#presence_update)).
-- Guild/channel responses that need to reach more than one connection but not literally everyone (`MEMBER_LEFT`, `GUILD_DELETED`, `CHANNEL_CREATED`, `CHANNEL_DELETED`, `CHANNEL_MESSAGE`, `MEMBER_ROLE_UPDATED`, `GUILD_VISIBILITY_CHANGED`, `JOIN_REQUEST_RECEIVED`, and the approval-path copies of `GUILD_JOINED`/`JOIN_REQUEST_REJECTED`) use a third delivery mode, `TARGETED`: the handler computes the exact set of recipient connections (e.g. "current members of this guild," "connections with this channel active," or "every connection currently identified as this specific user_id") and the server delivers only to that set. This is distinct from `BROADCAST`, which always means every connected client.
-- A single client action can trigger more than one outgoing message to different recipients with different payloads (`JOIN_VIA_INVITE`'s `application`-mode diversion, `REQUEST_JOIN`, `APPROVE_JOIN_REQUEST`, `REJECT_JOIN_REQUEST`) — the dispatcher returns a list of messages per incoming message, not just one, and each is delivered independently per its own `scope`.
+- Guild/channel responses that need to reach more than one connection but not literally everyone (`MEMBER_LEFT`, `GUILD_DELETED`, `CHANNEL_CREATED`, `CHANNEL_DELETED`, `CHANNEL_MESSAGE`, `MEMBER_ROLE_UPDATED`, `GUILD_VISIBILITY_CHANGED`, `JOIN_REQUEST_RECEIVED`, and the approval-path copies of `GUILD_JOINED`/`JOIN_REQUEST_REJECTED`) use a third delivery mode, `TARGETED`: the handler computes the exact set of recipient connections (e.g. "current members of this guild," "connections with this channel active," or "every connection currently identified as this specific user_id") and the server delivers only to that set. This is distinct from `BROADCAST`, which always means every connected client. The Friends messages (`FRIEND_REQUEST_RECEIVED`, `FRIEND_ADDED`, and the copies of `FRIEND_REQUEST_REJECTED`/`FRIEND_REQUEST_CANCELED`/`FRIEND_REMOVED` delivered to the other party) all use the "every connection currently identified as this specific user_id" variant, not a guild-membership-based one, since friendship isn't guild-scoped.
+- A single client action can trigger more than one outgoing message to different recipients with different payloads (`JOIN_VIA_INVITE`'s `application`-mode diversion, `REQUEST_JOIN`, `APPROVE_JOIN_REQUEST`, `REJECT_JOIN_REQUEST`, and every Friends action in the previous bullet) — the dispatcher returns a list of messages per incoming message, not just one, and each is delivered independently per its own `scope`.
 
 ## Security and Limits
 
@@ -881,6 +1115,7 @@ Current implementation limitations:
 - authorization is rank-based (`role_rank`, [Roles](#roles)) with exactly three reachable tiers today (crew/officer/owner) — no general, delegable permission system yet (see `docs/guilds/design.md`, "Future Permission Hook")
 - guild privacy exists (`visibility`: `open`/`application`/`private` — see [Guild Visibility](#guild-visibility)) but only at the guild level, not per-channel or per-message; an `open` guild (the default) still has none
 - invite codes are the only access-control boundary for `application`/`private` guilds — a leaked/forwarded code grants whatever that guild's mode allows (direct membership for `private`, a join request for `application`); there is no per-invite audience restriction
+- a leaked/forwarded friend code (`ADD_FRIEND_BY_CODE`) lets anyone send its owner a friend request — unlike a guild invite this never grants anything unilaterally (friendship still requires the recipient to accept), so the exposure is a request, not membership
 - presence (`PRESENCE_UPDATE`) leaks online/offline status across guild boundaries — every connected client learns it for every other identified user, regardless of shared guild membership. Consistent with, not a regression from, the existing baseline above (guild existence and membership-by-id are already visible to every identified client with no privacy model)
 - `VOICE` channels are metadata-only: the type is modeled and validated, but there is no audio transport or voice presence
 - no TLS

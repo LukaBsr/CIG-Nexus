@@ -57,3 +57,6 @@ ARCHITECTURE.md
 
 # RS256 keypair for the application session JWT (see .env.example)
 secrets/
+
+# Locally bind-mounted user-uploaded content (docs/social/friends-dms-design.md §4.2)
+data/

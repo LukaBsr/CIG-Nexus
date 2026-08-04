@@ -512,6 +512,87 @@ TEST_CASE("Server broadcasts PRESENCE_UPDATE online/offline only on real transit
 }
 
 // ----------------------------------------------------------------------------
+// docs/social/friends-dms-design.md §2.5: a user alice has blocked must not
+// see alice's PRESENCE_UPDATE broadcasts, while an unrelated third
+// connection (carol, blocked by no one) still does — proving this is a
+// targeted exclusion of the blocked user's connections specifically, not a
+// suppression of the broadcast for everyone. FakeInternalApiClient's
+// blocks_to_return is shared process-wide, so bob and carol identify
+// *before* it's populated (hydrating empty blocked_user_ids for both);
+// it's set to alice's block list only right before alice's own IDENTIFY.
+// ----------------------------------------------------------------------------
+
+TEST_CASE("Server excludes a blocked user's connections from the blocker's PRESENCE_UPDATE") {
+    test_helpers::TestRsaKeyPair keys;
+    Server server(0);
+    server.configureAuth(keys.publicKeyPem());
+    auto api = std::make_unique<test_helpers::FakeInternalApiClient>();
+    test_helpers::FakeInternalApiClient* api_ptr = api.get();
+    server.setInternalApiClient(std::move(api));
+
+    std::thread t([&server] { server.start(); });
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+
+    auto identify_raw = [&](int fd, const std::string& user_id, const std::string& username) {
+        send_framed(fd, R"({"type":"HELLO","version":"0.1","client":"web"})");
+        REQUIRE(!recv_frame_raw(fd).empty()); // WELCOME
+        send_framed(fd, R"({"type":"IDENTIFY","session_token":")" +
+                            make_session_token(keys.key, user_id, username) + R"("})");
+        REQUIRE(!recv_frame_raw(fd).empty()); // IDENTIFIED
+    };
+
+    // carol connects first, as a pure observer.
+    int fd_carol = tcp_connect(server.bound_port());
+    REQUIRE(fd_carol >= 0);
+    identify_raw(fd_carol, "u_carol", "carol");
+    REQUIRE(!recv_frame_raw(fd_carol).empty()); // carol's own online broadcast, drained
+
+    // bob connects second — carol observes it, proving unrelated presence
+    // still works normally (this is the sanity check the exclusion-specific
+    // assertions below are contrasted against).
+    int fd_bob = tcp_connect(server.bound_port());
+    REQUIRE(fd_bob >= 0);
+    identify_raw(fd_bob, "u_bob", "bob");
+    REQUIRE(!recv_frame_raw(fd_bob).empty()); // bob's own online broadcast, drained
+    auto bob_online_seen_by_carol = nlohmann::json::parse(recv_frame_raw(fd_carol));
+    REQUIRE(bob_online_seen_by_carol["user_id"] == "u_bob"); // sanity: carol sees unrelated presence normally
+
+    // alice has blocked bob — hydrated at her IDENTIFY below.
+    api_ptr->blocks_to_return = {{"u_bob", "bob", "2026-01-01T00:00:00Z"}};
+
+    int fd_alice = tcp_connect(server.bound_port());
+    REQUIRE(fd_alice >= 0);
+    identify_raw(fd_alice, "u_alice", "alice");
+    REQUIRE(!recv_frame_raw(fd_alice).empty()); // alice's own broadcast, drained
+
+    // carol (not blocked) sees alice come online.
+    auto alice_online_seen_by_carol = nlohmann::json::parse(recv_frame_raw(fd_carol));
+    REQUIRE(alice_online_seen_by_carol["type"] == "PRESENCE_UPDATE");
+    REQUIRE(alice_online_seen_by_carol["user_id"] == "u_alice");
+    REQUIRE(alice_online_seen_by_carol["status"] == "online");
+
+    // bob (blocked by alice) does not see alice come online.
+    set_recv_timeout(fd_bob, 0, 300000);
+    REQUIRE(recv_frame_raw(fd_bob).empty());
+    set_recv_timeout(fd_bob, 2, 0);
+
+    // Same exclusion on the offline transition.
+    ::close(fd_alice);
+    auto alice_offline_seen_by_carol = nlohmann::json::parse(recv_frame_raw(fd_carol));
+    REQUIRE(alice_offline_seen_by_carol["type"] == "PRESENCE_UPDATE");
+    REQUIRE(alice_offline_seen_by_carol["user_id"] == "u_alice");
+    REQUIRE(alice_offline_seen_by_carol["status"] == "offline");
+
+    set_recv_timeout(fd_bob, 0, 300000);
+    REQUIRE(recv_frame_raw(fd_bob).empty());
+
+    ::close(fd_bob);
+    ::close(fd_carol);
+    server.stop();
+    t.join();
+}
+
+// ----------------------------------------------------------------------------
 // Regression: a user reconnecting repeatedly (every browser reload is a
 // fresh TCP connection) must reliably see their own online transition every
 // single time, not just the first. A leaked presence count — some disconnect

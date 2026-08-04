@@ -36,6 +36,17 @@ class SessionManager {
     void setActiveChannel(int socket_fd, const std::string& channel_id);
     void clearActiveChannel(int socket_fd);
 
+    // docs/social/friends-dms-design.md §2.8/§3.3: mirrors
+    // addGuildMembership/removeGuildMembership's per-connection-mutation
+    // shape exactly — a caller updates every connection of the affected
+    // user_id itself by looping getFdsForUser() and calling this once per
+    // fd, same as APPROVE_JOIN_REQUEST already does for guild_ids.
+    void addBlockedUser(int socket_fd, const std::string& blocked_user_id);
+    void removeBlockedUser(int socket_fd, const std::string& blocked_user_id);
+    // docs/social/friends-dms-design.md §3.3: same shape, for friend_ids.
+    void addFriend(int socket_fd, const std::string& friend_user_id);
+    void removeFriend(int socket_fd, const std::string& friend_user_id);
+
     // docs/guilds/social-presence-design.md §3.1: presence is derived from
     // connection count, not "does a Session exist for this fd" — a user can
     // have multiple simultaneous connections (multiple tabs/devices), and a

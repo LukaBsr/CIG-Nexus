@@ -13,7 +13,7 @@ Session& SessionManager::createSession(int socket_fd) {
     // in by IdentifyHandler from the verified access JWT's claims — this
     // function only establishes the local per-connection bookkeeping.
     Session session{"s_" + std::to_string(next_session_id_++), "",        "", "", "",
-                    static_cast<uint64_t>(timestamp),          socket_fd, {}, ""};
+                    static_cast<uint64_t>(timestamp),          socket_fd, {}, "", {}, {}};
 
     auto [it, inserted] = sessions_.insert_or_assign(socket_fd, session);
 
@@ -90,6 +90,50 @@ void SessionManager::removeGuildMembership(int socket_fd, const std::string& gui
 
     auto& ids = session->guild_ids;
     ids.erase(std::remove(ids.begin(), ids.end(), guild_id), ids.end());
+}
+
+void SessionManager::addBlockedUser(int socket_fd, const std::string& blocked_user_id) {
+    Session* session = getSession(socket_fd);
+    if (!session) {
+        return;
+    }
+
+    auto& ids = session->blocked_user_ids;
+    if (std::find(ids.begin(), ids.end(), blocked_user_id) == ids.end()) {
+        ids.push_back(blocked_user_id);
+    }
+}
+
+void SessionManager::removeBlockedUser(int socket_fd, const std::string& blocked_user_id) {
+    Session* session = getSession(socket_fd);
+    if (!session) {
+        return;
+    }
+
+    auto& ids = session->blocked_user_ids;
+    ids.erase(std::remove(ids.begin(), ids.end(), blocked_user_id), ids.end());
+}
+
+void SessionManager::addFriend(int socket_fd, const std::string& friend_user_id) {
+    Session* session = getSession(socket_fd);
+    if (!session) {
+        return;
+    }
+
+    auto& ids = session->friend_ids;
+    if (std::find(ids.begin(), ids.end(), friend_user_id) == ids.end()) {
+        ids.push_back(friend_user_id);
+    }
+}
+
+void SessionManager::removeFriend(int socket_fd, const std::string& friend_user_id) {
+    Session* session = getSession(socket_fd);
+    if (!session) {
+        return;
+    }
+
+    auto& ids = session->friend_ids;
+    ids.erase(std::remove(ids.begin(), ids.end(), friend_user_id), ids.end());
 }
 
 bool SessionManager::isMemberOfGuild(int socket_fd, const std::string& guild_id) const {

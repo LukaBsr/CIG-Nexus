@@ -373,7 +373,7 @@ Message ChannelHandler::handleChannelMessage(const Message& message, int fd) con
     // docs/guilds/social-presence-design.md §4.5: fire-and-forget — enqueue after
     // building the broadcast response, never block on it.
     if (message_worker_) {
-        message_worker_->enqueue({channel_id, session->user_id, content, message_id});
+        message_worker_->enqueue({channel_id, std::nullopt, session->user_id, content, message_id});
     }
 
     return response;
@@ -443,8 +443,12 @@ Message ChannelHandler::handleFetchHistory(const Message& message, int fd) const
     }
 
     // §4.4: the first read-through internal API call — nothing here is
-    // cached, this is a live round trip on every request.
-    const std::optional<http::HistoryPage> page = internal_api_client_->fetchMessages(channel_id, before_seq, limit);
+    // cached, this is a live round trip on every request. std::nullopt
+    // dm_peer_id — this handler only ever serves the lobby/channel
+    // branches of FETCH_HISTORY; Server.cpp dispatches the peer_id branch
+    // to DMHandler instead (docs/social/friends-dms-design.md §3.5).
+    const std::optional<http::HistoryPage> page =
+        internal_api_client_->fetchMessages(channel_id, std::nullopt, session->user_id, before_seq, limit);
     if (!page) {
         return makeError("INTERNAL_ERROR", "Failed to fetch message history");
     }

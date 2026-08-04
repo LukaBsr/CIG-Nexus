@@ -6,4 +6,8 @@ export * from "./guildInvites";
 export * from "./guildJoinRequests";
 export * from "./channels";
 export * from "./messages";
+export * from "./friendRequests";
+export * from "./friendships";
+export * from "./userBlocks";
+export * from "./dmConversations";
 export * from "./relations";

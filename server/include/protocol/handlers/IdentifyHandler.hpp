@@ -16,6 +16,10 @@ class JwtVerifier;
 class RevocationCache;
 } // namespace auth
 
+namespace http {
+class InternalApiClient;
+}
+
 namespace protocol {
 
 // design doc §8: IDENTIFY no longer takes a client-chosen username — it
@@ -27,6 +31,13 @@ class IdentifyHandler {
     void setJwtVerifier(const auth::JwtVerifier* jwt_verifier);
     void setRevocationCache(const auth::RevocationCache* revocation_cache);
     void setGuildManager(const guild::GuildManager* guild_manager);
+    // docs/social/friends-dms-design.md §3.3: unlike guild_ids (a pure
+    // in-memory GuildManager lookup), blocked_user_ids has no equivalent
+    // process-wide cache — hydrating it needs one live internal API call
+    // per IDENTIFY. Optional the same way internal_api_client_ is
+    // elsewhere: unset means blocked_user_ids just stays empty, not an
+    // IDENTIFY failure.
+    void setInternalApiClient(http::InternalApiClient* internal_api_client);
 
     Message handle(const Message& message, int fd);
 
@@ -35,6 +46,7 @@ class IdentifyHandler {
     const auth::JwtVerifier* jwt_verifier_ = nullptr;
     const auth::RevocationCache* revocation_cache_ = nullptr;
     const guild::GuildManager* guild_manager_ = nullptr;
+    http::InternalApiClient* internal_api_client_ = nullptr;
 };
 
 } // namespace protocol

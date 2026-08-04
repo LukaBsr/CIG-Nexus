@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { SETTINGS_SECTIONS } from "@/lib/settings/sections";
 
 interface SettingsModalProps {
+  userId: string | null;
   onClose: () => void;
 }
 
@@ -13,7 +14,7 @@ interface SettingsModalProps {
 // state underneath, not a peer view of Lobby/Guilds. §1.2's section rail
 // is built as a list even with one entry today (Appearance) so a second
 // section is additive, never a rearchitect.
-export function SettingsModal({ onClose }: SettingsModalProps) {
+export function SettingsModal({ userId, onClose }: SettingsModalProps) {
   const [activeSectionId, setActiveSectionId] = useState(SETTINGS_SECTIONS[0].id);
 
   useEffect(() => {
@@ -72,7 +73,7 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
               &times;
             </button>
           </div>
-          <ActiveComponent />
+          <ActiveComponent userId={userId} />
         </div>
       </div>
     </div>
