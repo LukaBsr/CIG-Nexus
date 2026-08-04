@@ -77,16 +77,18 @@ class FakeInternalApiClient : public http::InternalApiClient {
         return revoked_ids_to_return;
     }
 
-    bool createMessage(const std::optional<std::string>& channel_id, const std::string& user_id,
-                       const std::string& content, int seq) override {
+    bool createMessage(const std::optional<std::string>& channel_id, const std::optional<std::string>& dm_peer_id,
+                       const std::string& user_id, const std::string& content, int seq) override {
         if (fail_create_message) {
             return false;
         }
         created_messages.push_back(http::WireMessage{seq, channel_id, 0, user_id, "", content});
+        last_created_dm_peer_id = dm_peer_id;
         return true;
     }
 
     std::optional<http::HistoryPage> fetchMessages(const std::optional<std::string>&,
+                                                    const std::optional<std::string>&, const std::string&,
                                                     std::optional<int>, int) override {
         if (fail_fetch_messages) {
             return std::nullopt;
@@ -95,6 +97,20 @@ class FakeInternalApiClient : public http::InternalApiClient {
     }
 
     http::LastSequence fetchLastSequence() override { return last_sequence_to_return; }
+
+    std::optional<std::vector<http::WireDmConversation>> fetchDmConversations(const std::string&) override {
+        if (fail_fetch_dm_conversations) {
+            return std::nullopt;
+        }
+        return dm_conversations_to_return;
+    }
+
+    std::optional<std::vector<std::string>> fetchGuildIdsForUser(const std::string&) override {
+        if (fail_fetch_guild_ids_for_user) {
+            return std::nullopt;
+        }
+        return guild_ids_for_user_to_return;
+    }
 
     std::optional<http::WireInvite> createInvite(const std::string&, const std::string&,
                                                  std::optional<int> max_uses,
@@ -149,6 +165,61 @@ class FakeInternalApiClient : public http::InternalApiClient {
         return !fail_reject_join_request;
     }
 
+    http::SendFriendRequestResult sendFriendRequest(const std::string&, const std::string&) override {
+        return send_friend_request_returns;
+    }
+
+    http::SendFriendRequestResult addFriendByCode(const std::string&, const std::string&) override {
+        return add_friend_by_code_returns;
+    }
+
+    http::AcceptFriendRequestResult acceptFriendRequest(const std::string&, const std::string&) override {
+        return accept_friend_request_returns;
+    }
+
+    bool deleteFriendRequest(const std::string&, const std::string&) override {
+        return !fail_delete_friend_request;
+    }
+
+    bool removeFriend(const std::string&, const std::string&) override { return !fail_remove_friend; }
+
+    std::optional<std::vector<http::WireFriend>> fetchFriends(const std::string&) override {
+        if (fail_fetch_friends) {
+            return std::nullopt;
+        }
+        return friends_to_return;
+    }
+
+    std::optional<http::FriendRequestList> fetchFriendRequests(const std::string&) override {
+        if (fail_fetch_friend_requests) {
+            return std::nullopt;
+        }
+        return friend_requests_to_return;
+    }
+
+    std::optional<std::string> fetchFriendCode(const std::string&) override {
+        if (fail_fetch_friend_code) {
+            return std::nullopt;
+        }
+        return friend_code_to_return;
+    }
+
+    std::optional<std::string> regenerateFriendCode(const std::string&) override {
+        if (fail_regenerate_friend_code) {
+            return std::nullopt;
+        }
+        return friend_code_to_return;
+    }
+
+    bool blockUser(const std::string&, const std::string&) override { return !fail_block_user; }
+    bool unblockUser(const std::string&, const std::string&) override { return !fail_unblock_user; }
+    std::optional<std::vector<http::WireBlock>> fetchBlocks(const std::string&) override {
+        if (fail_fetch_blocks) {
+            return std::nullopt;
+        }
+        return blocks_to_return;
+    }
+
     // Test control: flip one of these to exercise a handler's "internal API
     // call failed" path (should become INTERNAL_ERROR without mutating any
     // local cache/session state).
@@ -169,11 +240,27 @@ class FakeInternalApiClient : public http::InternalApiClient {
     bool fail_fetch_join_requests = false;
     bool fail_approve_join_request = false;
     bool fail_reject_join_request = false;
+    bool fail_delete_friend_request = false;
+    bool fail_remove_friend = false;
+    bool fail_fetch_friends = false;
+    bool fail_fetch_friend_requests = false;
+    bool fail_fetch_friend_code = false;
+    bool fail_regenerate_friend_code = false;
+    bool fail_block_user = false;
+    bool fail_unblock_user = false;
+    bool fail_fetch_blocks = false;
+    bool fail_fetch_dm_conversations = false;
+    bool fail_fetch_guild_ids_for_user = false;
     http::Catalog catalog_to_return;
     std::vector<std::string> revoked_ids_to_return;
     std::vector<http::WireMessage> created_messages;
+    // Set by the most recent createMessage() call — lets a test assert
+    // whether a persisted message was scoped to a DM peer.
+    std::optional<std::string> last_created_dm_peer_id;
     http::HistoryPage history_page_to_return;
     http::LastSequence last_sequence_to_return;
+    std::vector<http::WireDmConversation> dm_conversations_to_return;
+    std::vector<std::string> guild_ids_for_user_to_return;
     std::vector<http::WireMember> guild_members_to_return;
     std::string set_member_role_label_to_return = "Officer";
     // If unset, createMembership echoes back whatever role_rank it was
@@ -186,6 +273,13 @@ class FakeInternalApiClient : public http::InternalApiClient {
     http::CreateJoinRequestResult create_join_request_returns = http::CreateJoinRequestResult::CREATED;
     std::vector<http::WireJoinRequest> join_requests_to_return;
     int approve_join_request_returns_rank = 0;
+    http::SendFriendRequestResult send_friend_request_returns;
+    http::SendFriendRequestResult add_friend_by_code_returns;
+    http::AcceptFriendRequestResult accept_friend_request_returns;
+    std::vector<http::WireFriend> friends_to_return;
+    http::FriendRequestList friend_requests_to_return;
+    std::string friend_code_to_return = "fake-friend-code";
+    std::vector<http::WireBlock> blocks_to_return;
 
   private:
     int next_guild_id_ = 1;

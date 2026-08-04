@@ -36,6 +36,34 @@
       "when": 1785753685143,
       "tag": "0004_bizarre_jack_flag",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1785781524665,
+      "tag": "0005_flawless_roland_deschain",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1785791397449,
+      "tag": "0006_tan_marvex",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1785797593570,
+      "tag": "0007_good_doctor_doom",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1785801642758,
+      "tag": "0008_cultured_purple_man",
+      "breakpoints": true
     }
   ]
 }

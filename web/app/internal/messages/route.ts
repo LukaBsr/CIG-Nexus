@@ -17,6 +17,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
   const body = (await request.json().catch(() => null)) as {
     channel_id?: unknown;
+    peer_id?: unknown;
     user_id?: unknown;
     content?: unknown;
     seq?: unknown;
@@ -25,13 +26,17 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   if (
     !body ||
     (body.channel_id !== null && typeof body.channel_id !== "undefined" && typeof body.channel_id !== "string") ||
+    (body.peer_id !== null && typeof body.peer_id !== "undefined" && typeof body.peer_id !== "string") ||
     typeof body.user_id !== "string" ||
     typeof body.content !== "string" ||
     typeof body.seq !== "number" ||
     !Number.isInteger(body.seq)
   ) {
     return NextResponse.json(
-      { error: "user_id, content, and an integer seq are required; channel_id must be a string or null" },
+      {
+        error:
+          "user_id, content, and an integer seq are required; channel_id/peer_id must each be a string or null"
+      },
       { status: 400 }
     );
   }
@@ -39,6 +44,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   try {
     const result = await createMessage(
       typeof body.channel_id === "string" ? body.channel_id : null,
+      typeof body.peer_id === "string" ? body.peer_id : null,
       body.user_id,
       body.content,
       body.seq
@@ -61,6 +67,8 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
 
   const params = request.nextUrl.searchParams;
   const channelId = params.get("channel_id");
+  const peerId = params.get("peer_id");
+  const requesterId = params.get("requester_id");
 
   const beforeSeqParam = params.get("before_seq");
   let beforeSeq: number | null = null;
@@ -81,11 +89,11 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
   }
 
   try {
-    const page = await getMessages(channelId, beforeSeq, limit);
+    const page = await getMessages(channelId, peerId, requesterId, beforeSeq, limit);
     return NextResponse.json(page);
   } catch (err) {
     if (err instanceof InvalidReferenceError) {
-      return NextResponse.json({ error: "invalid channel_id" }, { status: 400 });
+      return NextResponse.json({ error: "invalid channel_id, peer_id, or requester_id" }, { status: 400 });
     }
     throw err;
   }

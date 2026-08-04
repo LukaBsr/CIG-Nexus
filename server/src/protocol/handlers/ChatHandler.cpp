@@ -107,7 +107,7 @@ Message ChatHandler::handle(const Message& message, int fd) const {
     // building the broadcast response, never block on it. std::nullopt
     // channel_id means the lobby.
     if (message_worker_) {
-        message_worker_->enqueue({std::nullopt, session->user_id, content, message_id});
+        message_worker_->enqueue({std::nullopt, std::nullopt, session->user_id, content, message_id});
     }
 
     return response;

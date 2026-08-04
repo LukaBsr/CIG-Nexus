@@ -66,6 +66,15 @@ services:
     volumes:
       - ./secrets/private.pem:${SESSION_JWT_PRIVATE_KEY_PATH}:ro
       - ./secrets/public.pem:${AUTH_JWT_PUBLIC_KEY_PATH}:ro
+      # docs/social/friends-dms-design.md §4.2: local-disk avatar storage —
+      # NOT under public/ (see the §4.2 correction note: Next's static
+      # handler indexes public/ once at startup, so runtime-written files
+      # there never become servable; avatars are served by a dynamic route
+      # instead, web/app/uploads/avatars/[filename]/route.ts). Read-write
+      # and readable by the app process, unlike the two mounts above,
+      # since this is uploaded content the app itself writes and serves,
+      # not a private key it only ever reads.
+      - ./data/avatars:/app/data/avatars
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/"]
       interval: 5s

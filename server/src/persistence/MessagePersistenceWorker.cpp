@@ -70,8 +70,8 @@ void MessagePersistenceWorker::run() {
             if (attempt > 0) {
                 std::this_thread::sleep_for(kRetryDelays[static_cast<size_t>(attempt - 1)]);
             }
-            if (client_ &&
-                client_->createMessage(message.channel_id, message.user_id, message.content, message.seq)) {
+            if (client_ && client_->createMessage(message.channel_id, message.dm_peer_id, message.user_id,
+                                                  message.content, message.seq)) {
                 persisted = true;
             }
         }

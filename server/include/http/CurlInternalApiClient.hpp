@@ -36,11 +36,15 @@ class CurlInternalApiClient : public InternalApiClient {
     bool deleteChannel(const std::string& channel_id) override;
     std::vector<std::string> fetchRevokedSessionIds(const std::string& since_iso8601,
                                                     std::string& out_as_of) override;
-    bool createMessage(const std::optional<std::string>& channel_id, const std::string& user_id,
-                       const std::string& content, int seq) override;
+    bool createMessage(const std::optional<std::string>& channel_id, const std::optional<std::string>& dm_peer_id,
+                       const std::string& user_id, const std::string& content, int seq) override;
     std::optional<HistoryPage> fetchMessages(const std::optional<std::string>& channel_id,
-                                             std::optional<int> before_seq, int limit) override;
+                                             const std::optional<std::string>& dm_peer_id,
+                                             const std::string& requester_user_id, std::optional<int> before_seq,
+                                             int limit) override;
     LastSequence fetchLastSequence() override;
+    std::optional<std::vector<WireDmConversation>> fetchDmConversations(const std::string& user_id) override;
+    std::optional<std::vector<std::string>> fetchGuildIdsForUser(const std::string& user_id) override;
 
     std::optional<WireInvite> createInvite(const std::string& guild_id, const std::string& created_by,
                                            std::optional<int> max_uses,
@@ -55,6 +59,23 @@ class CurlInternalApiClient : public InternalApiClient {
     std::optional<int> approveJoinRequest(const std::string& guild_id,
                                           const std::string& user_id) override;
     bool rejectJoinRequest(const std::string& guild_id, const std::string& user_id) override;
+
+    SendFriendRequestResult sendFriendRequest(const std::string& requester_id,
+                                              const std::string& recipient_id) override;
+    SendFriendRequestResult addFriendByCode(const std::string& requester_id,
+                                            const std::string& code) override;
+    AcceptFriendRequestResult acceptFriendRequest(const std::string& requester_id,
+                                                  const std::string& recipient_id) override;
+    bool deleteFriendRequest(const std::string& requester_id, const std::string& recipient_id) override;
+    bool removeFriend(const std::string& user_id_a, const std::string& user_id_b) override;
+    std::optional<std::vector<WireFriend>> fetchFriends(const std::string& user_id) override;
+    std::optional<FriendRequestList> fetchFriendRequests(const std::string& user_id) override;
+    std::optional<std::string> fetchFriendCode(const std::string& user_id) override;
+    std::optional<std::string> regenerateFriendCode(const std::string& user_id) override;
+
+    bool blockUser(const std::string& blocker_id, const std::string& blocked_id) override;
+    bool unblockUser(const std::string& blocker_id, const std::string& blocked_id) override;
+    std::optional<std::vector<WireBlock>> fetchBlocks(const std::string& user_id) override;
 
   private:
     struct HttpResponse {

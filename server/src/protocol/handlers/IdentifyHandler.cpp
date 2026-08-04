@@ -3,6 +3,7 @@
 #include "auth/JwtVerifier.hpp"
 #include "auth/RevocationCache.hpp"
 #include "guild/GuildManager.hpp"
+#include "http/InternalApiClient.hpp"
 #include "protocol/MessageBuilders.hpp"
 #include "session/SessionManager.hpp"
 
@@ -35,6 +36,10 @@ void IdentifyHandler::setRevocationCache(const auth::RevocationCache* revocation
 
 void IdentifyHandler::setGuildManager(const guild::GuildManager* guild_manager) {
     guild_manager_ = guild_manager;
+}
+
+void IdentifyHandler::setInternalApiClient(http::InternalApiClient* internal_api_client) {
+    internal_api_client_ = internal_api_client;
 }
 
 Message IdentifyHandler::handle(const Message& message, int fd) {
@@ -97,6 +102,29 @@ Message IdentifyHandler::handle(const Message& message, int fd) {
     // above), so a direct assignment is safe here.
     if (guild_manager_) {
         session.guild_ids = guild_manager_->getGuildIdsForUser(session.user_id);
+    }
+
+    // docs/social/friends-dms-design.md §3.3: hydrate blocked_user_ids the
+    // same way, except this one is a live internal API call (no
+    // process-wide block cache exists the way GuildManager caches every
+    // membership) — a bounded, once-per-IDENTIFY cost, not a per-message
+    // one. A failed/unset call just leaves blocked_user_ids empty rather
+    // than failing IDENTIFY — presence exclusion (Server.cpp) degrades to
+    // "no exclusion" in that case, not a hard error.
+    if (internal_api_client_) {
+        if (const auto blocks = internal_api_client_->fetchBlocks(session.user_id)) {
+            for (const auto& block : *blocks) {
+                session.blocked_user_ids.push_back(block.user_id);
+            }
+        }
+
+        // §3.3: friend_ids hydrated the same way, for canSendDm()'s
+        // in-memory friend check.
+        if (const auto friends = internal_api_client_->fetchFriends(session.user_id)) {
+            for (const auto& f : *friends) {
+                session.friend_ids.push_back(f.user_id);
+            }
+        }
     }
 
     Message response;

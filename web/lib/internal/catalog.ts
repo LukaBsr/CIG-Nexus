@@ -212,6 +212,23 @@ export async function deleteMembership(guildWireId: string, userWireId: string):
   return deleted.length > 0;
 }
 
+// docs/social/friends-dms-design.md §3.3: the live-fallback query
+// canSendDm() falls back to when the peer has zero active connections (no
+// in-memory Session.guild_ids to intersect against) — mirrors
+// getGuildIdsForUser's in-memory C++ counterpart
+// (GuildManager::getGuildIdsForUser), just Postgres-backed instead of
+// cache-backed, since this only runs for the rare disconnected-peer case.
+// Returns null only for a malformed user_id, not "user has no guilds"
+// (empty array).
+export async function getGuildIdsForUser(userWireId: string): Promise<string[] | null> {
+  const userId = fromUserWireId(userWireId);
+  if (!userId) {
+    return null;
+  }
+  const rows = await db.select({ guildId: guildMemberships.guildId }).from(guildMemberships).where(eq(guildMemberships.userId, userId));
+  return rows.map((r) => toGuildWireId(r.guildId));
+}
+
 // docs/guilds/social-presence-design.md §2.3: LIST_MEMBERS is a live read, not
 // cached anywhere — a cold, UI-driven path, unlike the guild/channel
 // catalog. Resolves role_label here (not in C++) so the theme mapping

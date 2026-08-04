@@ -47,11 +47,18 @@ class RecordingInternalApiClient : public http::InternalApiClient {
     std::vector<std::string> fetchRevokedSessionIds(const std::string&, std::string&) override {
         return {};
     }
-    std::optional<http::HistoryPage> fetchMessages(const std::optional<std::string>&, std::optional<int>,
-                                                    int) override {
+    std::optional<http::HistoryPage> fetchMessages(const std::optional<std::string>&,
+                                                    const std::optional<std::string>&, const std::string&,
+                                                    std::optional<int>, int) override {
         return std::nullopt;
     }
     http::LastSequence fetchLastSequence() override { return {}; }
+    std::optional<std::vector<http::WireDmConversation>> fetchDmConversations(const std::string&) override {
+        return std::nullopt;
+    }
+    std::optional<std::vector<std::string>> fetchGuildIdsForUser(const std::string&) override {
+        return std::nullopt;
+    }
 
     std::optional<http::WireInvite> createInvite(const std::string&, const std::string&,
                                                  std::optional<int>, std::optional<int>) override {
@@ -75,12 +82,36 @@ class RecordingInternalApiClient : public http::InternalApiClient {
     }
     bool rejectJoinRequest(const std::string&, const std::string&) override { return false; }
 
-    bool createMessage(const std::optional<std::string>& channel_id, const std::string& user_id,
-                       const std::string& content, int seq) override {
+    http::SendFriendRequestResult sendFriendRequest(const std::string&, const std::string&) override {
+        return http::SendFriendRequestResult{};
+    }
+    http::SendFriendRequestResult addFriendByCode(const std::string&, const std::string&) override {
+        return http::SendFriendRequestResult{};
+    }
+    http::AcceptFriendRequestResult acceptFriendRequest(const std::string&, const std::string&) override {
+        return http::AcceptFriendRequestResult{};
+    }
+    bool deleteFriendRequest(const std::string&, const std::string&) override { return false; }
+    bool removeFriend(const std::string&, const std::string&) override { return false; }
+    std::optional<std::vector<http::WireFriend>> fetchFriends(const std::string&) override {
+        return std::nullopt;
+    }
+    std::optional<http::FriendRequestList> fetchFriendRequests(const std::string&) override {
+        return std::nullopt;
+    }
+    std::optional<std::string> fetchFriendCode(const std::string&) override { return std::nullopt; }
+    std::optional<std::string> regenerateFriendCode(const std::string&) override { return std::nullopt; }
+
+    bool blockUser(const std::string&, const std::string&) override { return false; }
+    bool unblockUser(const std::string&, const std::string&) override { return false; }
+    std::optional<std::vector<http::WireBlock>> fetchBlocks(const std::string&) override { return std::nullopt; }
+
+    bool createMessage(const std::optional<std::string>& channel_id, const std::optional<std::string>& dm_peer_id,
+                       const std::string& user_id, const std::string& content, int seq) override {
         const int attempt = ++call_count_;
 
         std::lock_guard<std::mutex> lock(mutex_);
-        calls.push_back({channel_id, user_id, content, seq});
+        calls.push_back({channel_id, dm_peer_id, user_id, content, seq});
 
         return attempt > fail_first_n_calls;
     }
@@ -119,7 +150,7 @@ TEST_CASE("MessagePersistenceWorker persists an enqueued message", "[MessagePers
     persistence::MessagePersistenceWorker worker(&client);
     worker.start();
 
-    worker.enqueue({std::nullopt, "u_1", "hello", 1});
+    worker.enqueue({std::nullopt, std::nullopt, "u_1", "hello", 1});
 
     REQUIRE(waitUntil([&] { return client.callsSnapshot().size() == 1; }, std::chrono::milliseconds(2000)));
     const auto calls = client.callsSnapshot();
@@ -136,7 +167,7 @@ TEST_CASE("MessagePersistenceWorker preserves enqueue order", "[MessagePersisten
     worker.start();
 
     for (int i = 1; i <= 5; ++i) {
-        worker.enqueue({std::nullopt, "u_1", "msg-" + std::to_string(i), i});
+        worker.enqueue({std::nullopt, std::nullopt, "u_1", "msg-" + std::to_string(i), i});
     }
 
     REQUIRE(waitUntil([&] { return client.callsSnapshot().size() == 5; }, std::chrono::milliseconds(2000)));
@@ -156,7 +187,7 @@ TEST_CASE("MessagePersistenceWorker retries a failed persist and eventually succ
     persistence::MessagePersistenceWorker worker(&client);
     worker.start();
 
-    worker.enqueue({std::nullopt, "u_1", "eventually", 1});
+    worker.enqueue({std::nullopt, std::nullopt, "u_1", "eventually", 1});
 
     // 3 attempts with 500ms/1000ms backoff between them — generous timeout.
     REQUIRE(waitUntil([&] { return client.callsSnapshot().size() == 3; }, std::chrono::milliseconds(5000)));
@@ -177,7 +208,7 @@ TEST_CASE("MessagePersistenceWorker::stop drains the queue before returning",
     worker.start();
 
     for (int i = 1; i <= 3; ++i) {
-        worker.enqueue({std::nullopt, "u_1", "msg-" + std::to_string(i), i});
+        worker.enqueue({std::nullopt, std::nullopt, "u_1", "msg-" + std::to_string(i), i});
     }
     worker.stop(); // should block until the queue is fully drained
 
