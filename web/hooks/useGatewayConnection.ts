@@ -3,34 +3,61 @@
 import { useEffect, useRef, useState } from "react";
 
 import {
+  acceptFriendRequest as sendAcceptFriendRequest,
+  addFriendByCode as sendAddFriendByCode,
   approveJoinRequest as sendApproveJoinRequest,
+  blockUser as sendBlockUser,
+  cancelFriendRequest as sendCancelFriendRequest,
   connect,
   type ConnectionStatus,
   createChannel as sendCreateChannel,
   createGuild as sendCreateGuild,
   createInvite as sendCreateInvite,
+  fetchDmHistory as sendFetchDmHistory,
+  fetchFriendCode as sendFetchFriendCode,
   joinChannel as sendJoinChannel,
   joinGuild as sendJoinGuild,
+  listBlocks as sendListBlocks,
   listChannels,
+  listDmConversations as sendListDmConversations,
+  listFriendRequests as sendListFriendRequests,
+  listFriends as sendListFriends,
   listGuilds,
   listJoinRequests as sendListJoinRequests,
   listMembers,
+  regenerateFriendCode as sendRegenerateFriendCode,
+  rejectFriendRequest as sendRejectFriendRequest,
   rejectJoinRequest as sendRejectJoinRequest,
+  removeFriend as sendRemoveFriend,
   requestJoin as sendRequestJoin,
   sendChannelMessage as sendChannelMessageWire,
-  sendChatMessage as sendChatMessageWire
+  sendChatMessage as sendChatMessageWire,
+  sendDm as sendDmWire,
+  sendFriendRequest as sendSendFriendRequest,
+  unblockUser as sendUnblockUser
 } from "@/lib/gateway";
 import {
+  mapBlock,
   mapChannel,
   mapChannelMessage,
   mapChatMessage,
+  mapDmConversation,
+  mapDmMessage,
+  mapFriend,
+  mapFriendRequest,
   mapGuild,
+  mapHistoryMessageToDmMessage,
   mapInvite,
   mapJoinRequest,
   mapMember,
+  type Block,
   type Channel,
   type ChannelMessage,
   type ChatMessage,
+  type DmConversation,
+  type DmMessage,
+  type Friend,
+  type FriendRequest,
   type Guild,
   type Invite,
   type JoinRequest,
@@ -55,6 +82,10 @@ export interface UseGatewayConnectionResult {
   clearError: () => void;
   lastCreatedInvite: Invite | null;
   clearLastCreatedInvite: () => void;
+  friends: Friend[];
+  incomingFriendRequests: FriendRequest[];
+  outgoingFriendRequests: FriendRequest[];
+  friendCode: string | null;
   sendChatMessage: (content: string) => void;
   createGuild: (name: string, visibility?: "open" | "application" | "private") => void;
   joinGuild: (guildId: string) => void;
@@ -67,6 +98,25 @@ export interface UseGatewayConnectionResult {
   listJoinRequests: (guildId: string) => void;
   approveJoinRequest: (guildId: string, userId: string) => void;
   rejectJoinRequest: (guildId: string, userId: string) => void;
+  sendFriendRequest: (userId: string) => void;
+  addFriendByCode: (code: string) => void;
+  acceptFriendRequest: (userId: string) => void;
+  rejectFriendRequest: (userId: string) => void;
+  cancelFriendRequest: (userId: string) => void;
+  removeFriend: (userId: string) => void;
+  listFriends: () => void;
+  listFriendRequests: () => void;
+  fetchFriendCode: () => void;
+  regenerateFriendCode: () => void;
+  blockedUsers: Block[];
+  blockUser: (userId: string) => void;
+  unblockUser: (userId: string) => void;
+  listBlocks: () => void;
+  dmConversations: DmConversation[];
+  activeDmPeerId: string | null;
+  dmMessages: DmMessage[];
+  openDm: (peerId: string) => void;
+  sendDm: (content: string) => void;
 }
 
 // Owns the WebSocket connection's entire lifecycle: opening it
@@ -97,6 +147,22 @@ export function useGatewayConnection(): UseGatewayConnectionResult {
   const [onlineUserIds, setOnlineUserIds] = useState<Set<string>>(new Set());
   const [joinRequests, setJoinRequests] = useState<JoinRequest[]>([]);
 
+  // docs/social/friends-dms-design.md §1 — not guild-scoped, unlike
+  // members/joinRequests above.
+  const [friends, setFriends] = useState<Friend[]>([]);
+  const [incomingFriendRequests, setIncomingFriendRequests] = useState<FriendRequest[]>([]);
+  const [outgoingFriendRequests, setOutgoingFriendRequests] = useState<FriendRequest[]>([]);
+  const [friendCode, setFriendCode] = useState<string | null>(null);
+  const [blockedUsers, setBlockedUsers] = useState<Block[]>([]);
+
+  // docs/social/friends-dms-design.md §3.5 — mirrors channelMessages/
+  // activeChannelId's shape exactly: dmMessages holds only the active
+  // thread's messages, since DM_MESSAGE (like CHANNEL_MESSAGE) implies
+  // "at most one active thread" rather than carrying a conversation id.
+  const [dmConversations, setDmConversations] = useState<DmConversation[]>([]);
+  const [activeDmPeerId, setActiveDmPeerId] = useState<string | null>(null);
+  const [dmMessages, setDmMessages] = useState<DmMessage[]>([]);
+
   const [lastError, setLastError] = useState<string | null>(null);
   const [lastCreatedInvite, setLastCreatedInvite] = useState<Invite | null>(null);
 
@@ -106,6 +172,7 @@ export function useGatewayConnection(): UseGatewayConnectionResult {
   const myUserIdRef = useRef<string | null>(null);
   const activeGuildIdRef = useRef<string | null>(null);
   const activeChannelIdRef = useRef<string | null>(null);
+  const activeDmPeerIdRef = useRef<string | null>(null);
 
   useEffect(() => {
     myUserIdRef.current = myUserId;
@@ -120,12 +187,25 @@ export function useGatewayConnection(): UseGatewayConnectionResult {
   }, [activeChannelId]);
 
   useEffect(() => {
+    activeDmPeerIdRef.current = activeDmPeerId;
+  }, [activeDmPeerId]);
+
+  useEffect(() => {
     connect(
       (msg) => {
         switch (msg.type) {
           case "IDENTIFIED":
             setMyUserId(msg.user_id);
             listGuilds();
+            // Eagerly fetched (not gated behind opening the Friends tab,
+            // unlike guild join requests being gated behind officer rank
+            // in a specific guild) so an incoming-request badge can show
+            // immediately.
+            sendListFriends();
+            sendListFriendRequests();
+            sendFetchFriendCode();
+            sendListBlocks();
+            sendListDmConversations();
             break;
 
           case "CHAT_MESSAGE":
@@ -284,7 +364,16 @@ export function useGatewayConnection(): UseGatewayConnectionResult {
               setJoinRequests((prev) =>
                 prev.some((r) => r.userId === msg.user_id)
                   ? prev
-                  : [...prev, { userId: msg.user_id, username: msg.username, requestedAt: new Date().toISOString() }]
+                  : [
+                      ...prev,
+                      {
+                        userId: msg.user_id,
+                        username: msg.username,
+                        requestedAt: new Date().toISOString(),
+                        displayName: null,
+                        avatarUrl: null
+                      }
+                    ]
               );
             }
             break;
@@ -316,6 +405,88 @@ export function useGatewayConnection(): UseGatewayConnectionResult {
                 next.delete(msg.guild_id);
                 return next;
               });
+            }
+            break;
+
+          // docs/social/friends-dms-design.md §1.5: every one of these
+          // acks/notifications carries only a bare user_id — not enough to
+          // construct a full Friend/FriendRequest locally. Same precedent
+          // JOIN_REQUEST_APPROVED above already established: refetch the
+          // canonical list rather than hand-assembling a partial object.
+          case "FRIEND_REQUEST_SENT":
+          case "FRIEND_REQUEST_RECEIVED":
+          case "FRIEND_REQUEST_REJECTED":
+          case "FRIEND_REQUEST_CANCELED":
+            sendListFriendRequests();
+            break;
+
+          case "FRIEND_ADDED":
+            sendListFriends();
+            sendListFriendRequests();
+            break;
+
+          case "FRIEND_REMOVED":
+            sendListFriends();
+            break;
+
+          case "FRIEND_LIST":
+            setFriends(msg.friends.map(mapFriend));
+            break;
+
+          case "FRIEND_REQUEST_LIST":
+            setIncomingFriendRequests(msg.incoming.map(mapFriendRequest));
+            setOutgoingFriendRequests(msg.outgoing.map(mapFriendRequest));
+            break;
+
+          case "FRIEND_CODE":
+            setFriendCode(msg.code);
+            break;
+
+          // docs/social/friends-dms-design.md §2.3: BLOCK_USER's backend
+          // transaction silently cancels any pending friend request and
+          // removes an existing friendship, in the same transaction as the
+          // block itself — but no FRIEND_REMOVED/request-cancellation
+          // event is separately emitted for that side effect. Refetch
+          // friends/requests here too, not just blocks, or local state
+          // would silently go stale.
+          case "USER_BLOCKED":
+            sendListBlocks();
+            sendListFriends();
+            sendListFriendRequests();
+            break;
+
+          case "USER_UNBLOCKED":
+            sendListBlocks();
+            break;
+
+          case "BLOCK_LIST":
+            setBlockedUsers(msg.blocked.map(mapBlock));
+            break;
+
+          // docs/social/friends-dms-design.md §3.5: DM_MESSAGE carries no
+          // conversation/recipient id at all, only the sender's user_id —
+          // the protocol's "at most one active thread" model, same as
+          // CHANNEL_MESSAGE's activeChannelId. A message from the
+          // currently-open peer, or our own echo (trusted to belong to
+          // whichever thread is active, since that's the only thread
+          // sendDm() could have just targeted), gets appended; a message
+          // for a different, non-active conversation just refreshes the
+          // conversation list's ordering instead.
+          case "DM_MESSAGE":
+            if (msg.user_id === activeDmPeerIdRef.current || msg.user_id === myUserIdRef.current) {
+              setDmMessages((prev) => [...prev, mapDmMessage(msg)]);
+            } else {
+              sendListDmConversations();
+            }
+            break;
+
+          case "DM_CONVERSATION_LIST":
+            setDmConversations(msg.conversations.map(mapDmConversation));
+            break;
+
+          case "MESSAGE_HISTORY":
+            if (msg.peer_id !== undefined && msg.peer_id === activeDmPeerIdRef.current) {
+              setDmMessages(msg.messages.map(mapHistoryMessageToDmMessage));
             }
             break;
 
@@ -368,6 +539,37 @@ export function useGatewayConnection(): UseGatewayConnectionResult {
     createInvite: (guildId, maxUses, expiresInSeconds) => sendCreateInvite(guildId, maxUses, expiresInSeconds),
     listJoinRequests: (guildId) => sendListJoinRequests(guildId),
     approveJoinRequest: (guildId, userId) => sendApproveJoinRequest(guildId, userId),
-    rejectJoinRequest: (guildId, userId) => sendRejectJoinRequest(guildId, userId)
+    rejectJoinRequest: (guildId, userId) => sendRejectJoinRequest(guildId, userId),
+    friends,
+    incomingFriendRequests,
+    outgoingFriendRequests,
+    friendCode,
+    sendFriendRequest: (userId) => sendSendFriendRequest(userId),
+    addFriendByCode: (code) => sendAddFriendByCode(code),
+    acceptFriendRequest: (userId) => sendAcceptFriendRequest(userId),
+    rejectFriendRequest: (userId) => sendRejectFriendRequest(userId),
+    cancelFriendRequest: (userId) => sendCancelFriendRequest(userId),
+    removeFriend: (userId) => sendRemoveFriend(userId),
+    listFriends: () => sendListFriends(),
+    listFriendRequests: () => sendListFriendRequests(),
+    fetchFriendCode: () => sendFetchFriendCode(),
+    regenerateFriendCode: () => sendRegenerateFriendCode(),
+    blockedUsers,
+    blockUser: (userId) => sendBlockUser(userId),
+    unblockUser: (userId) => sendUnblockUser(userId),
+    listBlocks: () => sendListBlocks(),
+    dmConversations,
+    activeDmPeerId,
+    dmMessages,
+    openDm: (peerId) => {
+      setActiveDmPeerId(peerId);
+      setDmMessages([]);
+      sendFetchDmHistory(peerId, null, 50);
+    },
+    sendDm: (content) => {
+      if (activeDmPeerIdRef.current) {
+        sendDmWire(activeDmPeerIdRef.current, content);
+      }
+    }
   };
 }

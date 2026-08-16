@@ -5,6 +5,8 @@ import { useState } from "react";
 import { useDismissablePopover } from "@/hooks/useDismissablePopover";
 import type { JoinRequest } from "@/lib/types";
 
+import { Avatar } from "./Avatar";
+
 interface JoinRequestInboxProps {
   requests: JoinRequest[];
   onApprove: (userId: string) => void;
@@ -68,8 +70,11 @@ export function JoinRequestInbox({ requests, onApprove, onReject }: JoinRequestI
                   key={r.userId}
                   className="flex items-center justify-between gap-2 rounded-md bg-ink/40 px-2 py-1.5"
                 >
-                  <span className="min-w-0 flex-1 truncate font-mono text-sm text-ivory">
-                    {r.username}
+                  <span className="flex min-w-0 flex-1 items-center gap-2">
+                    <Avatar url={r.avatarUrl} name={r.displayName ?? r.username} size={20} />
+                    <span className="min-w-0 flex-1 truncate font-mono text-sm text-ivory">
+                      {r.displayName ?? r.username}
+                    </span>
                   </span>
                   <div className="flex shrink-0 gap-1">
                     <button

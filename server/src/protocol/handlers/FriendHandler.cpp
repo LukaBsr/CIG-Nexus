@@ -34,8 +34,8 @@ const session::Session* FriendHandler::requireIdentified(int fd) const {
     return session;
 }
 
-void FriendHandler::updateFriendIdsForBothParties(const std::string& user_id_a, const std::string& user_id_b,
-                                                  bool added) const {
+void FriendHandler::updateFriendIdsForBothParties(const std::string& user_id_a,
+                                                  const std::string& user_id_b, bool added) const {
     for (int fd_a : session_manager_->getFdsForUser(user_id_a)) {
         if (added) {
             session_manager_->addFriend(fd_a, user_id_b);
@@ -112,11 +112,13 @@ std::vector<Message> FriendHandler::handleSendFriendRequest(const Message& messa
 
     const session::Session* session = requireIdentified(fd);
     if (!session) {
-        return {makeError("NOT_IDENTIFIED", "Client must IDENTIFY before sending a friend request")};
+        return {
+            makeError("NOT_IDENTIFIED", "Client must IDENTIFY before sending a friend request")};
     }
 
     if (!message.payload.contains("user_id") || !message.payload["user_id"].is_string()) {
-        return {makeError("MALFORMED_MESSAGE", "SEND_FRIEND_REQUEST missing required field: user_id")};
+        return {
+            makeError("MALFORMED_MESSAGE", "SEND_FRIEND_REQUEST missing required field: user_id")};
     }
     if (!internal_api_client_) {
         return {makeError("INTERNAL_ERROR", "Friend context unavailable")};
@@ -149,11 +151,13 @@ std::vector<Message> FriendHandler::handleAddFriendByCode(const Message& message
     }
 
     const std::string code = message.payload["code"].get<std::string>();
-    const http::SendFriendRequestResult result = internal_api_client_->addFriendByCode(session->user_id, code);
+    const http::SendFriendRequestResult result =
+        internal_api_client_->addFriendByCode(session->user_id, code);
     return buildSendFriendRequestResponses(result, session);
 }
 
-std::vector<Message> FriendHandler::handleAcceptFriendRequest(const Message& message, int fd) const {
+std::vector<Message> FriendHandler::handleAcceptFriendRequest(const Message& message,
+                                                              int fd) const {
     if (message.type != "ACCEPT_FRIEND_REQUEST") {
         return {makeError("PROTOCOL_VIOLATION", "Expected ACCEPT_FRIEND_REQUEST message")};
     }
@@ -163,11 +167,13 @@ std::vector<Message> FriendHandler::handleAcceptFriendRequest(const Message& mes
 
     const session::Session* session = requireIdentified(fd);
     if (!session) {
-        return {makeError("NOT_IDENTIFIED", "Client must IDENTIFY before accepting a friend request")};
+        return {
+            makeError("NOT_IDENTIFIED", "Client must IDENTIFY before accepting a friend request")};
     }
 
     if (!message.payload.contains("user_id") || !message.payload["user_id"].is_string()) {
-        return {makeError("MALFORMED_MESSAGE", "ACCEPT_FRIEND_REQUEST missing required field: user_id")};
+        return {makeError("MALFORMED_MESSAGE",
+                          "ACCEPT_FRIEND_REQUEST missing required field: user_id")};
     }
     if (!internal_api_client_) {
         return {makeError("INTERNAL_ERROR", "Friend context unavailable")};
@@ -205,14 +211,16 @@ namespace {
 // the same row (docs/social/friends-dms-design.md §1.4); only the wire
 // response type and which party plays "requester" vs. "recipient" in the
 // internal call differ.
-std::vector<Message> buildDeleteFriendRequestResponses(bool deleted, const std::string& response_type,
-                                                        const std::string& target_user_id,
-                                                        const session::Session* session,
-                                                        session::SessionManager* session_manager) {
+std::vector<Message> buildDeleteFriendRequestResponses(bool deleted,
+                                                       const std::string& response_type,
+                                                       const std::string& target_user_id,
+                                                       const session::Session* session,
+                                                       session::SessionManager* session_manager) {
     if (!deleted) {
         Message error;
         error.type = "ERROR";
-        error.payload = make_error("FRIEND_REQUEST_NOT_FOUND", "No pending friend request for that user");
+        error.payload =
+            make_error("FRIEND_REQUEST_NOT_FOUND", "No pending friend request for that user");
         return {error};
     }
 
@@ -235,7 +243,8 @@ std::vector<Message> buildDeleteFriendRequestResponses(bool deleted, const std::
 
 } // namespace
 
-std::vector<Message> FriendHandler::handleRejectFriendRequest(const Message& message, int fd) const {
+std::vector<Message> FriendHandler::handleRejectFriendRequest(const Message& message,
+                                                              int fd) const {
     if (message.type != "REJECT_FRIEND_REQUEST") {
         return {makeError("PROTOCOL_VIOLATION", "Expected REJECT_FRIEND_REQUEST message")};
     }
@@ -245,11 +254,13 @@ std::vector<Message> FriendHandler::handleRejectFriendRequest(const Message& mes
 
     const session::Session* session = requireIdentified(fd);
     if (!session) {
-        return {makeError("NOT_IDENTIFIED", "Client must IDENTIFY before rejecting a friend request")};
+        return {
+            makeError("NOT_IDENTIFIED", "Client must IDENTIFY before rejecting a friend request")};
     }
 
     if (!message.payload.contains("user_id") || !message.payload["user_id"].is_string()) {
-        return {makeError("MALFORMED_MESSAGE", "REJECT_FRIEND_REQUEST missing required field: user_id")};
+        return {makeError("MALFORMED_MESSAGE",
+                          "REJECT_FRIEND_REQUEST missing required field: user_id")};
     }
     if (!internal_api_client_) {
         return {makeError("INTERNAL_ERROR", "Friend context unavailable")};
@@ -259,11 +270,12 @@ std::vector<Message> FriendHandler::handleRejectFriendRequest(const Message& mes
     // original requester.
     const std::string requester_id = message.payload["user_id"].get<std::string>();
     const bool deleted = internal_api_client_->deleteFriendRequest(requester_id, session->user_id);
-    return buildDeleteFriendRequestResponses(deleted, "FRIEND_REQUEST_REJECTED", requester_id, session,
-                                             session_manager_);
+    return buildDeleteFriendRequestResponses(deleted, "FRIEND_REQUEST_REJECTED", requester_id,
+                                             session, session_manager_);
 }
 
-std::vector<Message> FriendHandler::handleCancelFriendRequest(const Message& message, int fd) const {
+std::vector<Message> FriendHandler::handleCancelFriendRequest(const Message& message,
+                                                              int fd) const {
     if (message.type != "CANCEL_FRIEND_REQUEST") {
         return {makeError("PROTOCOL_VIOLATION", "Expected CANCEL_FRIEND_REQUEST message")};
     }
@@ -273,11 +285,13 @@ std::vector<Message> FriendHandler::handleCancelFriendRequest(const Message& mes
 
     const session::Session* session = requireIdentified(fd);
     if (!session) {
-        return {makeError("NOT_IDENTIFIED", "Client must IDENTIFY before canceling a friend request")};
+        return {
+            makeError("NOT_IDENTIFIED", "Client must IDENTIFY before canceling a friend request")};
     }
 
     if (!message.payload.contains("user_id") || !message.payload["user_id"].is_string()) {
-        return {makeError("MALFORMED_MESSAGE", "CANCEL_FRIEND_REQUEST missing required field: user_id")};
+        return {makeError("MALFORMED_MESSAGE",
+                          "CANCEL_FRIEND_REQUEST missing required field: user_id")};
     }
     if (!internal_api_client_) {
         return {makeError("INTERNAL_ERROR", "Friend context unavailable")};
@@ -287,8 +301,8 @@ std::vector<Message> FriendHandler::handleCancelFriendRequest(const Message& mes
     // recipient.
     const std::string recipient_id = message.payload["user_id"].get<std::string>();
     const bool deleted = internal_api_client_->deleteFriendRequest(session->user_id, recipient_id);
-    return buildDeleteFriendRequestResponses(deleted, "FRIEND_REQUEST_CANCELED", recipient_id, session,
-                                             session_manager_);
+    return buildDeleteFriendRequestResponses(deleted, "FRIEND_REQUEST_CANCELED", recipient_id,
+                                             session, session_manager_);
 }
 
 std::vector<Message> FriendHandler::handleRemoveFriend(const Message& message, int fd) const {
@@ -329,7 +343,8 @@ std::vector<Message> FriendHandler::handleRemoveFriend(const Message& message, i
         to_other.type = "FRIEND_REMOVED";
         to_other.scope = Scope::TARGETED;
         to_other.target_fds = target_fds;
-        to_other.payload = nlohmann::json{{"type", "FRIEND_REMOVED"}, {"user_id", session->user_id}};
+        to_other.payload =
+            nlohmann::json{{"type", "FRIEND_REMOVED"}, {"user_id", session->user_id}};
         responses.push_back(to_other);
     }
     return responses;
@@ -351,14 +366,19 @@ Message FriendHandler::handleListFriends(const Message& message, int fd) const {
         return makeError("INTERNAL_ERROR", "Friend context unavailable");
     }
 
-    const std::optional<std::vector<http::WireFriend>> friends = internal_api_client_->fetchFriends(session->user_id);
+    const std::optional<std::vector<http::WireFriend>> friends =
+        internal_api_client_->fetchFriends(session->user_id);
     if (!friends) {
         return makeError("INTERNAL_ERROR", "Failed to fetch friends");
     }
 
     nlohmann::json friends_json = nlohmann::json::array();
     for (const auto& f : *friends) {
-        friends_json.push_back(nlohmann::json{{"user_id", f.user_id}, {"username", f.username}});
+        friends_json.push_back(
+            nlohmann::json{{"user_id", f.user_id},
+                           {"username", f.username},
+                           {"display_name", make_optional_string(f.display_name)},
+                           {"avatar_url", make_optional_string(f.avatar_url)}});
     }
 
     Message response;
@@ -383,7 +403,8 @@ Message FriendHandler::handleListFriendRequests(const Message& message, int fd) 
         return makeError("INTERNAL_ERROR", "Friend context unavailable");
     }
 
-    const std::optional<http::FriendRequestList> list = internal_api_client_->fetchFriendRequests(session->user_id);
+    const std::optional<http::FriendRequestList> list =
+        internal_api_client_->fetchFriendRequests(session->user_id);
     if (!list) {
         return makeError("INTERNAL_ERROR", "Failed to fetch friend requests");
     }
@@ -391,16 +412,20 @@ Message FriendHandler::handleListFriendRequests(const Message& message, int fd) 
     auto toJson = [](const std::vector<http::WireFriendRequest>& requests) {
         nlohmann::json array = nlohmann::json::array();
         for (const auto& r : requests) {
-            array.push_back(
-                nlohmann::json{{"user_id", r.user_id}, {"username", r.username}, {"created_at", r.created_at}});
+            array.push_back(nlohmann::json{{"user_id", r.user_id},
+                                           {"username", r.username},
+                                           {"created_at", r.created_at},
+                                           {"display_name", make_optional_string(r.display_name)},
+                                           {"avatar_url", make_optional_string(r.avatar_url)}});
         }
         return array;
     };
 
     Message response;
     response.type = "FRIEND_REQUEST_LIST";
-    response.payload = nlohmann::json{
-        {"type", "FRIEND_REQUEST_LIST"}, {"incoming", toJson(list->incoming)}, {"outgoing", toJson(list->outgoing)}};
+    response.payload = nlohmann::json{{"type", "FRIEND_REQUEST_LIST"},
+                                      {"incoming", toJson(list->incoming)},
+                                      {"outgoing", toJson(list->outgoing)}};
     return response;
 }
 
@@ -441,13 +466,15 @@ Message FriendHandler::handleRegenerateFriendCode(const Message& message, int fd
 
     const session::Session* session = requireIdentified(fd);
     if (!session) {
-        return makeError("NOT_IDENTIFIED", "Client must IDENTIFY before regenerating a friend code");
+        return makeError("NOT_IDENTIFIED",
+                         "Client must IDENTIFY before regenerating a friend code");
     }
     if (!internal_api_client_) {
         return makeError("INTERNAL_ERROR", "Friend context unavailable");
     }
 
-    const std::optional<std::string> code = internal_api_client_->regenerateFriendCode(session->user_id);
+    const std::optional<std::string> code =
+        internal_api_client_->regenerateFriendCode(session->user_id);
     if (!code) {
         return makeError("INTERNAL_ERROR", "Failed to regenerate friend code");
     }

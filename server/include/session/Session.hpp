@@ -1,6 +1,7 @@
 #ifndef CIG_NEXUS_SESSION_SESSION_HPP
 #define CIG_NEXUS_SESSION_SESSION_HPP
 
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -29,6 +30,19 @@ struct Session {
     // Consulted by canSendDm() (DMHandler) as one of the two ways a DM is
     // permitted (friends OR shared guild).
     std::vector<std::string> friend_ids;
+    // docs/social/friends-dms-design.md §4.5, revised at implementation:
+    // hydrated at IDENTIFY (mirrors guild_ids/friend_ids/blocked_user_ids)
+    // from InternalApiClient::fetchUserProfile — CHAT_MESSAGE/
+    // CHANNEL_MESSAGE/DM_MESSAGE are built from this cached copy, not a
+    // live per-message call, so a profile edit mid-session (a REST action,
+    // with no corresponding WebSocket push to invalidate this) won't be
+    // reflected in this connection's own sent messages until it
+    // reconnects — the same staleness window `username` itself already
+    // has. Appended at the end, not inserted alongside username, so
+    // SessionManager::createSession's positional aggregate-init doesn't
+    // need every field shifted.
+    std::optional<std::string> display_name;
+    std::optional<std::string> avatar_url;
 };
 
 } // namespace session

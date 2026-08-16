@@ -62,7 +62,8 @@ std::vector<Message> JoinRequestHandler::handleRequestJoin(const Message& messag
 
     const session::Session* session = requireIdentified(fd);
     if (!session) {
-        return {makeError("NOT_IDENTIFIED", "Client must IDENTIFY before requesting to join a guild")};
+        return {
+            makeError("NOT_IDENTIFIED", "Client must IDENTIFY before requesting to join a guild")};
     }
 
     if (!message.payload.contains("guild_id") || !message.payload["guild_id"].is_string()) {
@@ -96,7 +97,8 @@ std::vector<Message> JoinRequestHandler::handleRequestJoin(const Message& messag
     const http::CreateJoinRequestResult result =
         internal_api_client_->createJoinRequest(guild_id, session->user_id);
     if (result == http::CreateJoinRequestResult::ALREADY_PENDING) {
-        return {makeError("JOIN_REQUEST_ALREADY_PENDING", "A join request is already pending for this guild")};
+        return {makeError("JOIN_REQUEST_ALREADY_PENDING",
+                          "A join request is already pending for this guild")};
     }
     if (result == http::CreateJoinRequestResult::FAILED) {
         return {makeError("INTERNAL_ERROR", "Failed to create join request")};
@@ -137,7 +139,8 @@ Message JoinRequestHandler::handleListJoinRequests(const Message& message, int f
     }
 
     if (!message.payload.contains("guild_id") || !message.payload["guild_id"].is_string()) {
-        return makeError("MALFORMED_MESSAGE", "LIST_JOIN_REQUESTS missing required field: guild_id");
+        return makeError("MALFORMED_MESSAGE",
+                         "LIST_JOIN_REQUESTS missing required field: guild_id");
     }
 
     if (!guild_manager_ || !internal_api_client_) {
@@ -161,8 +164,12 @@ Message JoinRequestHandler::handleListJoinRequests(const Message& message, int f
 
     nlohmann::json requests_json = nlohmann::json::array();
     for (const auto& r : *requests) {
-        requests_json.push_back(nlohmann::json{
-            {"user_id", r.user_id}, {"username", r.username}, {"requested_at", r.requested_at}});
+        requests_json.push_back(
+            nlohmann::json{{"user_id", r.user_id},
+                           {"username", r.username},
+                           {"requested_at", r.requested_at},
+                           {"display_name", make_optional_string(r.display_name)},
+                           {"avatar_url", make_optional_string(r.avatar_url)}});
     }
 
     Message response;
@@ -172,7 +179,8 @@ Message JoinRequestHandler::handleListJoinRequests(const Message& message, int f
     return response;
 }
 
-std::vector<Message> JoinRequestHandler::handleApproveJoinRequest(const Message& message, int fd) const {
+std::vector<Message> JoinRequestHandler::handleApproveJoinRequest(const Message& message,
+                                                                  int fd) const {
     if (message.type != "APPROVE_JOIN_REQUEST") {
         return {makeError("PROTOCOL_VIOLATION", "Expected APPROVE_JOIN_REQUEST message")};
     }
@@ -183,14 +191,17 @@ std::vector<Message> JoinRequestHandler::handleApproveJoinRequest(const Message&
 
     const session::Session* session = requireIdentified(fd);
     if (!session) {
-        return {makeError("NOT_IDENTIFIED", "Client must IDENTIFY before approving a join request")};
+        return {
+            makeError("NOT_IDENTIFIED", "Client must IDENTIFY before approving a join request")};
     }
 
     if (!message.payload.contains("guild_id") || !message.payload["guild_id"].is_string()) {
-        return {makeError("MALFORMED_MESSAGE", "APPROVE_JOIN_REQUEST missing required field: guild_id")};
+        return {makeError("MALFORMED_MESSAGE",
+                          "APPROVE_JOIN_REQUEST missing required field: guild_id")};
     }
     if (!message.payload.contains("user_id") || !message.payload["user_id"].is_string()) {
-        return {makeError("MALFORMED_MESSAGE", "APPROVE_JOIN_REQUEST missing required field: user_id")};
+        return {
+            makeError("MALFORMED_MESSAGE", "APPROVE_JOIN_REQUEST missing required field: user_id")};
     }
 
     if (!guild_manager_ || !internal_api_client_) {
@@ -205,10 +216,12 @@ std::vector<Message> JoinRequestHandler::handleApproveJoinRequest(const Message&
     }
 
     if (!guild_manager_->canApproveJoinRequest(guild_id, session->user_id)) {
-        return {makeError("NOT_GUILD_OFFICER", "Must be an officer or above to approve join requests")};
+        return {
+            makeError("NOT_GUILD_OFFICER", "Must be an officer or above to approve join requests")};
     }
 
-    const std::optional<int> role_rank = internal_api_client_->approveJoinRequest(guild_id, target_user_id);
+    const std::optional<int> role_rank =
+        internal_api_client_->approveJoinRequest(guild_id, target_user_id);
     if (!role_rank) {
         return {makeError("JOIN_REQUEST_NOT_FOUND", "No pending join request for that user")};
     }
@@ -228,8 +241,9 @@ std::vector<Message> JoinRequestHandler::handleApproveJoinRequest(const Message&
     if (!target_fds.empty()) {
         nlohmann::json channels = nlohmann::json::array();
         for (const auto& c : guild_manager_->listChannels(guild_id)) {
-            channels.push_back(
-                {{"channel_id", c.id}, {"name", c.name}, {"channel_type", guild::toString(c.type)}});
+            channels.push_back({{"channel_id", c.id},
+                                {"name", c.name},
+                                {"channel_type", guild::toString(c.type)}});
         }
 
         Message joined;
@@ -247,7 +261,8 @@ std::vector<Message> JoinRequestHandler::handleApproveJoinRequest(const Message&
     return responses;
 }
 
-std::vector<Message> JoinRequestHandler::handleRejectJoinRequest(const Message& message, int fd) const {
+std::vector<Message> JoinRequestHandler::handleRejectJoinRequest(const Message& message,
+                                                                 int fd) const {
     if (message.type != "REJECT_JOIN_REQUEST") {
         return {makeError("PROTOCOL_VIOLATION", "Expected REJECT_JOIN_REQUEST message")};
     }
@@ -258,14 +273,17 @@ std::vector<Message> JoinRequestHandler::handleRejectJoinRequest(const Message& 
 
     const session::Session* session = requireIdentified(fd);
     if (!session) {
-        return {makeError("NOT_IDENTIFIED", "Client must IDENTIFY before rejecting a join request")};
+        return {
+            makeError("NOT_IDENTIFIED", "Client must IDENTIFY before rejecting a join request")};
     }
 
     if (!message.payload.contains("guild_id") || !message.payload["guild_id"].is_string()) {
-        return {makeError("MALFORMED_MESSAGE", "REJECT_JOIN_REQUEST missing required field: guild_id")};
+        return {
+            makeError("MALFORMED_MESSAGE", "REJECT_JOIN_REQUEST missing required field: guild_id")};
     }
     if (!message.payload.contains("user_id") || !message.payload["user_id"].is_string()) {
-        return {makeError("MALFORMED_MESSAGE", "REJECT_JOIN_REQUEST missing required field: user_id")};
+        return {
+            makeError("MALFORMED_MESSAGE", "REJECT_JOIN_REQUEST missing required field: user_id")};
     }
 
     if (!guild_manager_ || !internal_api_client_) {
@@ -279,7 +297,8 @@ std::vector<Message> JoinRequestHandler::handleRejectJoinRequest(const Message& 
     }
 
     if (!guild_manager_->canApproveJoinRequest(guild_id, session->user_id)) {
-        return {makeError("NOT_GUILD_OFFICER", "Must be an officer or above to reject join requests")};
+        return {
+            makeError("NOT_GUILD_OFFICER", "Must be an officer or above to reject join requests")};
     }
 
     if (!internal_api_client_->rejectJoinRequest(guild_id, target_user_id)) {

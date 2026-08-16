@@ -58,8 +58,10 @@ nlohmann::json inviteToJson(const http::WireInvite& invite) {
         {"code", invite.code},
         {"max_uses", invite.max_uses.has_value() ? nlohmann::json(*invite.max_uses) : nullptr},
         {"use_count", invite.use_count},
-        {"expires_at", invite.expires_at.has_value() ? nlohmann::json(*invite.expires_at) : nullptr},
-        {"revoked_at", invite.revoked_at.has_value() ? nlohmann::json(*invite.revoked_at) : nullptr},
+        {"expires_at",
+         invite.expires_at.has_value() ? nlohmann::json(*invite.expires_at) : nullptr},
+        {"revoked_at",
+         invite.revoked_at.has_value() ? nlohmann::json(*invite.revoked_at) : nullptr},
         {"created_at", invite.created_at}};
 }
 
@@ -85,14 +87,17 @@ Message InviteHandler::handleCreateInvite(const Message& message, int fd) const 
 
     std::optional<int> max_uses;
     if (message.payload.contains("max_uses") && !message.payload["max_uses"].is_null()) {
-        if (!message.payload["max_uses"].is_number_integer() || message.payload["max_uses"].get<int>() <= 0) {
-            return makeError("MALFORMED_MESSAGE", "CREATE_INVITE max_uses must be a positive integer");
+        if (!message.payload["max_uses"].is_number_integer() ||
+            message.payload["max_uses"].get<int>() <= 0) {
+            return makeError("MALFORMED_MESSAGE",
+                             "CREATE_INVITE max_uses must be a positive integer");
         }
         max_uses = message.payload["max_uses"].get<int>();
     }
 
     std::optional<int> expires_in_seconds;
-    if (message.payload.contains("expires_in_seconds") && !message.payload["expires_in_seconds"].is_null()) {
+    if (message.payload.contains("expires_in_seconds") &&
+        !message.payload["expires_in_seconds"].is_null()) {
         if (!message.payload["expires_in_seconds"].is_number_integer() ||
             message.payload["expires_in_seconds"].get<int>() <= 0) {
             return makeError("MALFORMED_MESSAGE",
@@ -118,8 +123,8 @@ Message InviteHandler::handleCreateInvite(const Message& message, int fd) const 
         return makeError("NOT_GUILD_OFFICER", "Must be an officer or above to create invites");
     }
 
-    const std::optional<http::WireInvite> invite =
-        internal_api_client_->createInvite(guild_id, session->user_id, max_uses, expires_in_seconds);
+    const std::optional<http::WireInvite> invite = internal_api_client_->createInvite(
+        guild_id, session->user_id, max_uses, expires_in_seconds);
     if (!invite) {
         return makeError("INTERNAL_ERROR", "Failed to create invite");
     }
@@ -165,7 +170,8 @@ Message InviteHandler::handleListInvites(const Message& message, int fd) const {
         return makeError("NOT_GUILD_OFFICER", "Must be an officer or above to list invites");
     }
 
-    const std::optional<std::vector<http::WireInvite>> invites = internal_api_client_->fetchInvites(guild_id);
+    const std::optional<std::vector<http::WireInvite>> invites =
+        internal_api_client_->fetchInvites(guild_id);
     if (!invites) {
         return makeError("INTERNAL_ERROR", "Failed to fetch invites");
     }
@@ -223,7 +229,8 @@ Message InviteHandler::handleRevokeInvite(const Message& message, int fd) const 
 
     Message response;
     response.type = "INVITE_REVOKED";
-    response.payload = nlohmann::json{{"type", "INVITE_REVOKED"}, {"guild_id", guild_id}, {"code", code}};
+    response.payload =
+        nlohmann::json{{"type", "INVITE_REVOKED"}, {"guild_id", guild_id}, {"code", code}};
     return response;
 }
 
@@ -250,7 +257,8 @@ std::vector<Message> InviteHandler::handleJoinViaInvite(const Message& message, 
     }
 
     const std::string code = message.payload["code"].get<std::string>();
-    const http::RedeemInviteResult result = internal_api_client_->redeemInvite(code, session->user_id);
+    const http::RedeemInviteResult result =
+        internal_api_client_->redeemInvite(code, session->user_id);
 
     if (!result.ok) {
         switch (result.error) {
@@ -285,7 +293,8 @@ std::vector<Message> InviteHandler::handleJoinViaInvite(const Message& message, 
         // reached via a different door.
         Message requested;
         requested.type = "JOIN_REQUESTED";
-        requested.payload = nlohmann::json{{"type", "JOIN_REQUESTED"}, {"guild_id", result.guild_id}};
+        requested.payload =
+            nlohmann::json{{"type", "JOIN_REQUESTED"}, {"guild_id", result.guild_id}};
 
         std::vector<Message> responses{requested};
         const std::vector<int> officer_fds = getOfficerFds(result.guild_id);

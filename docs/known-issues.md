@@ -95,3 +95,44 @@ rather than re-running clean stress tests — this issue has now survived
 four different deliberate reproduction attempts, so further "try to
 reproduce it cleanly" effort has a low expected return relative to
 "catch it happening organically with logging in place."
+
+---
+
+## Client's `myGuildIds` doesn't reflect pre-existing membership on a fresh connection (unresolved)
+
+**Symptom**: `web/hooks/useGatewayConnection.ts`'s `myGuildIds` (a client-
+side `Set<string>` used to decide whether a guild in `GUILD_LIST` renders
+as a clickable member entry vs. a Join/Request button) starts empty on
+every fresh page load and is only ever added to by `GUILD_CREATED`/
+`GUILD_JOINED` events received *during that session*. A user who already
+belongs to a guild from a previous session sees it rendered as if they
+were not a member — attempting to join it fails with `PROTOCOL_VIOLATION`
+("already a member") — until they leave and rejoin, or until some other
+in-session action happens to add it back to the set. `GUILD_LIST`'s wire
+shape (`shared/protocol/README.md`) has no per-guild membership flag for
+the client to bootstrap from, and there is no "my guild ids" fetch
+equivalent to `LIST_FRIENDS`/`LIST_BLOCKS`.
+
+**Found while**: building the Discord-style guild rail
+(`web/components/GuildRail.tsx`,
+`docs/frontend-rebuild-plan.md`'s Deferred section) — the rail's per-guild
+icons are driven directly by `myGuildIds`, which made the gap immediately
+visible (a real, pre-existing guild membership rendered with no rail icon
+at all after a page reload). The old tab-based UI had the exact same
+`myGuildIds.has(g.guildId)` check (`web/app/page.tsx`'s guild list, before
+this pass) and was equally affected — this isn't a regression introduced
+by the rail, just newly visible because the rail makes "which guilds do I
+belong to" a more prominent, always-on piece of UI than the old
+click-into-the-Guilds-tab-to-notice version was.
+
+**Impact**: cosmetic/UX only for a guild the user already owns (they can
+still reach it via any conversation/invite link that names it directly,
+and their actual membership row in Postgres is untouched) — but
+meaningfully confusing on first login to a returning session, since a
+guild you belong to appears to require joining again.
+
+**Not fixed here**: doing so needs either a new field on `GUILD_LIST`'s
+per-guild entries (e.g. `is_member`, resolved server-side against the
+caller's own id) or a new fetch analogous to `LIST_FRIENDS`/`LIST_BLOCKS`
+— real protocol/backend surface area, out of scope for the frontend-only
+rail rework that found it.

@@ -122,7 +122,9 @@ describe("acceptFriendRequest / deleteFriendRequest", () => {
     const pending = await db.select().from(friendRequests);
     expect(pending).toHaveLength(0);
     const friends = await listFriends(toUserWireId(a.id));
-    expect(friends).toEqual([{ user_id: toUserWireId(b.id), username: "user_2" }]);
+    expect(friends).toEqual([
+      { user_id: toUserWireId(b.id), username: "user_2", display_name: "user_2", avatar_url: null }
+    ]);
   });
 
   it("accept returns not_found for a nonexistent request", async () => {
@@ -200,8 +202,24 @@ describe("listFriendRequests", () => {
     await sendFriendRequest(toUserWireId(c.id), toUserWireId(a.id)); // c -> a (a's incoming)
 
     const result = await listFriendRequests(toUserWireId(a.id));
-    expect(result?.outgoing).toEqual([{ user_id: toUserWireId(b.id), username: "user_2", created_at: expect.any(String) }]);
-    expect(result?.incoming).toEqual([{ user_id: toUserWireId(c.id), username: "user_3", created_at: expect.any(String) }]);
+    expect(result?.outgoing).toEqual([
+      {
+        user_id: toUserWireId(b.id),
+        username: "user_2",
+        created_at: expect.any(String),
+        display_name: "user_2",
+        avatar_url: null
+      }
+    ]);
+    expect(result?.incoming).toEqual([
+      {
+        user_id: toUserWireId(c.id),
+        username: "user_3",
+        created_at: expect.any(String),
+        display_name: "user_3",
+        avatar_url: null
+      }
+    ]);
   });
 });
 

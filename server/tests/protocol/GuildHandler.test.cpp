@@ -83,7 +83,8 @@ TEST_CASE("GuildHandler CREATE_GUILD rejects empty and oversized names") {
     REQUIRE(oversized.payload["code"] == "MALFORMED_MESSAGE");
 }
 
-TEST_CASE("GuildHandler CREATE_GUILD defaults visibility to open, and accepts an explicit visibility") {
+TEST_CASE(
+    "GuildHandler CREATE_GUILD defaults visibility to open, and accepts an explicit visibility") {
     Fixture f;
     f.identify(1, "alice");
 
@@ -394,7 +395,8 @@ TEST_CASE("GuildHandler JOIN_GUILD trusts the internal API's returned rank over 
 
     f.handler.handleJoinGuild(make_message("JOIN_GUILD", {{"guild_id", "g_1"}}), 1);
 
-    REQUIRE(f.guilds.getMemberRank("g_1", f.sessions.getSession(1)->user_id) == guild::kOfficerRank);
+    REQUIRE(f.guilds.getMemberRank("g_1", f.sessions.getSession(1)->user_id) ==
+            guild::kOfficerRank);
 }
 
 TEST_CASE("GuildHandler LEAVE_GUILD clears the leaver's rank from GuildManager's cache") {
@@ -417,8 +419,8 @@ TEST_CASE("GuildHandler LIST_MEMBERS returns the roster for a guild member") {
     session::Session& alice = f.identify(1, "alice");
     f.guilds.upsertGuild("g_1", "First", alice.user_id);
     f.sessions.addGuildMembership(1, "g_1");
-    f.api.guild_members_to_return = {
-        {"u_1", "alice", guild::kOwnerRank, "Captain", "2026-07-14T18:00:00Z"}};
+    f.api.guild_members_to_return = {{"u_1", "alice", guild::kOwnerRank, "Captain",
+                                      "2026-07-14T18:00:00Z", std::nullopt, std::nullopt}};
 
     const auto response =
         f.handler.handleListMembers(make_message("LIST_MEMBERS", {{"guild_id", "g_1"}}), 1);
@@ -486,8 +488,9 @@ TEST_CASE("GuildHandler SET_MEMBER_ROLE promotes a member and notifies all guild
     f.api.set_member_role_label_to_return = "Officer";
 
     const auto response = f.handler.handleSetMemberRole(
-        make_message("SET_MEMBER_ROLE",
-                     {{"guild_id", "g_1"}, {"user_id", member.user_id}, {"role_rank", guild::kOfficerRank}}),
+        make_message(
+            "SET_MEMBER_ROLE",
+            {{"guild_id", "g_1"}, {"user_id", member.user_id}, {"role_rank", guild::kOfficerRank}}),
         1);
 
     REQUIRE(response.type == "MEMBER_ROLE_UPDATED");
@@ -509,8 +512,9 @@ TEST_CASE("GuildHandler SET_MEMBER_ROLE rejects a caller below owner rank") {
     f.guilds.setMemberRank("g_1", member.user_id, guild::kMemberRank);
 
     const auto response = f.handler.handleSetMemberRole(
-        make_message("SET_MEMBER_ROLE",
-                     {{"guild_id", "g_1"}, {"user_id", member.user_id}, {"role_rank", guild::kOfficerRank}}),
+        make_message(
+            "SET_MEMBER_ROLE",
+            {{"guild_id", "g_1"}, {"user_id", member.user_id}, {"role_rank", guild::kOfficerRank}}),
         1);
 
     REQUIRE(response.payload["code"] == "NOT_GUILD_OWNER");
@@ -525,8 +529,9 @@ TEST_CASE("GuildHandler SET_MEMBER_ROLE rejects a role_rank at or above the owne
     f.guilds.setMemberRank("g_1", member.user_id, guild::kMemberRank);
 
     const auto response = f.handler.handleSetMemberRole(
-        make_message("SET_MEMBER_ROLE",
-                     {{"guild_id", "g_1"}, {"user_id", member.user_id}, {"role_rank", guild::kOwnerRank}}),
+        make_message(
+            "SET_MEMBER_ROLE",
+            {{"guild_id", "g_1"}, {"user_id", member.user_id}, {"role_rank", guild::kOwnerRank}}),
         1);
 
     REQUIRE(response.payload["code"] == "MALFORMED_MESSAGE");
@@ -539,8 +544,9 @@ TEST_CASE("GuildHandler SET_MEMBER_ROLE rejects targeting the guild owner") {
     f.guilds.setMemberRank("g_1", owner.user_id, guild::kOwnerRank);
 
     const auto response = f.handler.handleSetMemberRole(
-        make_message("SET_MEMBER_ROLE",
-                     {{"guild_id", "g_1"}, {"user_id", owner.user_id}, {"role_rank", guild::kOfficerRank}}),
+        make_message(
+            "SET_MEMBER_ROLE",
+            {{"guild_id", "g_1"}, {"user_id", owner.user_id}, {"role_rank", guild::kOfficerRank}}),
         1);
 
     REQUIRE(response.payload["code"] == "PROTOCOL_VIOLATION");
@@ -553,8 +559,9 @@ TEST_CASE("GuildHandler SET_MEMBER_ROLE rejects a target who isn't a guild membe
     f.guilds.setMemberRank("g_1", owner.user_id, guild::kOwnerRank);
 
     const auto response = f.handler.handleSetMemberRole(
-        make_message("SET_MEMBER_ROLE",
-                     {{"guild_id", "g_1"}, {"user_id", "u_stranger"}, {"role_rank", guild::kOfficerRank}}),
+        make_message(
+            "SET_MEMBER_ROLE",
+            {{"guild_id", "g_1"}, {"user_id", "u_stranger"}, {"role_rank", guild::kOfficerRank}}),
         1);
 
     REQUIRE(response.payload["code"] == "NOT_GUILD_MEMBER");
@@ -565,8 +572,9 @@ TEST_CASE("GuildHandler SET_MEMBER_ROLE rejects unknown guild") {
     f.identify(1, "owner");
 
     const auto response = f.handler.handleSetMemberRole(
-        make_message("SET_MEMBER_ROLE",
-                     {{"guild_id", "g_404"}, {"user_id", "u_2"}, {"role_rank", guild::kOfficerRank}}),
+        make_message(
+            "SET_MEMBER_ROLE",
+            {{"guild_id", "g_404"}, {"user_id", "u_2"}, {"role_rank", guild::kOfficerRank}}),
         1);
 
     REQUIRE(response.payload["code"] == "GUILD_NOT_FOUND");
@@ -593,8 +601,9 @@ TEST_CASE("GuildHandler SET_MEMBER_ROLE returns INTERNAL_ERROR when the internal
     f.api.fail_set_member_role = true;
 
     const auto response = f.handler.handleSetMemberRole(
-        make_message("SET_MEMBER_ROLE",
-                     {{"guild_id", "g_1"}, {"user_id", member.user_id}, {"role_rank", guild::kOfficerRank}}),
+        make_message(
+            "SET_MEMBER_ROLE",
+            {{"guild_id", "g_1"}, {"user_id", member.user_id}, {"role_rank", guild::kOfficerRank}}),
         1);
 
     REQUIRE(response.payload["code"] == "INTERNAL_ERROR");
@@ -650,7 +659,8 @@ TEST_CASE("GuildHandler SET_GUILD_VISIBILITY rejects unknown guild") {
     f.identify(1, "owner");
 
     const auto response = f.handler.handleSetGuildVisibility(
-        make_message("SET_GUILD_VISIBILITY", {{"guild_id", "g_404"}, {"visibility", "private"}}), 1);
+        make_message("SET_GUILD_VISIBILITY", {{"guild_id", "g_404"}, {"visibility", "private"}}),
+        1);
 
     REQUIRE(response.payload["code"] == "GUILD_NOT_FOUND");
 }
@@ -664,7 +674,8 @@ TEST_CASE("GuildHandler SET_GUILD_VISIBILITY requires identification") {
     REQUIRE(response.payload["code"] == "NOT_IDENTIFIED");
 }
 
-TEST_CASE("GuildHandler SET_GUILD_VISIBILITY returns INTERNAL_ERROR when the internal API call fails") {
+TEST_CASE(
+    "GuildHandler SET_GUILD_VISIBILITY returns INTERNAL_ERROR when the internal API call fails") {
     Fixture f;
     session::Session& owner = f.identify(1, "owner");
     f.guilds.upsertGuild("g_1", "First", owner.user_id);

@@ -130,7 +130,8 @@ TEST_CASE("ChatHandler rejects CHAT_MESSAGE with oversized content") {
     REQUIRE(response.payload["code"] == "MALFORMED_MESSAGE");
 }
 
-TEST_CASE("ChatHandler enqueues a persisted message with std::nullopt channel_id on successful send") {
+TEST_CASE(
+    "ChatHandler enqueues a persisted message with std::nullopt channel_id on successful send") {
     test_helpers::FakeInternalApiClient api;
     persistence::MessagePersistenceWorker worker(&api);
     worker.start();

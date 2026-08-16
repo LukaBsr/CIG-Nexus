@@ -368,7 +368,9 @@ Message ChannelHandler::handleChannelMessage(const Message& message, int fd) con
                                       {"timestamp", static_cast<long>(timestamp)},
                                       {"user_id", session->user_id},
                                       {"username", session->username},
-                                      {"content", content}};
+                                      {"content", content},
+                                      {"display_name", make_optional_string(session->display_name)},
+                                      {"avatar_url", make_optional_string(session->avatar_url)}};
 
     // docs/guilds/social-presence-design.md §4.5: fire-and-forget — enqueue after
     // building the broadcast response, never block on it.
@@ -397,7 +399,8 @@ Message ChannelHandler::handleFetchHistory(const Message& message, int fd) const
     std::optional<std::string> channel_id;
     if (message.payload.contains("channel_id") && !message.payload["channel_id"].is_null()) {
         if (!message.payload["channel_id"].is_string()) {
-            return makeError("MALFORMED_MESSAGE", "FETCH_HISTORY channel_id must be a string or null");
+            return makeError("MALFORMED_MESSAGE",
+                             "FETCH_HISTORY channel_id must be a string or null");
         }
         channel_id = message.payload["channel_id"].get<std::string>();
     }
@@ -414,14 +417,16 @@ Message ChannelHandler::handleFetchHistory(const Message& message, int fd) const
             return makeError("CHANNEL_NOT_FOUND", "Channel does not exist");
         }
         if (!session_manager_->isMemberOfGuild(fd, channel->guild_id)) {
-            return makeError("NOT_GUILD_MEMBER", "Must be a member of this channel's guild to read its history");
+            return makeError("NOT_GUILD_MEMBER",
+                             "Must be a member of this channel's guild to read its history");
         }
     }
 
     std::optional<int> before_seq;
     if (message.payload.contains("before_seq") && !message.payload["before_seq"].is_null()) {
         if (!message.payload["before_seq"].is_number_integer()) {
-            return makeError("MALFORMED_MESSAGE", "FETCH_HISTORY before_seq must be an integer or null");
+            return makeError("MALFORMED_MESSAGE",
+                             "FETCH_HISTORY before_seq must be an integer or null");
         }
         before_seq = message.payload["before_seq"].get<int>();
     }
@@ -434,7 +439,7 @@ Message ChannelHandler::handleFetchHistory(const Message& message, int fd) const
         limit = message.payload["limit"].get<int>();
         if (limit < 1 || limit > kMaxHistoryLimit) {
             return makeError("MALFORMED_MESSAGE", "FETCH_HISTORY limit must be between 1 and " +
-                                                       std::to_string(kMaxHistoryLimit));
+                                                      std::to_string(kMaxHistoryLimit));
         }
     }
 
@@ -447,27 +452,24 @@ Message ChannelHandler::handleFetchHistory(const Message& message, int fd) const
     // dm_peer_id — this handler only ever serves the lobby/channel
     // branches of FETCH_HISTORY; Server.cpp dispatches the peer_id branch
     // to DMHandler instead (docs/social/friends-dms-design.md §3.5).
-    const std::optional<http::HistoryPage> page =
-        internal_api_client_->fetchMessages(channel_id, std::nullopt, session->user_id, before_seq, limit);
+    const std::optional<http::HistoryPage> page = internal_api_client_->fetchMessages(
+        channel_id, std::nullopt, session->user_id, before_seq, limit);
     if (!page) {
         return makeError("INTERNAL_ERROR", "Failed to fetch message history");
     }
 
     nlohmann::json messages_json = nlohmann::json::array();
     for (const auto& m : page->messages) {
-        messages_json.push_back(nlohmann::json{{"message_id", m.message_id},
-                                               {"timestamp", m.timestamp},
-                                               {"user_id", m.user_id},
-                                               {"username", m.username},
-                                               {"content", m.content}});
+        messages_json.push_back(make_history_message(m));
     }
 
     Message response;
     response.type = "MESSAGE_HISTORY";
-    response.payload = nlohmann::json{{"type", "MESSAGE_HISTORY"},
-                                      {"channel_id", channel_id.has_value() ? nlohmann::json(*channel_id) : nullptr},
-                                      {"messages", messages_json},
-                                      {"has_more", page->has_more}};
+    response.payload = nlohmann::json{
+        {"type", "MESSAGE_HISTORY"},
+        {"channel_id", channel_id.has_value() ? nlohmann::json(*channel_id) : nullptr},
+        {"messages", messages_json},
+        {"has_more", page->has_more}};
     return response;
 }
 

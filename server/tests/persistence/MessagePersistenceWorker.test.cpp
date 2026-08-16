@@ -22,7 +22,7 @@ class RecordingInternalApiClient : public http::InternalApiClient {
   public:
     std::optional<http::Catalog> fetchCatalog() override { return std::nullopt; }
     std::optional<http::WireGuild> createGuild(const std::string&, const std::string&,
-                                                const std::string&) override {
+                                               const std::string&) override {
         return std::nullopt;
     }
     bool deleteGuild(const std::string&) override { return false; }
@@ -40,7 +40,7 @@ class RecordingInternalApiClient : public http::InternalApiClient {
         return std::nullopt;
     }
     std::optional<http::WireChannel> createChannel(const std::string&, const std::string&,
-                                                    const std::string&) override {
+                                                   const std::string&) override {
         return std::nullopt;
     }
     bool deleteChannel(const std::string&) override { return false; }
@@ -48,12 +48,14 @@ class RecordingInternalApiClient : public http::InternalApiClient {
         return {};
     }
     std::optional<http::HistoryPage> fetchMessages(const std::optional<std::string>&,
-                                                    const std::optional<std::string>&, const std::string&,
-                                                    std::optional<int>, int) override {
+                                                   const std::optional<std::string>&,
+                                                   const std::string&, std::optional<int>,
+                                                   int) override {
         return std::nullopt;
     }
     http::LastSequence fetchLastSequence() override { return {}; }
-    std::optional<std::vector<http::WireDmConversation>> fetchDmConversations(const std::string&) override {
+    std::optional<std::vector<http::WireDmConversation>>
+    fetchDmConversations(const std::string&) override {
         return std::nullopt;
     }
     std::optional<std::vector<std::string>> fetchGuildIdsForUser(const std::string&) override {
@@ -71,10 +73,12 @@ class RecordingInternalApiClient : public http::InternalApiClient {
     http::RedeemInviteResult redeemInvite(const std::string&, const std::string&) override {
         return http::RedeemInviteResult{};
     }
-    http::CreateJoinRequestResult createJoinRequest(const std::string&, const std::string&) override {
+    http::CreateJoinRequestResult createJoinRequest(const std::string&,
+                                                    const std::string&) override {
         return http::CreateJoinRequestResult::FAILED;
     }
-    std::optional<std::vector<http::WireJoinRequest>> fetchJoinRequests(const std::string&) override {
+    std::optional<std::vector<http::WireJoinRequest>>
+    fetchJoinRequests(const std::string&) override {
         return std::nullopt;
     }
     std::optional<int> approveJoinRequest(const std::string&, const std::string&) override {
@@ -82,13 +86,15 @@ class RecordingInternalApiClient : public http::InternalApiClient {
     }
     bool rejectJoinRequest(const std::string&, const std::string&) override { return false; }
 
-    http::SendFriendRequestResult sendFriendRequest(const std::string&, const std::string&) override {
+    http::SendFriendRequestResult sendFriendRequest(const std::string&,
+                                                    const std::string&) override {
         return http::SendFriendRequestResult{};
     }
     http::SendFriendRequestResult addFriendByCode(const std::string&, const std::string&) override {
         return http::SendFriendRequestResult{};
     }
-    http::AcceptFriendRequestResult acceptFriendRequest(const std::string&, const std::string&) override {
+    http::AcceptFriendRequestResult acceptFriendRequest(const std::string&,
+                                                        const std::string&) override {
         return http::AcceptFriendRequestResult{};
     }
     bool deleteFriendRequest(const std::string&, const std::string&) override { return false; }
@@ -100,14 +106,22 @@ class RecordingInternalApiClient : public http::InternalApiClient {
         return std::nullopt;
     }
     std::optional<std::string> fetchFriendCode(const std::string&) override { return std::nullopt; }
-    std::optional<std::string> regenerateFriendCode(const std::string&) override { return std::nullopt; }
+    std::optional<std::string> regenerateFriendCode(const std::string&) override {
+        return std::nullopt;
+    }
 
     bool blockUser(const std::string&, const std::string&) override { return false; }
     bool unblockUser(const std::string&, const std::string&) override { return false; }
-    std::optional<std::vector<http::WireBlock>> fetchBlocks(const std::string&) override { return std::nullopt; }
+    std::optional<std::vector<http::WireBlock>> fetchBlocks(const std::string&) override {
+        return std::nullopt;
+    }
+    std::optional<http::WireUserProfile> fetchUserProfile(const std::string&) override {
+        return std::nullopt;
+    }
 
-    bool createMessage(const std::optional<std::string>& channel_id, const std::optional<std::string>& dm_peer_id,
-                       const std::string& user_id, const std::string& content, int seq) override {
+    bool createMessage(const std::optional<std::string>& channel_id,
+                       const std::optional<std::string>& dm_peer_id, const std::string& user_id,
+                       const std::string& content, int seq) override {
         const int attempt = ++call_count_;
 
         std::lock_guard<std::mutex> lock(mutex_);
@@ -152,7 +166,8 @@ TEST_CASE("MessagePersistenceWorker persists an enqueued message", "[MessagePers
 
     worker.enqueue({std::nullopt, std::nullopt, "u_1", "hello", 1});
 
-    REQUIRE(waitUntil([&] { return client.callsSnapshot().size() == 1; }, std::chrono::milliseconds(2000)));
+    REQUIRE(waitUntil([&] { return client.callsSnapshot().size() == 1; },
+                      std::chrono::milliseconds(2000)));
     const auto calls = client.callsSnapshot();
     REQUIRE(calls[0].content == "hello");
     REQUIRE(calls[0].seq == 1);
@@ -170,7 +185,8 @@ TEST_CASE("MessagePersistenceWorker preserves enqueue order", "[MessagePersisten
         worker.enqueue({std::nullopt, std::nullopt, "u_1", "msg-" + std::to_string(i), i});
     }
 
-    REQUIRE(waitUntil([&] { return client.callsSnapshot().size() == 5; }, std::chrono::milliseconds(2000)));
+    REQUIRE(waitUntil([&] { return client.callsSnapshot().size() == 5; },
+                      std::chrono::milliseconds(2000)));
     worker.stop();
 
     const auto calls = client.callsSnapshot();
@@ -190,7 +206,8 @@ TEST_CASE("MessagePersistenceWorker retries a failed persist and eventually succ
     worker.enqueue({std::nullopt, std::nullopt, "u_1", "eventually", 1});
 
     // 3 attempts with 500ms/1000ms backoff between them — generous timeout.
-    REQUIRE(waitUntil([&] { return client.callsSnapshot().size() == 3; }, std::chrono::milliseconds(5000)));
+    REQUIRE(waitUntil([&] { return client.callsSnapshot().size() == 3; },
+                      std::chrono::milliseconds(5000)));
     worker.stop();
 
     const auto calls = client.callsSnapshot();
@@ -215,7 +232,8 @@ TEST_CASE("MessagePersistenceWorker::stop drains the queue before returning",
     REQUIRE(client.callsSnapshot().size() == 3);
 }
 
-TEST_CASE("MessagePersistenceWorker::stop is safe to call without start", "[MessagePersistenceWorker]") {
+TEST_CASE("MessagePersistenceWorker::stop is safe to call without start",
+          "[MessagePersistenceWorker]") {
     RecordingInternalApiClient client;
     persistence::MessagePersistenceWorker worker(&client);
     worker.stop(); // must not hang or crash

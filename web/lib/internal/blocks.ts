@@ -3,12 +3,16 @@ import { and, eq, or } from "drizzle-orm";
 import { db } from "@/db/client";
 import { friendRequests, friendships, userBlocks, users } from "@/db/schema";
 
+import { resolveAvatarUrl, resolveDisplayName } from "../user/profile";
 import { fromUserWireId, toUserWireId } from "./wireIds";
 
 export interface WireBlock {
   user_id: string;
   username: string;
   blocked_at: string;
+  // docs/social/friends-dms-design.md §4.5.
+  display_name: string;
+  avatar_url: string | null;
 }
 
 function orderedPair(a: string, b: string): [string, string] {
@@ -75,7 +79,16 @@ export async function listBlocks(userWireId: string): Promise<WireBlock[] | null
   }
 
   const rows = await db
-    .select({ blockedId: userBlocks.blockedId, username: users.discordUsername, createdAt: userBlocks.createdAt })
+    .select({
+      blockedId: userBlocks.blockedId,
+      username: users.discordUsername,
+      createdAt: userBlocks.createdAt,
+      displayName: users.displayName,
+      discordGlobalName: users.discordGlobalName,
+      customAvatarPath: users.customAvatarPath,
+      discordId: users.discordId,
+      discordAvatarHash: users.discordAvatarHash
+    })
     .from(userBlocks)
     .innerJoin(users, eq(userBlocks.blockedId, users.id))
     .where(eq(userBlocks.blockerId, userId));
@@ -83,7 +96,9 @@ export async function listBlocks(userWireId: string): Promise<WireBlock[] | null
   return rows.map((r) => ({
     user_id: toUserWireId(r.blockedId),
     username: r.username,
-    blocked_at: r.createdAt.toISOString()
+    blocked_at: r.createdAt.toISOString(),
+    display_name: resolveDisplayName({ displayName: r.displayName, discordGlobalName: r.discordGlobalName, discordUsername: r.username }),
+    avatar_url: resolveAvatarUrl(r)
   }));
 }
 

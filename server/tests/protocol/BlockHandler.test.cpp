@@ -37,7 +37,8 @@ struct Fixture {
 
 TEST_CASE("BlockHandler BLOCK_USER requires identification") {
     Fixture f;
-    const auto response = f.handler.handleBlockUser(make_message("BLOCK_USER", {{"user_id", "u_2"}}), 1);
+    const auto response =
+        f.handler.handleBlockUser(make_message("BLOCK_USER", {{"user_id", "u_2"}}), 1);
     REQUIRE(response.payload["code"] == "NOT_IDENTIFIED");
 }
 
@@ -51,7 +52,8 @@ TEST_CASE("BlockHandler BLOCK_USER requires user_id") {
 TEST_CASE("BlockHandler BLOCK_USER rejects blocking self") {
     Fixture f;
     f.identify(1, "alice");
-    const auto response = f.handler.handleBlockUser(make_message("BLOCK_USER", {{"user_id", "u_1"}}), 1);
+    const auto response =
+        f.handler.handleBlockUser(make_message("BLOCK_USER", {{"user_id", "u_1"}}), 1);
     REQUIRE(response.payload["code"] == "PROTOCOL_VIOLATION");
 }
 
@@ -60,7 +62,8 @@ TEST_CASE("BlockHandler BLOCK_USER success returns USER_BLOCKED to the caller on
     f.identify(1, "alice");
     f.identify(2, "bob");
 
-    const auto response = f.handler.handleBlockUser(make_message("BLOCK_USER", {{"user_id", "u_2"}}), 1);
+    const auto response =
+        f.handler.handleBlockUser(make_message("BLOCK_USER", {{"user_id", "u_2"}}), 1);
 
     REQUIRE(response.type == "USER_BLOCKED");
     REQUIRE(response.payload["user_id"] == "u_2");
@@ -85,7 +88,8 @@ TEST_CASE("BlockHandler BLOCK_USER maps internal API failure to USER_NOT_FOUND")
     f.identify(1, "alice");
     f.api.fail_block_user = true;
 
-    const auto response = f.handler.handleBlockUser(make_message("BLOCK_USER", {{"user_id", "u_2"}}), 1);
+    const auto response =
+        f.handler.handleBlockUser(make_message("BLOCK_USER", {{"user_id", "u_2"}}), 1);
 
     REQUIRE(response.payload["code"] == "USER_NOT_FOUND");
 }
@@ -95,7 +99,8 @@ TEST_CASE("BlockHandler UNBLOCK_USER success returns USER_UNBLOCKED and clears b
     session::Session& alice = f.identify(1, "alice");
     alice.blocked_user_ids = {"u_2"};
 
-    const auto response = f.handler.handleUnblockUser(make_message("UNBLOCK_USER", {{"user_id", "u_2"}}), 1);
+    const auto response =
+        f.handler.handleUnblockUser(make_message("UNBLOCK_USER", {{"user_id", "u_2"}}), 1);
 
     REQUIRE(response.type == "USER_UNBLOCKED");
     REQUIRE(response.scope == protocol::Scope::DIRECT);
@@ -107,7 +112,8 @@ TEST_CASE("BlockHandler UNBLOCK_USER maps internal API failure to USER_NOT_FOUND
     f.identify(1, "alice");
     f.api.fail_unblock_user = true;
 
-    const auto response = f.handler.handleUnblockUser(make_message("UNBLOCK_USER", {{"user_id", "u_2"}}), 1);
+    const auto response =
+        f.handler.handleUnblockUser(make_message("UNBLOCK_USER", {{"user_id", "u_2"}}), 1);
 
     REQUIRE(response.payload["code"] == "USER_NOT_FOUND");
 }
@@ -115,11 +121,13 @@ TEST_CASE("BlockHandler UNBLOCK_USER maps internal API failure to USER_NOT_FOUND
 TEST_CASE("BlockHandler LIST_BLOCKS returns BLOCK_LIST") {
     Fixture f;
     f.identify(1, "alice");
-    f.api.blocks_to_return = {{"u_2", "bob", "2026-01-01T00:00:00Z"}};
+    f.api.blocks_to_return = {{"u_2", "bob", "2026-01-01T00:00:00Z", "Bobby", std::nullopt}};
 
     const auto response = f.handler.handleListBlocks(make_message("LIST_BLOCKS"), 1);
 
     REQUIRE(response.type == "BLOCK_LIST");
     REQUIRE(response.payload["blocked"].size() == 1);
     REQUIRE(response.payload["blocked"][0]["user_id"] == "u_2");
+    REQUIRE(response.payload["blocked"][0]["display_name"] == "Bobby");
+    REQUIRE(response.payload["blocked"][0]["avatar_url"].is_null());
 }

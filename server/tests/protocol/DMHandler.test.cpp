@@ -49,10 +49,12 @@ TEST_CASE("DMHandler DM_SEND requires identification") {
 TEST_CASE("DMHandler DM_SEND requires user_id and content") {
     Fixture f;
     f.identify(1, "alice");
-    REQUIRE(f.handler.handleDmSend(make_message("DM_SEND", {{"content", "hi"}}), 1).payload["code"] ==
-            "MALFORMED_MESSAGE");
-    REQUIRE(f.handler.handleDmSend(make_message("DM_SEND", {{"user_id", "u_2"}}), 1).payload["code"] ==
-            "MALFORMED_MESSAGE");
+    REQUIRE(
+        f.handler.handleDmSend(make_message("DM_SEND", {{"content", "hi"}}), 1).payload["code"] ==
+        "MALFORMED_MESSAGE");
+    REQUIRE(
+        f.handler.handleDmSend(make_message("DM_SEND", {{"user_id", "u_2"}}), 1).payload["code"] ==
+        "MALFORMED_MESSAGE");
 }
 
 TEST_CASE("DMHandler DM_SEND rejects messaging self") {
@@ -68,16 +70,20 @@ TEST_CASE("DMHandler DM_SEND rejects empty and overlong content") {
     session::Session& alice = f.identify(1, "alice");
     alice.friend_ids = {"u_2"};
 
-    REQUIRE(f.handler.handleDmSend(make_message("DM_SEND", {{"user_id", "u_2"}, {"content", ""}}), 1)
-                .payload["code"] == "MALFORMED_MESSAGE");
+    REQUIRE(
+        f.handler.handleDmSend(make_message("DM_SEND", {{"user_id", "u_2"}, {"content", ""}}), 1)
+            .payload["code"] == "MALFORMED_MESSAGE");
     REQUIRE(f.handler
-                .handleDmSend(make_message("DM_SEND", {{"user_id", "u_2"}, {"content", std::string(501, 'x')}}), 1)
+                .handleDmSend(make_message("DM_SEND", {{"user_id", "u_2"},
+                                                       {"content", std::string(501, 'x')}}),
+                              1)
                 .payload["code"] == "MALFORMED_MESSAGE");
 }
 
 // --- DM_SEND: canSendDm, peer online -----------------------------------
 
-TEST_CASE("DMHandler DM_SEND permitted via friendship, delivered to both participants' connections") {
+TEST_CASE(
+    "DMHandler DM_SEND permitted via friendship, delivered to both participants' connections") {
     Fixture f;
     session::Session& alice = f.identify(1, "alice");
     f.identify(2, "bob");
@@ -171,11 +177,13 @@ TEST_CASE("DMHandler DM_SEND rejected when live shared-guild fallback finds no o
     REQUIRE(response.payload["code"] == "DM_NOT_PERMITTED");
 }
 
-TEST_CASE("DMHandler DM_SEND rejected via live block fallback when the offline peer has blocked the caller") {
+TEST_CASE("DMHandler DM_SEND rejected via live block fallback when the offline peer has blocked "
+          "the caller") {
     Fixture f;
     session::Session& alice = f.identify(1, "alice");
     alice.friend_ids = {"u_2"}; // permitted on the friend/guild axis
-    f.api.blocks_to_return = {{"u_1", "alice", "2026-01-01T00:00:00Z"}}; // peer (offline) has blocked u_1
+    f.api.blocks_to_return = {{"u_1", "alice", "2026-01-01T00:00:00Z", std::nullopt,
+                               std::nullopt}}; // peer (offline) has blocked u_1
 
     const auto response =
         f.handler.handleDmSend(make_message("DM_SEND", {{"user_id", "u_2"}, {"content", "hi"}}), 1);
@@ -183,11 +191,13 @@ TEST_CASE("DMHandler DM_SEND rejected via live block fallback when the offline p
     REQUIRE(response.payload["code"] == "DM_NOT_PERMITTED");
 }
 
-TEST_CASE("DMHandler DM_SEND permitted when the offline peer's block list doesn't include the caller") {
+TEST_CASE(
+    "DMHandler DM_SEND permitted when the offline peer's block list doesn't include the caller") {
     Fixture f;
     session::Session& alice = f.identify(1, "alice");
     alice.friend_ids = {"u_2"};
-    f.api.blocks_to_return = {{"u_999", "someone-else", "2026-01-01T00:00:00Z"}};
+    f.api.blocks_to_return = {
+        {"u_999", "someone-else", "2026-01-01T00:00:00Z", std::nullopt, std::nullopt}};
 
     const auto response =
         f.handler.handleDmSend(make_message("DM_SEND", {{"user_id", "u_2"}, {"content", "hi"}}), 1);
@@ -200,10 +210,12 @@ TEST_CASE("DMHandler DM_SEND permitted when the offline peer's block list doesn'
 TEST_CASE("DMHandler FETCH_HISTORY returns MESSAGE_HISTORY with peer_id echoed") {
     Fixture f;
     f.identify(1, "alice");
-    f.api.history_page_to_return.messages = {{1, std::nullopt, 1741104000, "u_2", "bob", "hey"}};
+    f.api.history_page_to_return.messages = {
+        {1, std::nullopt, 1741104000, "u_2", "bob", "hey", std::nullopt, std::nullopt}};
     f.api.history_page_to_return.has_more = false;
 
-    const auto response = f.handler.handleFetchHistory(make_message("FETCH_HISTORY", {{"peer_id", "u_2"}}), 1);
+    const auto response =
+        f.handler.handleFetchHistory(make_message("FETCH_HISTORY", {{"peer_id", "u_2"}}), 1);
 
     REQUIRE(response.type == "MESSAGE_HISTORY");
     REQUIRE(response.payload["peer_id"] == "u_2");
@@ -221,11 +233,16 @@ TEST_CASE("DMHandler FETCH_HISTORY requires peer_id to be a string") {
 TEST_CASE("DMHandler LIST_DM_CONVERSATIONS returns DM_CONVERSATION_LIST") {
     Fixture f;
     f.identify(1, "alice");
-    f.api.dm_conversations_to_return = {{"u_2", "2026-01-01T00:00:00Z"}};
+    f.api.dm_conversations_to_return = {
+        {"u_2", "bob", "Bobby", std::nullopt, "2026-01-01T00:00:00Z"}};
 
-    const auto response = f.handler.handleListDmConversations(make_message("LIST_DM_CONVERSATIONS"), 1);
+    const auto response =
+        f.handler.handleListDmConversations(make_message("LIST_DM_CONVERSATIONS"), 1);
 
     REQUIRE(response.type == "DM_CONVERSATION_LIST");
     REQUIRE(response.payload["conversations"].size() == 1);
     REQUIRE(response.payload["conversations"][0]["peer_id"] == "u_2");
+    REQUIRE(response.payload["conversations"][0]["username"] == "bob");
+    REQUIRE(response.payload["conversations"][0]["display_name"] == "Bobby");
+    REQUIRE(response.payload["conversations"][0]["avatar_url"].is_null());
 }

@@ -4,6 +4,7 @@ import { db } from "@/db/client";
 import { dmConversations, messages, users } from "@/db/schema";
 
 import { resolveOrCreateDmConversationId } from "./dmConversations";
+import { resolveAvatarUrl, resolveDisplayName } from "../user/profile";
 import { fromChannelWireId, fromUserWireId, toChannelWireId, toUserWireId } from "./wireIds";
 
 export class InvalidReferenceError extends Error {}
@@ -15,6 +16,9 @@ export interface WireMessage {
   user_id: string;
   username: string;
   content: string;
+  // docs/social/friends-dms-design.md §4.5.
+  display_name: string;
+  avatar_url: string | null;
 }
 
 export interface CreateMessageResult {
@@ -150,7 +154,12 @@ export async function getMessages(
       createdAt: messages.createdAt,
       userId: messages.userId,
       content: messages.content,
-      username: users.discordUsername
+      username: users.discordUsername,
+      displayName: users.displayName,
+      discordGlobalName: users.discordGlobalName,
+      customAvatarPath: users.customAvatarPath,
+      discordId: users.discordId,
+      discordAvatarHash: users.discordAvatarHash
     })
     .from(messages)
     .innerJoin(users, eq(messages.userId, users.id))
@@ -170,7 +179,13 @@ export async function getMessages(
       timestamp: toEpochSeconds(row.createdAt),
       user_id: toUserWireId(row.userId),
       username: row.username,
-      content: row.content
+      content: row.content,
+      display_name: resolveDisplayName({
+        displayName: row.displayName,
+        discordGlobalName: row.discordGlobalName,
+        discordUsername: row.username
+      }),
+      avatar_url: resolveAvatarUrl(row)
     })),
     has_more: hasMore
   };

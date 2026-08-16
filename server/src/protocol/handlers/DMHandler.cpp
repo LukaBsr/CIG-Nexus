@@ -81,7 +81,8 @@ bool DMHandler::canSendDm(const session::Session* session, const std::string& pe
         if (peer_session) {
             shares_guild = intersects(session->guild_ids, peer_session->guild_ids);
         } else if (internal_api_client_) {
-            if (const auto peer_guild_ids = internal_api_client_->fetchGuildIdsForUser(peer_user_id)) {
+            if (const auto peer_guild_ids =
+                    internal_api_client_->fetchGuildIdsForUser(peer_user_id)) {
                 shares_guild = intersects(session->guild_ids, *peer_guild_ids);
             }
         }
@@ -169,11 +170,20 @@ Message DMHandler::handleDmSend(const Message& message, int fd) const {
     const std::vector<int> peer_fds = session_manager_->getFdsForUser(peer_id);
     target_fds.insert(target_fds.end(), peer_fds.begin(), peer_fds.end());
     response.target_fds = target_fds;
+    // Revised at implementation (docs/social/friends-dms-design.md §4.5):
+    // the original design shipped DM_MESSAGE with no username at all —
+    // unlike CHAT_MESSAGE/CHANNEL_MESSAGE, which always had one — so a DM
+    // thread couldn't render a sender name without cross-referencing.
+    // Added here alongside display_name/avatar_url for consistency with
+    // the other two live-broadcast message types.
     response.payload = nlohmann::json{{"type", "DM_MESSAGE"},
                                       {"message_id", message_id},
                                       {"timestamp", static_cast<long>(timestamp)},
                                       {"user_id", session->user_id},
-                                      {"content", content}};
+                                      {"username", session->username},
+                                      {"content", content},
+                                      {"display_name", make_optional_string(session->display_name)},
+                                      {"avatar_url", make_optional_string(session->avatar_url)}};
 
     // §3.4/§4.5's Option B, reused directly — fire-and-forget, enqueue
     // after building the response, never block on it.
@@ -210,7 +220,8 @@ Message DMHandler::handleFetchHistory(const Message& message, int fd) const {
     std::optional<int> before_seq;
     if (message.payload.contains("before_seq") && !message.payload["before_seq"].is_null()) {
         if (!message.payload["before_seq"].is_number_integer()) {
-            return makeError("MALFORMED_MESSAGE", "FETCH_HISTORY before_seq must be an integer or null");
+            return makeError("MALFORMED_MESSAGE",
+                             "FETCH_HISTORY before_seq must be an integer or null");
         }
         before_seq = message.payload["before_seq"].get<int>();
     }
@@ -223,7 +234,7 @@ Message DMHandler::handleFetchHistory(const Message& message, int fd) const {
         limit = message.payload["limit"].get<int>();
         if (limit < 1 || limit > kMaxHistoryLimit) {
             return makeError("MALFORMED_MESSAGE", "FETCH_HISTORY limit must be between 1 and " +
-                                                       std::to_string(kMaxHistoryLimit));
+                                                      std::to_string(kMaxHistoryLimit));
         }
     }
 
@@ -231,19 +242,15 @@ Message DMHandler::handleFetchHistory(const Message& message, int fd) const {
         return makeError("INTERNAL_ERROR", "History unavailable");
     }
 
-    const std::optional<http::HistoryPage> page =
-        internal_api_client_->fetchMessages(std::nullopt, peer_id, session->user_id, before_seq, limit);
+    const std::optional<http::HistoryPage> page = internal_api_client_->fetchMessages(
+        std::nullopt, peer_id, session->user_id, before_seq, limit);
     if (!page) {
         return makeError("INTERNAL_ERROR", "Failed to fetch message history");
     }
 
     nlohmann::json messages_json = nlohmann::json::array();
     for (const auto& m : page->messages) {
-        messages_json.push_back(nlohmann::json{{"message_id", m.message_id},
-                                               {"timestamp", m.timestamp},
-                                               {"user_id", m.user_id},
-                                               {"username", m.username},
-                                               {"content", m.content}});
+        messages_json.push_back(make_history_message(m));
     }
 
     Message response;
@@ -282,12 +289,17 @@ Message DMHandler::handleListDmConversations(const Message& message, int fd) con
     for (const auto& c : *conversations) {
         conversations_json.push_back(nlohmann::json{
             {"peer_id", c.peer_id},
-            {"last_message_at", c.last_message_at.has_value() ? nlohmann::json(*c.last_message_at) : nullptr}});
+            {"username", c.username},
+            {"display_name", make_optional_string(c.display_name)},
+            {"avatar_url", make_optional_string(c.avatar_url)},
+            {"last_message_at",
+             c.last_message_at.has_value() ? nlohmann::json(*c.last_message_at) : nullptr}});
     }
 
     Message response;
     response.type = "DM_CONVERSATION_LIST";
-    response.payload = nlohmann::json{{"type", "DM_CONVERSATION_LIST"}, {"conversations", conversations_json}};
+    response.payload =
+        nlohmann::json{{"type", "DM_CONVERSATION_LIST"}, {"conversations", conversations_json}};
     return response;
 }
 

@@ -47,7 +47,8 @@ TEST_CASE("InviteHandler CREATE_INVITE creates an invite for an officer") {
     f.api.create_invite_returns_code = "abc123";
 
     const auto response = f.handler.handleCreateInvite(
-        make_message("CREATE_INVITE", {{"guild_id", "g_1"}, {"max_uses", nullptr}, {"expires_in_seconds", nullptr}}),
+        make_message("CREATE_INVITE",
+                     {{"guild_id", "g_1"}, {"max_uses", nullptr}, {"expires_in_seconds", nullptr}}),
         1);
 
     REQUIRE(response.type == "INVITE_CREATED");
@@ -106,7 +107,8 @@ TEST_CASE("InviteHandler LIST_INVITES returns the invites for an officer") {
     session::Session& owner = f.identify(1, "owner");
     f.guilds.upsertGuild("g_1", "First", owner.user_id);
     f.guilds.setMemberRank("g_1", owner.user_id, guild::kOwnerRank);
-    f.api.invites_to_return = {{"abc", std::nullopt, 2, std::nullopt, std::nullopt, "2026-01-01T00:00:00Z"}};
+    f.api.invites_to_return = {
+        {"abc", std::nullopt, 2, std::nullopt, std::nullopt, "2026-01-01T00:00:00Z"}};
 
     const auto response =
         f.handler.handleListInvites(make_message("LIST_INVITES", {{"guild_id", "g_1"}}), 1);
@@ -193,7 +195,8 @@ TEST_CASE("InviteHandler JOIN_VIA_INVITE creates a join request for an applicati
     f.guilds.upsertGuild("g_1", "First", "u_owner", guild::GuildVisibility::APPLICATION);
     f.guilds.setMemberRank("g_1", officer.user_id, guild::kOfficerRank);
     f.sessions.addGuildMembership(2, "g_1");
-    f.api.redeem_invite_returns = {true, true, "g_1", std::nullopt, http::RedeemInviteError::NOT_FOUND};
+    f.api.redeem_invite_returns = {true, true, "g_1", std::nullopt,
+                                   http::RedeemInviteError::NOT_FOUND};
 
     const auto responses =
         f.handler.handleJoinViaInvite(make_message("JOIN_VIA_INVITE", {{"code", "abc123"}}), 1);

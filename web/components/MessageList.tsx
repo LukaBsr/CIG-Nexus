@@ -1,7 +1,9 @@
-import type { ChannelMessage, ChatMessage } from "@/lib/types";
+import type { ChannelMessage, ChatMessage, DmMessage } from "@/lib/types";
+
+import { Avatar } from "./Avatar";
 
 interface MessageListProps {
-  messages: ChatMessage[] | ChannelMessage[];
+  messages: ChatMessage[] | ChannelMessage[] | DmMessage[];
   emptyText: string;
 }
 
@@ -24,7 +26,7 @@ export function MessageList({ messages, emptyText }: MessageListProps) {
 }
 
 interface MessageListItemProps {
-  message: ChatMessage | ChannelMessage;
+  message: ChatMessage | ChannelMessage | DmMessage;
 }
 
 // The border-l accent (revealed on hover) is the subject-specific detail
@@ -33,9 +35,10 @@ interface MessageListItemProps {
 function MessageListItem({ message }: MessageListItemProps) {
   return (
     <li className="flex gap-3 border-l-2 border-transparent px-3 py-1.5 transition-colors hover:border-teal/40 hover:bg-surface/60">
+      <Avatar url={message.avatarUrl} name={message.displayName ?? message.username} size={28} className="mt-0.5" />
       <div className="min-w-0 flex-1">
         <div className="flex items-baseline gap-2 font-mono text-xs text-ivory/50">
-          <span className="font-semibold text-violet">{message.username}</span>
+          <span className="font-semibold text-violet">{message.displayName ?? message.username}</span>
           <span>{new Date(message.timestamp * 1000).toLocaleTimeString()}</span>
         </div>
         <div className="mt-0.5 break-words font-sans text-sm text-ivory">{message.content}</div>

@@ -48,6 +48,8 @@ describe("GET /internal/dm-conversations", () => {
     const response = await GET(request);
     expect(response.status).toBe(200);
     const body = (await response.json()) as { conversations: { peer_id: string }[] };
-    expect(body.conversations).toEqual([{ peer_id: toUserWireId(b.id), last_message_at: null }]);
+    expect(body.conversations).toEqual([
+      { peer_id: toUserWireId(b.id), username: "user_2", display_name: "user_2", avatar_url: null, last_message_at: null }
+    ]);
   });
 });

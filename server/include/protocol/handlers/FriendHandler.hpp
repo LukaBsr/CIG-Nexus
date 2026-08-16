@@ -52,8 +52,9 @@ class FriendHandler {
     // SendFriendRequestResult to the appropriate error, or to the
     // FRIEND_REQUEST_SENT+RECEIVED / FRIEND_ADDED+FRIEND_ADDED response
     // pair, targeted at the other party via getFdsForUser.
-    std::vector<Message> buildSendFriendRequestResponses(const http::SendFriendRequestResult& result,
-                                                          const session::Session* session) const;
+    std::vector<Message>
+    buildSendFriendRequestResponses(const http::SendFriendRequestResult& result,
+                                    const session::Session* session) const;
 
     // docs/social/friends-dms-design.md §3.3: keeps the in-memory
     // friend_ids cache (every connection of both accounts) in sync with a
@@ -61,7 +62,8 @@ class FriendHandler {
     // BlockHandler already applies to blocked_user_ids — mirrors
     // APPROVE_JOIN_REQUEST's "loop getFdsForUser, mutate each" shape,
     // just applied to both parties instead of one.
-    void updateFriendIdsForBothParties(const std::string& user_id_a, const std::string& user_id_b, bool added) const;
+    void updateFriendIdsForBothParties(const std::string& user_id_a, const std::string& user_id_b,
+                                       bool added) const;
 
     session::SessionManager* session_manager_ = nullptr;
     http::InternalApiClient* internal_api_client_ = nullptr;
