@@ -1,10 +1,17 @@
 # Guild Invites, Roster, Presence, and Message Persistence — Design Document
 
-**Status: design, not implemented.** This is a planning document only.
-Nothing described here has been built. Do not start implementation against
-it until it has been reviewed and the arbitration points flagged throughout
-(search for **`ARBITRATION`**) and open questions (search for
-**`OPEN QUESTION`**) have been resolved.
+**Status: implemented.** All four features have shipped: guild invites,
+visibility, and join requests (§1 — `bb88c82`), rank-based roster/roles (§2 —
+`f125db0`, with the `Session.guild_ids` hydration fix from §1.10 landing
+separately as `d76d992`), presence (§3 — `b163379`, built on the dispatcher's
+`std::vector<Message>` widening from §1.9's arbitration, `2f99def`), and
+message persistence (§4 — `1453be6`). This document is kept as a design
+record — the reasoning and arbitration below reflect decisions made during
+planning, not a changelog of the shipped code. The one genuine exception is
+§3.3: only the cheap first-pass mitigation (`SO_KEEPALIVE`) shipped
+(`server/src/TcpListener.cpp`); the full application-level heartbeat
+discussed there was never built, per that section's own "ship without
+solving this fully" recommendation — still accurate as written.
 
 ## Scope
 
@@ -867,6 +874,11 @@ reasonable OS-level timeout as a cheap first pass, explicitly documented as
 imperfect (a user could show "online" for up to that timeout after actually
 going dark), and revisit a real heartbeat if that proves to matter in
 practice rather than building it preemptively.
+
+**Implemented as recommended**: `SO_KEEPALIVE` is enabled on accepted
+sockets (`server/src/TcpListener.cpp`). The application-level heartbeat
+alternative above was not built — still genuinely open, not just
+theoretically so.
 
 ### 3.4 `ARBITRATION`: lobby-wide vs. per-guild-scoped broadcast
 

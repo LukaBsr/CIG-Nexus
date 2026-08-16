@@ -1,5 +1,43 @@
 # Changelog
 
+## v0.7.0
+
+**Guilds**
+- Guild invites: creation (optional `max_uses`/`expires_in_seconds`), redemption (race-safe against concurrent `max_uses`-limited use), listing, and revocation
+- Guild visibility (`open`/`application`/`private`) and the join-request flow `application` guilds require (`REQUEST_JOIN`, `LIST_JOIN_REQUESTS`, `APPROVE_JOIN_REQUEST`/`REJECT_JOIN_REQUEST`)
+- Rank-based guild roles (`role_rank`, replacing the old binary owner/member column) with three tiers — Crew, Officer, Captain — and per-guild theme-resolved display labels; member roster exposed via `LIST_MEMBERS`
+- Dispatcher widened to return `std::vector<Message>`, so a single handler action (e.g. approving a join request) can notify two different recipients with two different payloads
+- Density/polish pass on the guild view UI, wiring up presence, roster, and join-requests end to end
+
+**Presence**
+- Online/offline presence tracking, derived from per-`user_id` connection counts (0→1/1→0 transitions), broadcast lobby-wide as `PRESENCE_UPDATE`
+- `SO_KEEPALIVE` enabled on accepted sockets as a first-pass mitigation for half-open connections
+- A repeated-reconnect regression test; a connection-count leak was also found and is tracked, not yet reliably reproducible (`docs/known-issues.md`)
+
+**Message persistence**
+- Chat and channel messages are now durable in Postgres instead of broadcast-and-forget; `FETCH_HISTORY` retrieves paginated history (keyset, not offset-based)
+- `message_id` stays C++-assigned (not a Postgres sequence) but is now seeded at server startup from the durable high-water mark, so ids stay stable across restarts
+
+**Friends, blocking, DMs, profiles**
+- Friend requests (direct or by shareable code), accept/reject/cancel/remove, and a friends list
+- Blocking, which silently drops any existing friendship or pending request between the pair
+- 1:1 direct messages with history retrieval
+- Customizable profiles (`display_name`, `avatar_url`), wired into every roster/message/list response that already resolved `username`
+
+**Settings & appearance**
+- Settings modal with a Profile section (display name, avatar) and a Blocked Users section
+- Appearance section with two themes (`abyss` default, `ember`), a `data-theme` token system, and account-synced preference (`PATCH /api/user/appearance`, pulled on OAuth login)
+
+**Fixes**
+- `Session.guild_ids` now hydrates from durable membership at `IDENTIFY` instead of starting empty — required for `private` guild filtering to work, and incidentally improves reconnect UX for members of `open`/`application` guilds too
+- Channel creation and invite creation gated on officer rank, not raw ownership
+- Two missing Drizzle migration journal entries restored
+- Connected-status indicator dot now stays green across both themes
+
+**Docs**
+- `docs/` design records reorganized into topic subfolders (`guilds/`, `social/`, `settings/`)
+- New design docs: guild invites/roster/presence/message-persistence, friends/blocking/DMs/profiles, settings/appearance
+
 ## v0.6.0
 
 **Auth**

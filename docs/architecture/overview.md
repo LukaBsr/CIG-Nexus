@@ -4,11 +4,17 @@ This document describes the architecture as it exists today in the repository.
 
 ## System Overview
 
-The application is currently composed of three active runtime pieces:
+The application is currently composed of three active runtime services, plus
+two supporting data stores:
 
-- **Web client** built with Next.js
+- **Web client** built with Next.js — also the only piece with direct
+  Postgres/Redis access, and the host of the Discord OAuth2 login flow (see
+  [Internal API](#internal-api-next-js-owns-postgres) below)
 - **Gateway** built with Node.js and TypeScript
 - **Authoritative server** built with C++
+- **PostgreSQL** — durable storage for users, sessions, guilds/channels,
+  memberships, messages, friends, blocks, and DM conversations
+- **Redis** — OAuth rate limiting and the session-revocation cache
 
 ```text
 Browser (Next.js)
@@ -22,6 +28,9 @@ Gateway (Node.js + TypeScript)
 Authoritative Server (C++)
 ```
 
+The diagram above is the live chat-message path only. Durable state doesn't
+flow through it — see [Internal API](#internal-api-next-js-owns-postgres).
+
 ## Current Separation of Concerns
 
 ### Web Client
@@ -30,14 +39,18 @@ Responsible for:
 
 - opening a browser WebSocket connection
 - sending `HELLO` on connect
-- sending `IDENTIFY` after `WELCOME` (currently default username)
-- sending `CHAT_MESSAGE` payloads from the UI
-- displaying connection status and received messages
+- sending `IDENTIFY` after `WELCOME` with a signed session token obtained via
+  Discord OAuth2 login — not a chosen username
+- sending `CHAT_MESSAGE`/`CHANNEL_MESSAGE` payloads and guild/friends/
+  blocking/DM actions from the UI
+- displaying connection status, presence, and received messages
 
 Not responsible for:
 
 - protocol validation
-- authentication
+- issuing or verifying its own session token — Discord OAuth2 login and JWT
+  issuance happen in Next.js's separate `/api/auth/*` routes, not in the
+  WebSocket client logic itself
 - message routing
 - server-side state decisions
 
@@ -66,10 +79,43 @@ Responsible for:
 - parsing framed JSON messages
 - validating protocol payloads
 - dispatching handlers
-- creating in-memory identity sessions on `IDENTIFY`
+- creating in-memory identity sessions on `IDENTIFY`, authenticated via a
+  signed (RS256) session token rather than a raw username
 - routing responses by semantic scope (`DIRECT`, `BROADCAST`, or `TARGETED`)
-- broadcasting valid chat messages to all connected clients
+- broadcasting valid chat messages to all connected clients, and persisting
+  chat/channel messages with history retrieval (`FETCH_HISTORY`)
 - managing the guild/channel catalog (`GuildManager`) and per-connection guild membership / active channel state (`SessionManager`)
+- guild invites, visibility (open/application/private), join requests, and
+  rank-based roles (Crew/Officer/Captain)
+- tracking online/offline presence per user
+- friends, blocking, and direct messages
+
+## Internal API: Next.js Owns Postgres
+
+A fourth boundary exists that the diagram above doesn't show, since it isn't
+part of the live chat-message path: **the C++ server never opens a database
+connection itself.** Durable state lives in PostgreSQL, and Postgres is only
+ever reached through Next.js's internal-only HTTP API
+(`web/app/internal/*`), isolated onto a second, unpublished port not exposed
+outside the Docker network (`docs/security-audit.md`).
+
+```text
+Server (C++)  --  HTTP, shared-secret authenticated  -->  Next.js /internal/*  -->  PostgreSQL
+```
+
+`GuildManager` (and the equivalent in-process state for friends/blocks/DM
+conversations) holds an in-memory, write-through cache: reads are served
+from memory on hot, frequent paths (e.g. every `CREATE_GUILD`), while writes
+go to Next.js's internal API first and only update the in-memory cache on
+success. Cold, infrequent, UI-driven reads (e.g. `LIST_MEMBERS`) skip the
+cache entirely and call the internal API live instead. See
+`docs/auth/discord-design.md` §8.1 for the pattern's original design and
+`docs/guilds/social-presence-design.md` §2.3 for the reasoning behind which
+reads get cached and which don't.
+
+Redis is used by the Next.js side only — OAuth rate limiting (an atomic
+sliding-window Lua script) and the session-revocation cache — the C++
+server has no direct dependency on it.
 
 ## Current Implemented Flow
 
@@ -83,9 +129,13 @@ Responsible for:
 
 ### Identity
 
-1. After `WELCOME`, the client sends `IDENTIFY` with a username.
-2. The server validates username constraints.
-3. The server creates a session for that socket.
+1. After `WELCOME`, the client sends `IDENTIFY` with a signed session token
+   (a short-lived RS256 JWT obtained from Discord OAuth2 login via Next.js's
+   `/api/auth/session-token`).
+2. The server verifies the token's signature and expiry.
+3. On success, the server creates a session for that socket, hydrating
+   profile fields (`display_name`/`avatar_url`) and guild membership from
+   Next.js's internal API.
 4. The server returns `IDENTIFIED` with `user_id` and `username`.
 
 ### Chat
@@ -139,24 +189,25 @@ This topology is also represented in the root `docker-compose.yml`.
 
 Implemented:
 
-- browser chat UI
+- browser chat UI, Discord OAuth2 login
 - gateway transport bridge
 - TCP server connection tracking
 - `HELLO` / `WELCOME`
-- `IDENTIFY` / `IDENTIFIED`
-- `CHAT_MESSAGE` validation and normalization
-- in-memory session manager keyed by socket fd
-- broadcast to connected clients
+- session-token `IDENTIFY` / `IDENTIFIED`
+- `CHAT_MESSAGE`/`CHANNEL_MESSAGE` validation, normalization, and persistence with history retrieval
+- in-memory session manager keyed by socket fd, backed by Postgres via Next.js's internal API (see [Internal API](#internal-api-next-js-owns-postgres))
+- broadcast/targeted delivery to connected clients
 - guild/channel lifecycle (create, list, join, leave, delete) and channel messaging, with `Scope::TARGETED` delivery
+- guild invites, visibility (open/application/private), join requests, and rank-based roles/roster
+- online/offline presence tracking
+- friends, blocking, and direct messages
 
 Not implemented yet:
 
-- authentication
-- persistence for sessions/users across process restarts
-- persistence layer
-- native WebSocket support in the C++ server
+- native WebSocket support in the C++ server (the gateway remains the WS↔TCP bridge)
 - production-grade scalability and hardening
-- guild privacy and channel-creation permission delegation (see [../guilds/design.md](../guilds/design.md), "Deferred: Guild Privacy" and "Future Permission Hook")
+- a fully general, configurable permission system beyond the three fixed guild roles (see [../guilds/social-presence-design.md](../guilds/social-presence-design.md) §2)
+- functional voice channels (metadata-only today, see [../guilds/design.md](../guilds/design.md))
 
 ## Desktop Client Status
 
@@ -182,3 +233,6 @@ Desktop integration is not the primary active path at this stage.
 - See [../../server/README.md](../../server/README.md) for backend implementation details.
 - See [gateway-transport.md](gateway-transport.md) for the gateway's transport contract.
 - See [../guilds/design.md](../guilds/design.md) for the guilds/channels feature's design rationale.
+- See [../guilds/social-presence-design.md](../guilds/social-presence-design.md) for guild invites, roster/roles, presence, and message persistence.
+- See [../auth/discord-design.md](../auth/discord-design.md) for the Discord OAuth2 + Postgres persistence design, including the internal-API write-through cache pattern.
+- See [../social/friends-dms-design.md](../social/friends-dms-design.md) for friends, blocking, direct messages, and profiles.
