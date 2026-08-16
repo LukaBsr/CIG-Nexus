@@ -82,7 +82,8 @@ class FakeInternalApiClient : public http::InternalApiClient {
         if (fail_create_message) {
             return false;
         }
-        created_messages.push_back(http::WireMessage{seq, channel_id, 0, user_id, "", content});
+        created_messages.push_back(
+            http::WireMessage{seq, channel_id, 0, user_id, "", content, std::nullopt, std::nullopt});
         last_created_dm_peer_id = dm_peer_id;
         return true;
     }
@@ -220,6 +221,16 @@ class FakeInternalApiClient : public http::InternalApiClient {
         return blocks_to_return;
     }
 
+    std::optional<http::WireUserProfile> fetchUserProfile(const std::string& user_id) override {
+        if (fail_fetch_user_profile) {
+            return std::nullopt;
+        }
+        if (user_profile_to_return) {
+            return user_profile_to_return;
+        }
+        return http::WireUserProfile{user_id, "fake-username", std::nullopt, std::nullopt};
+    }
+
     // Test control: flip one of these to exercise a handler's "internal API
     // call failed" path (should become INTERNAL_ERROR without mutating any
     // local cache/session state).
@@ -249,6 +260,7 @@ class FakeInternalApiClient : public http::InternalApiClient {
     bool fail_block_user = false;
     bool fail_unblock_user = false;
     bool fail_fetch_blocks = false;
+    bool fail_fetch_user_profile = false;
     bool fail_fetch_dm_conversations = false;
     bool fail_fetch_guild_ids_for_user = false;
     http::Catalog catalog_to_return;
@@ -280,6 +292,10 @@ class FakeInternalApiClient : public http::InternalApiClient {
     http::FriendRequestList friend_requests_to_return;
     std::string friend_code_to_return = "fake-friend-code";
     std::vector<http::WireBlock> blocks_to_return;
+    // Unset = fetchUserProfile() synthesizes a minimal fake profile from
+    // the requested user_id, so existing IDENTIFY-flow tests that don't
+    // care about display_name/avatar_url don't need to configure this.
+    std::optional<http::WireUserProfile> user_profile_to_return;
 
   private:
     int next_guild_id_ = 1;

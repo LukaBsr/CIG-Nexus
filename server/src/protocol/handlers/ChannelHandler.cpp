@@ -368,7 +368,9 @@ Message ChannelHandler::handleChannelMessage(const Message& message, int fd) con
                                       {"timestamp", static_cast<long>(timestamp)},
                                       {"user_id", session->user_id},
                                       {"username", session->username},
-                                      {"content", content}};
+                                      {"content", content},
+                                      {"display_name", make_optional_string(session->display_name)},
+                                      {"avatar_url", make_optional_string(session->avatar_url)}};
 
     // docs/guilds/social-presence-design.md §4.5: fire-and-forget — enqueue after
     // building the broadcast response, never block on it.
@@ -455,11 +457,7 @@ Message ChannelHandler::handleFetchHistory(const Message& message, int fd) const
 
     nlohmann::json messages_json = nlohmann::json::array();
     for (const auto& m : page->messages) {
-        messages_json.push_back(nlohmann::json{{"message_id", m.message_id},
-                                               {"timestamp", m.timestamp},
-                                               {"user_id", m.user_id},
-                                               {"username", m.username},
-                                               {"content", m.content}});
+        messages_json.push_back(make_history_message(m));
     }
 
     Message response;

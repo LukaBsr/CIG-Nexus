@@ -192,3 +192,74 @@ export function createInvite(
     expires_in_seconds: expiresInSeconds
   });
 }
+
+// docs/social/friends-dms-design.md §1.5 — friends are not guild-scoped.
+export function sendFriendRequest(userId: string): void {
+  send({ type: "SEND_FRIEND_REQUEST", user_id: userId });
+}
+
+export function addFriendByCode(code: string): void {
+  send({ type: "ADD_FRIEND_BY_CODE", code: code });
+}
+
+export function acceptFriendRequest(userId: string): void {
+  send({ type: "ACCEPT_FRIEND_REQUEST", user_id: userId });
+}
+
+export function rejectFriendRequest(userId: string): void {
+  send({ type: "REJECT_FRIEND_REQUEST", user_id: userId });
+}
+
+export function cancelFriendRequest(userId: string): void {
+  send({ type: "CANCEL_FRIEND_REQUEST", user_id: userId });
+}
+
+export function removeFriend(userId: string): void {
+  send({ type: "REMOVE_FRIEND", user_id: userId });
+}
+
+export function listFriends(): void {
+  send({ type: "LIST_FRIENDS" });
+}
+
+export function listFriendRequests(): void {
+  send({ type: "LIST_FRIEND_REQUESTS" });
+}
+
+export function fetchFriendCode(): void {
+  send({ type: "FETCH_FRIEND_CODE" });
+}
+
+export function regenerateFriendCode(): void {
+  send({ type: "REGENERATE_FRIEND_CODE" });
+}
+
+// docs/social/friends-dms-design.md §2.7.
+export function blockUser(userId: string): void {
+  send({ type: "BLOCK_USER", user_id: userId });
+}
+
+export function unblockUser(userId: string): void {
+  send({ type: "UNBLOCK_USER", user_id: userId });
+}
+
+export function listBlocks(): void {
+  send({ type: "LIST_BLOCKS" });
+}
+
+// docs/social/friends-dms-design.md §3.5 — addressed by the peer's
+// user_id, never a conversation id (the server resolves/creates the
+// conversation internally).
+export function sendDm(userId: string, content: string): void {
+  send({ type: "DM_SEND", user_id: userId, content: content });
+}
+
+// Mirrors FETCH_HISTORY's channel_id form but with peer_id instead —
+// mutually exclusive on the wire, never sent together.
+export function fetchDmHistory(peerId: string, beforeSeq: number | null, limit: number): void {
+  send({ type: "FETCH_HISTORY", peer_id: peerId, before_seq: beforeSeq, limit: limit });
+}
+
+export function listDmConversations(): void {
+  send({ type: "LIST_DM_CONVERSATIONS" });
+}

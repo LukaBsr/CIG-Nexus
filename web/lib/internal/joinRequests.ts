@@ -5,12 +5,16 @@ import { guildJoinRequests, guildMemberships, guilds, users } from "@/db/schema"
 
 import { InvalidReferenceError } from "./catalog";
 import { kMemberRank } from "./roleThemes";
+import { resolveAvatarUrl, resolveDisplayName } from "../user/profile";
 import { fromGuildWireId, fromUserWireId, toUserWireId } from "./wireIds";
 
 export interface WireJoinRequest {
   user_id: string;
   username: string;
   requested_at: string;
+  // docs/social/friends-dms-design.md §4.5.
+  display_name: string;
+  avatar_url: string | null;
 }
 
 export type CreateJoinRequestResult = "created" | "already_pending";
@@ -54,7 +58,12 @@ export async function listJoinRequests(guildWireId: string): Promise<WireJoinReq
     .select({
       userId: guildJoinRequests.userId,
       username: users.discordUsername,
-      requestedAt: guildJoinRequests.requestedAt
+      requestedAt: guildJoinRequests.requestedAt,
+      displayName: users.displayName,
+      discordGlobalName: users.discordGlobalName,
+      customAvatarPath: users.customAvatarPath,
+      discordId: users.discordId,
+      discordAvatarHash: users.discordAvatarHash
     })
     .from(guildJoinRequests)
     .innerJoin(users, eq(guildJoinRequests.userId, users.id))
@@ -63,7 +72,9 @@ export async function listJoinRequests(guildWireId: string): Promise<WireJoinReq
   return rows.map((r) => ({
     user_id: toUserWireId(r.userId),
     username: r.username,
-    requested_at: r.requestedAt.toISOString()
+    requested_at: r.requestedAt.toISOString(),
+    display_name: resolveDisplayName({ displayName: r.displayName, discordGlobalName: r.discordGlobalName, discordUsername: r.username }),
+    avatar_url: resolveAvatarUrl(r)
   }));
 }
 

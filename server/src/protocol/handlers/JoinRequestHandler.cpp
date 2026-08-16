@@ -161,8 +161,11 @@ Message JoinRequestHandler::handleListJoinRequests(const Message& message, int f
 
     nlohmann::json requests_json = nlohmann::json::array();
     for (const auto& r : *requests) {
-        requests_json.push_back(nlohmann::json{
-            {"user_id", r.user_id}, {"username", r.username}, {"requested_at", r.requested_at}});
+        requests_json.push_back(nlohmann::json{{"user_id", r.user_id},
+                                               {"username", r.username},
+                                               {"requested_at", r.requested_at},
+                                               {"display_name", make_optional_string(r.display_name)},
+                                               {"avatar_url", make_optional_string(r.avatar_url)}});
     }
 
     Message response;

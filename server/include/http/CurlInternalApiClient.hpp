@@ -77,6 +77,8 @@ class CurlInternalApiClient : public InternalApiClient {
     bool unblockUser(const std::string& blocker_id, const std::string& blocked_id) override;
     std::optional<std::vector<WireBlock>> fetchBlocks(const std::string& user_id) override;
 
+    std::optional<WireUserProfile> fetchUserProfile(const std::string& user_id) override;
+
   private:
     struct HttpResponse {
         long status = 0;

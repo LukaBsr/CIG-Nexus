@@ -1,11 +1,14 @@
 import { OFFICER_RANK, OWNER_RANK } from "@/lib/roles";
 import type { Member } from "@/lib/types";
 
+import { Avatar } from "./Avatar";
 import { PresenceDot } from "./PresenceDot";
 
 interface MemberListProps {
   members: Member[];
   onlineUserIds: Set<string>;
+  myUserId: string | null;
+  onBlock: (userId: string) => void;
 }
 
 function roleLabelColor(roleRank: number): string {
@@ -18,7 +21,7 @@ function roleLabelColor(roleRank: number): string {
 // (fetched for permission gating, MEMBER_LIST/MEMBER_ROLE_UPDATED) but never
 // had a visible place to live until this pass. Online-first, then rank,
 // then name, matching the conventional "who's actually here" ordering.
-export function MemberList({ members, onlineUserIds }: MemberListProps) {
+export function MemberList({ members, onlineUserIds, myUserId, onBlock }: MemberListProps) {
   const sorted = [...members].sort((a, b) => {
     const aOnline = onlineUserIds.has(a.userId);
     const bOnline = onlineUserIds.has(b.userId);
@@ -39,12 +42,23 @@ export function MemberList({ members, onlineUserIds }: MemberListProps) {
             className="flex items-center gap-2 rounded-md px-1.5 py-1 transition-colors hover:bg-surface/60"
           >
             <PresenceDot online={onlineUserIds.has(m.userId)} />
+            <Avatar url={m.avatarUrl} name={m.displayName ?? m.username} size={20} />
             <span className="min-w-0 flex-1 truncate font-mono text-sm text-ivory/90">
-              {m.username}
+              {m.displayName ?? m.username}
             </span>
             <span className={`shrink-0 font-mono text-[10px] uppercase ${roleLabelColor(m.roleRank)}`}>
               {m.roleLabel}
             </span>
+            {m.userId !== myUserId && (
+              <button
+                onClick={() => onBlock(m.userId)}
+                aria-label={`Block ${m.displayName ?? m.username}`}
+                title="Block"
+                className="shrink-0 font-mono text-xs text-ivory/25 transition-colors hover:text-red-400"
+              >
+                &times;
+              </button>
+            )}
           </li>
         ))}
       </ul>

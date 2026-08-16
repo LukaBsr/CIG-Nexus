@@ -558,7 +558,7 @@ TEST_CASE("Server excludes a blocked user's connections from the blocker's PRESE
     REQUIRE(bob_online_seen_by_carol["user_id"] == "u_bob"); // sanity: carol sees unrelated presence normally
 
     // alice has blocked bob — hydrated at her IDENTIFY below.
-    api_ptr->blocks_to_return = {{"u_bob", "bob", "2026-01-01T00:00:00Z"}};
+    api_ptr->blocks_to_return = {{"u_bob", "bob", "2026-01-01T00:00:00Z", std::nullopt, std::nullopt}};
 
     int fd_alice = tcp_connect(server.bound_port());
     REQUIRE(fd_alice >= 0);

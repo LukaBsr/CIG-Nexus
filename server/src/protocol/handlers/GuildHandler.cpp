@@ -401,7 +401,9 @@ Message GuildHandler::handleListMembers(const Message& message, int fd) const {
                                               {"username", m.username},
                                               {"role_rank", m.role_rank},
                                               {"role_label", m.role_label},
-                                              {"joined_at", m.joined_at}});
+                                              {"joined_at", m.joined_at},
+                                              {"display_name", make_optional_string(m.display_name)},
+                                              {"avatar_url", make_optional_string(m.avatar_url)}});
     }
 
     Message response;

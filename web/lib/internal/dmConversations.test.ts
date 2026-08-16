@@ -78,7 +78,9 @@ describe("listDmConversations", () => {
     await resolveOrCreateDmConversationId(a.id, b.id);
 
     const conversations = await listDmConversations(toUserWireId(a.id));
-    expect(conversations).toEqual([{ peer_id: toUserWireId(b.id), last_message_at: null }]);
+    expect(conversations).toEqual([
+      { peer_id: toUserWireId(b.id), username: "user_2", display_name: "user_2", avatar_url: null, last_message_at: null }
+    ]);
   });
 
   it("reports last_message_at from the most recent message", async () => {

@@ -105,6 +105,7 @@ class RecordingInternalApiClient : public http::InternalApiClient {
     bool blockUser(const std::string&, const std::string&) override { return false; }
     bool unblockUser(const std::string&, const std::string&) override { return false; }
     std::optional<std::vector<http::WireBlock>> fetchBlocks(const std::string&) override { return std::nullopt; }
+    std::optional<http::WireUserProfile> fetchUserProfile(const std::string&) override { return std::nullopt; }
 
     bool createMessage(const std::optional<std::string>& channel_id, const std::optional<std::string>& dm_peer_id,
                        const std::string& user_id, const std::string& content, int seq) override {

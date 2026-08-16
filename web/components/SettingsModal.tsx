@@ -3,10 +3,13 @@
 import { useEffect, useState } from "react";
 
 import { SETTINGS_SECTIONS } from "@/lib/settings/sections";
+import type { Block } from "@/lib/types";
 
 interface SettingsModalProps {
   userId: string | null;
   onClose: () => void;
+  blockedUsers: Block[];
+  onUnblock: (userId: string) => void;
 }
 
 // docs/settings/appearance-design.md §1.1: a centered overlay, not a
@@ -14,7 +17,7 @@ interface SettingsModalProps {
 // state underneath, not a peer view of Lobby/Guilds. §1.2's section rail
 // is built as a list even with one entry today (Appearance) so a second
 // section is additive, never a rearchitect.
-export function SettingsModal({ userId, onClose }: SettingsModalProps) {
+export function SettingsModal({ userId, onClose, blockedUsers, onUnblock }: SettingsModalProps) {
   const [activeSectionId, setActiveSectionId] = useState(SETTINGS_SECTIONS[0].id);
 
   useEffect(() => {
@@ -73,7 +76,7 @@ export function SettingsModal({ userId, onClose }: SettingsModalProps) {
               &times;
             </button>
           </div>
-          <ActiveComponent userId={userId} />
+          <ActiveComponent userId={userId} blockedUsers={blockedUsers} onUnblock={onUnblock} />
         </div>
       </div>
     </div>

@@ -125,6 +125,16 @@ Message IdentifyHandler::handle(const Message& message, int fd) {
                 session.friend_ids.push_back(f.user_id);
             }
         }
+
+        // §4.5, revised at implementation: display_name/avatar_url,
+        // hydrated once here for the reasons WireUserProfile's comment
+        // explains — a failed/unset call just leaves both unset, degrading
+        // to "no display_name/avatar_url on this session's own sent
+        // messages" rather than failing IDENTIFY.
+        if (const auto profile = internal_api_client_->fetchUserProfile(session.user_id)) {
+            session.display_name = profile->display_name;
+            session.avatar_url = profile->avatar_url;
+        }
     }
 
     Message response;

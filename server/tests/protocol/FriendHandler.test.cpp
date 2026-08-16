@@ -264,20 +264,22 @@ TEST_CASE("FriendHandler REMOVE_FRIEND returns FRIEND_NOT_FOUND on miss") {
 TEST_CASE("FriendHandler LIST_FRIENDS returns FRIEND_LIST") {
     Fixture f;
     f.identify(1, "alice");
-    f.api.friends_to_return = {{"u_2", "bob"}};
+    f.api.friends_to_return = {{"u_2", "bob", "Bobby", std::nullopt}};
 
     const auto response = f.handler.handleListFriends(make_message("LIST_FRIENDS"), 1);
 
     REQUIRE(response.type == "FRIEND_LIST");
     REQUIRE(response.payload["friends"].size() == 1);
     REQUIRE(response.payload["friends"][0]["user_id"] == "u_2");
+    REQUIRE(response.payload["friends"][0]["display_name"] == "Bobby");
+    REQUIRE(response.payload["friends"][0]["avatar_url"].is_null());
 }
 
 TEST_CASE("FriendHandler LIST_FRIEND_REQUESTS separates incoming/outgoing") {
     Fixture f;
     f.identify(1, "alice");
-    f.api.friend_requests_to_return.incoming = {{"u_3", "carol", "2026-01-01T00:00:00Z"}};
-    f.api.friend_requests_to_return.outgoing = {{"u_2", "bob", "2026-01-01T00:00:00Z"}};
+    f.api.friend_requests_to_return.incoming = {{"u_3", "carol", "2026-01-01T00:00:00Z", std::nullopt, std::nullopt}};
+    f.api.friend_requests_to_return.outgoing = {{"u_2", "bob", "2026-01-01T00:00:00Z", std::nullopt, std::nullopt}};
 
     const auto response = f.handler.handleListFriendRequests(make_message("LIST_FRIEND_REQUESTS"), 1);
 

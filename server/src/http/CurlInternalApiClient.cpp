@@ -19,6 +19,21 @@ size_t writeCallback(char* ptr, size_t size, size_t nmemb, void* userdata) {
     return size * nmemb;
 }
 
+// docs/social/friends-dms-design.md §4.5: display_name/avatar_url are
+// optional on every roster/message/list entry that carries them — absent
+// (not just null) is tolerated the same way last_message_at/dm_seq already
+// are elsewhere in this file, since not every internal API response is
+// guaranteed to populate them.
+void parseProfileFields(const nlohmann::json& json, std::optional<std::string>& display_name,
+                        std::optional<std::string>& avatar_url) {
+    if (json.contains("display_name") && json["display_name"].is_string()) {
+        display_name = json["display_name"].get<std::string>();
+    }
+    if (json.contains("avatar_url") && json["avatar_url"].is_string()) {
+        avatar_url = json["avatar_url"].get<std::string>();
+    }
+}
+
 std::optional<WireGuild> parseWireGuild(const nlohmann::json& json) {
     if (!json.is_object() || !json.contains("guild_id") || !json.contains("name") ||
         !json.contains("owner_id") || !json.contains("visibility")) {
@@ -67,6 +82,7 @@ std::optional<WireMessage> parseWireMessage(const nlohmann::json& json) {
     message.user_id = json["user_id"].get<std::string>();
     message.username = json["username"].get<std::string>();
     message.content = json["content"].get<std::string>();
+    parseProfileFields(json, message.display_name, message.avatar_url);
     return message;
 }
 
@@ -80,9 +96,11 @@ std::optional<WireMember> parseWireMember(const nlohmann::json& json) {
         !json["joined_at"].is_string()) {
         return std::nullopt;
     }
-    return WireMember{json["user_id"].get<std::string>(), json["username"].get<std::string>(),
+    WireMember member{json["user_id"].get<std::string>(), json["username"].get<std::string>(),
                       json["role_rank"].get<int>(), json["role_label"].get<std::string>(),
-                      json["joined_at"].get<std::string>()};
+                      json["joined_at"].get<std::string>(), std::nullopt, std::nullopt};
+    parseProfileFields(json, member.display_name, member.avatar_url);
+    return member;
 }
 
 std::optional<WireInvite> parseWireInvite(const nlohmann::json& json) {
@@ -121,8 +139,10 @@ std::optional<WireJoinRequest> parseWireJoinRequest(const nlohmann::json& json) 
         !json["requested_at"].is_string()) {
         return std::nullopt;
     }
-    return WireJoinRequest{json["user_id"].get<std::string>(), json["username"].get<std::string>(),
-                           json["requested_at"].get<std::string>()};
+    WireJoinRequest request{json["user_id"].get<std::string>(), json["username"].get<std::string>(),
+                            json["requested_at"].get<std::string>(), std::nullopt, std::nullopt};
+    parseProfileFields(json, request.display_name, request.avatar_url);
+    return request;
 }
 
 // §1.3/§1.5's RedeemInviteResult discriminated union, mirrored from
@@ -173,7 +193,10 @@ std::optional<WireFriend> parseWireFriend(const nlohmann::json& json) {
     if (!json["user_id"].is_string() || !json["username"].is_string()) {
         return std::nullopt;
     }
-    return WireFriend{json["user_id"].get<std::string>(), json["username"].get<std::string>()};
+    WireFriend friend_{json["user_id"].get<std::string>(), json["username"].get<std::string>(), std::nullopt,
+                      std::nullopt};
+    parseProfileFields(json, friend_.display_name, friend_.avatar_url);
+    return friend_;
 }
 
 std::optional<WireFriendRequest> parseWireFriendRequest(const nlohmann::json& json) {
@@ -184,8 +207,10 @@ std::optional<WireFriendRequest> parseWireFriendRequest(const nlohmann::json& js
     if (!json["user_id"].is_string() || !json["username"].is_string() || !json["created_at"].is_string()) {
         return std::nullopt;
     }
-    return WireFriendRequest{json["user_id"].get<std::string>(), json["username"].get<std::string>(),
-                             json["created_at"].get<std::string>()};
+    WireFriendRequest request{json["user_id"].get<std::string>(), json["username"].get<std::string>(),
+                              json["created_at"].get<std::string>(), std::nullopt, std::nullopt};
+    parseProfileFields(json, request.display_name, request.avatar_url);
+    return request;
 }
 
 // docs/social/friends-dms-design.md §1.6's discriminated result, mirrored
@@ -234,8 +259,10 @@ std::optional<WireBlock> parseWireBlock(const nlohmann::json& json) {
     if (!json["user_id"].is_string() || !json["username"].is_string() || !json["blocked_at"].is_string()) {
         return std::nullopt;
     }
-    return WireBlock{json["user_id"].get<std::string>(), json["username"].get<std::string>(),
-                     json["blocked_at"].get<std::string>()};
+    WireBlock block{json["user_id"].get<std::string>(), json["username"].get<std::string>(),
+                    json["blocked_at"].get<std::string>(), std::nullopt, std::nullopt};
+    parseProfileFields(json, block.display_name, block.avatar_url);
+    return block;
 }
 
 // URL-encodes a single query parameter value. curl_easy_escape needs a
@@ -617,11 +644,14 @@ std::optional<std::vector<WireDmConversation>> CurlInternalApiClient::fetchDmCon
             return std::nullopt;
         }
         for (const auto& c : json["conversations"]) {
-            if (!c.is_object() || !c.contains("peer_id") || !c["peer_id"].is_string()) {
+            if (!c.is_object() || !c.contains("peer_id") || !c["peer_id"].is_string() ||
+                !c.contains("username") || !c["username"].is_string()) {
                 continue;
             }
             WireDmConversation conversation;
             conversation.peer_id = c["peer_id"].get<std::string>();
+            conversation.username = c["username"].get<std::string>();
+            parseProfileFields(c, conversation.display_name, conversation.avatar_url);
             if (c.contains("last_message_at") && c["last_message_at"].is_string()) {
                 conversation.last_message_at = c["last_message_at"].get<std::string>();
             }
@@ -976,6 +1006,27 @@ std::optional<std::vector<WireBlock>> CurlInternalApiClient::fetchBlocks(const s
         return std::nullopt;
     }
     return blocks;
+}
+
+std::optional<WireUserProfile> CurlInternalApiClient::fetchUserProfile(const std::string& user_id) {
+    const auto response = request("GET", "/internal/users/" + user_id + "/profile", "");
+    if (!response || response->status != 200) {
+        return std::nullopt;
+    }
+    try {
+        const auto json = nlohmann::json::parse(response->body);
+        if (!json.is_object() || !json.contains("user_id") || !json["user_id"].is_string() ||
+            !json.contains("username") || !json["username"].is_string()) {
+            return std::nullopt;
+        }
+        WireUserProfile profile;
+        profile.user_id = json["user_id"].get<std::string>();
+        profile.username = json["username"].get<std::string>();
+        parseProfileFields(json, profile.display_name, profile.avatar_url);
+        return profile;
+    } catch (const nlohmann::json::exception&) {
+        return std::nullopt;
+    }
 }
 
 } // namespace http

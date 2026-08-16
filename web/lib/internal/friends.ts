@@ -6,17 +6,23 @@ import { friendRequests, friendships, userBlocks, users } from "@/db/schema";
 
 import { InvalidReferenceError } from "./catalog";
 import { generateFriendCode } from "./friendCodes";
+import { resolveAvatarUrl, resolveDisplayName } from "../user/profile";
 import { fromUserWireId, toUserWireId } from "./wireIds";
 
 export interface WireFriend {
   user_id: string;
   username: string;
+  // docs/social/friends-dms-design.md §4.5.
+  display_name: string;
+  avatar_url: string | null;
 }
 
 export interface WireFriendRequest {
   user_id: string;
   username: string;
   created_at: string;
+  display_name: string;
+  avatar_url: string | null;
 }
 
 function orderedPair(a: string, b: string): [string, string] {
@@ -218,8 +224,8 @@ export async function listFriends(userWireId: string): Promise<WireFriend[] | nu
     .select({
       userIdA: friendships.userIdA,
       userIdB: friendships.userIdB,
-      usernameA: userA.discordUsername,
-      usernameB: userB.discordUsername
+      userA,
+      userB
     })
     .from(friendships)
     .innerJoin(userA, eq(userA.id, friendships.userIdA))
@@ -228,9 +234,12 @@ export async function listFriends(userWireId: string): Promise<WireFriend[] | nu
 
   return rows.map((row) => {
     const isCallerA = row.userIdA === userId;
+    const other = isCallerA ? row.userB : row.userA;
     return {
       user_id: toUserWireId(isCallerA ? row.userIdB : row.userIdA),
-      username: isCallerA ? row.usernameB : row.usernameA
+      username: other.discordUsername,
+      display_name: resolveDisplayName(other),
+      avatar_url: resolveAvatarUrl(other)
     };
   });
 }
@@ -244,12 +253,21 @@ export async function listFriendRequests(
     return null;
   }
 
+  const profileColumns = {
+    displayName: users.displayName,
+    discordGlobalName: users.discordGlobalName,
+    customAvatarPath: users.customAvatarPath,
+    discordId: users.discordId,
+    discordAvatarHash: users.discordAvatarHash
+  };
+
   const [incomingRows, outgoingRows] = await Promise.all([
     db
       .select({
         userId: friendRequests.requesterId,
         username: users.discordUsername,
-        createdAt: friendRequests.createdAt
+        createdAt: friendRequests.createdAt,
+        ...profileColumns
       })
       .from(friendRequests)
       .innerJoin(users, eq(friendRequests.requesterId, users.id))
@@ -258,7 +276,8 @@ export async function listFriendRequests(
       .select({
         userId: friendRequests.recipientId,
         username: users.discordUsername,
-        createdAt: friendRequests.createdAt
+        createdAt: friendRequests.createdAt,
+        ...profileColumns
       })
       .from(friendRequests)
       .innerJoin(users, eq(friendRequests.recipientId, users.id))
@@ -266,7 +285,13 @@ export async function listFriendRequests(
   ]);
 
   const toWire = (rows: typeof incomingRows): WireFriendRequest[] =>
-    rows.map((r) => ({ user_id: toUserWireId(r.userId), username: r.username, created_at: r.createdAt.toISOString() }));
+    rows.map((r) => ({
+      user_id: toUserWireId(r.userId),
+      username: r.username,
+      created_at: r.createdAt.toISOString(),
+      display_name: resolveDisplayName({ displayName: r.displayName, discordGlobalName: r.discordGlobalName, discordUsername: r.username }),
+      avatar_url: resolveAvatarUrl(r)
+    }));
 
   return { incoming: toWire(incomingRows), outgoing: toWire(outgoingRows) };
 }

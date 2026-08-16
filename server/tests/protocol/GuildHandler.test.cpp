@@ -418,7 +418,7 @@ TEST_CASE("GuildHandler LIST_MEMBERS returns the roster for a guild member") {
     f.guilds.upsertGuild("g_1", "First", alice.user_id);
     f.sessions.addGuildMembership(1, "g_1");
     f.api.guild_members_to_return = {
-        {"u_1", "alice", guild::kOwnerRank, "Captain", "2026-07-14T18:00:00Z"}};
+        {"u_1", "alice", guild::kOwnerRank, "Captain", "2026-07-14T18:00:00Z", std::nullopt, std::nullopt}};
 
     const auto response =
         f.handler.handleListMembers(make_message("LIST_MEMBERS", {{"guild_id", "g_1"}}), 1);

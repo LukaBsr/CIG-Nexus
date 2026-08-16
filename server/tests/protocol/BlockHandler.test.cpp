@@ -115,11 +115,13 @@ TEST_CASE("BlockHandler UNBLOCK_USER maps internal API failure to USER_NOT_FOUND
 TEST_CASE("BlockHandler LIST_BLOCKS returns BLOCK_LIST") {
     Fixture f;
     f.identify(1, "alice");
-    f.api.blocks_to_return = {{"u_2", "bob", "2026-01-01T00:00:00Z"}};
+    f.api.blocks_to_return = {{"u_2", "bob", "2026-01-01T00:00:00Z", "Bobby", std::nullopt}};
 
     const auto response = f.handler.handleListBlocks(make_message("LIST_BLOCKS"), 1);
 
     REQUIRE(response.type == "BLOCK_LIST");
     REQUIRE(response.payload["blocked"].size() == 1);
     REQUIRE(response.payload["blocked"][0]["user_id"] == "u_2");
+    REQUIRE(response.payload["blocked"][0]["display_name"] == "Bobby");
+    REQUIRE(response.payload["blocked"][0]["avatar_url"].is_null());
 }

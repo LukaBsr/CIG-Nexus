@@ -387,8 +387,8 @@ TEST_CASE("ChannelHandler FETCH_HISTORY returns lobby history when channel_id is
     Fixture f;
     f.identify(1, "alice");
     f.api.history_page_to_return = http::HistoryPage{
-        {http::WireMessage{1, std::nullopt, 1000, "u_2", "bob", "hi"},
-         http::WireMessage{2, std::nullopt, 2000, "u_1", "alice", "hello"}},
+        {http::WireMessage{1, std::nullopt, 1000, "u_2", "bob", "hi", std::nullopt, std::nullopt},
+         http::WireMessage{2, std::nullopt, 2000, "u_1", "alice", "hello", std::nullopt, std::nullopt}},
         false};
 
     const auto response = f.handler.handleFetchHistory(make_message("FETCH_HISTORY"), 1);
@@ -408,7 +408,7 @@ TEST_CASE("ChannelHandler FETCH_HISTORY returns channel history for a guild memb
     f.guilds.upsertChannel("c_1", "g_1", "general", guild::ChannelType::TEXT);
     f.sessions.addGuildMembership(1, "g_1");
     f.api.history_page_to_return = http::HistoryPage{
-        {http::WireMessage{5, "c_1", 3000, "u_1", "alice", "in channel"}}, true};
+        {http::WireMessage{5, "c_1", 3000, "u_1", "alice", "in channel", std::nullopt, std::nullopt}}, true};
 
     const auto response =
         f.handler.handleFetchHistory(make_message("FETCH_HISTORY", {{"channel_id", "c_1"}}), 1);

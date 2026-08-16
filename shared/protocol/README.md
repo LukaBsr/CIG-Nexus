@@ -151,7 +151,9 @@ On success, the server emits and broadcasts:
   "timestamp": 1741104000,
   "user_id": "u_1",
   "username": "web_user",
-  "content": "hello"
+  "content": "hello",
+  "display_name": null,
+  "avatar_url": null
 }
 ```
 
@@ -162,6 +164,7 @@ Field meanings:
 - `user_id`: server-assigned per identified connection
 - `username`: current username for the identified connection
 - `content`: validated chat message content
+- `display_name`/`avatar_url`: the sender's profile fields (§4.5, see the note under [LIST_MEMBERS](#list_members)), cached on the connection's session at `IDENTIFY` — a profile edit made mid-session isn't reflected here until the connection reconnects, the same staleness `username` itself already has
 
 If a non-identified client sends `CHAT_MESSAGE`, server returns `ERROR` with code `NOT_IDENTIFIED`.
 
@@ -513,7 +516,7 @@ Response:
   "type": "JOIN_REQUEST_LIST",
   "guild_id": "g_1",
   "requests": [
-    { "user_id": "u_2", "username": "web_user", "requested_at": "2026-08-01T12:00:00Z" }
+    { "user_id": "u_2", "username": "web_user", "requested_at": "2026-08-01T12:00:00Z", "display_name": null, "avatar_url": null }
   ]
 }
 ```
@@ -573,12 +576,22 @@ Response:
   "type": "MEMBER_LIST",
   "guild_id": "g_1",
   "members": [
-    { "user_id": "u_1", "username": "web_user", "role_rank": 2, "role_label": "Captain", "joined_at": "2026-07-14T18:00:00Z" }
+    {
+      "user_id": "u_1",
+      "username": "web_user",
+      "role_rank": 2,
+      "role_label": "Captain",
+      "joined_at": "2026-07-14T18:00:00Z",
+      "display_name": "Cap",
+      "avatar_url": null
+    }
   ]
 }
 ```
 
 This is a live read on every request — the roster is never cached by the server, unlike the guild/channel catalog.
+
+`display_name`/`avatar_url` (`docs/social/friends-dms-design.md` §4.5) are resolved server-side from the account's profile settings (`display_name` falls back to the Discord display name/username and is never `null`; `avatar_url` is `null` when the user has no custom or Discord avatar) — present on every entry here and on every other roster/message/list response documented below that carries a `user_id`, except `PRESENCE_UPDATE`, which deliberately stays `user_id`/`status` only.
 
 #### SET_MEMBER_ROLE
 
@@ -774,7 +787,9 @@ On success, the server broadcasts to every connection whose active channel match
   "timestamp": 1741104000,
   "user_id": "u_1",
   "username": "web_user",
-  "content": "hello"
+  "content": "hello",
+  "display_name": null,
+  "avatar_url": null
 }
 ```
 
@@ -814,12 +829,16 @@ Server to client:
       "timestamp": 1741104000,
       "user_id": "u_1",
       "username": "web_user",
-      "content": "hello"
+      "content": "hello",
+      "display_name": null,
+      "avatar_url": null
     }
   ],
   "has_more": true
 }
 ```
+
+`display_name`/`avatar_url` here are resolved fresh on every request (this whole response is a live read-through, never cached), unlike the same fields on `CHAT_MESSAGE`/`CHANNEL_MESSAGE`/`DM_MESSAGE` themselves, which are snapshotted at `IDENTIFY` — a profile edited after a message was sent shows the *old* profile in the original broadcast but the *current* one when that same message is later read back via `FETCH_HISTORY`.
 
 `channel_id` in the response echoes the request (`null` for the lobby). `messages` is chronological (oldest first). `has_more` is `true` when older messages exist beyond this page — pass the oldest returned message's `message_id` as the next request's `before_seq` to page further back (keyset pagination, not offset-based).
 
@@ -922,7 +941,7 @@ On success, delivered to both participants:
 Client to server: `{ "type": "LIST_FRIENDS" }`. Response (`Scope::DIRECT`):
 
 ```json
-{ "type": "FRIEND_LIST", "friends": [ { "user_id": "u_2", "username": "web_user" } ] }
+{ "type": "FRIEND_LIST", "friends": [ { "user_id": "u_2", "username": "web_user", "display_name": null, "avatar_url": null } ] }
 ```
 
 No online/offline status embedded — a client intersects this against the `PRESENCE_UPDATE` stream it already receives, the same way a per-guild "who's online" view is computed from `LIST_MEMBERS`.
@@ -934,7 +953,7 @@ Client to server: `{ "type": "LIST_FRIEND_REQUESTS" }`. Response (`Scope::DIRECT
 ```json
 {
   "type": "FRIEND_REQUEST_LIST",
-  "incoming": [ { "user_id": "u_3", "username": "web_user", "created_at": "2026-08-01T12:00:00Z" } ],
+  "incoming": [ { "user_id": "u_3", "username": "web_user", "created_at": "2026-08-01T12:00:00Z", "display_name": null, "avatar_url": null } ],
   "outgoing": []
 }
 ```
@@ -986,7 +1005,12 @@ Does **not** restore any friendship or pending request that existed before the b
 Client to server: `{ "type": "LIST_BLOCKS" }`. Response (`Scope::DIRECT`):
 
 ```json
-{ "type": "BLOCK_LIST", "blocked": [ { "user_id": "u_2", "username": "web_user", "blocked_at": "2026-08-01T12:00:00Z" } ] }
+{
+  "type": "BLOCK_LIST",
+  "blocked": [
+    { "user_id": "u_2", "username": "web_user", "blocked_at": "2026-08-01T12:00:00Z", "display_name": null, "avatar_url": null }
+  ]
+}
 ```
 
 #### Silent failure, not an explicit error
@@ -1021,10 +1045,21 @@ Validation: `content` must be non-empty and at most 500 characters (`MALFORMED_M
 On success, `Scope::TARGETED` to every connection identified as either participant:
 
 ```json
-{ "type": "DM_MESSAGE", "message_id": 7, "timestamp": 1741104000, "user_id": "u_1", "content": "hello" }
+{
+  "type": "DM_MESSAGE",
+  "message_id": 7,
+  "timestamp": 1741104000,
+  "user_id": "u_1",
+  "username": "web_user",
+  "content": "hello",
+  "display_name": null,
+  "avatar_url": null
+}
 ```
 
 Same shape `CHAT_MESSAGE`'s broadcast already uses — no separate `recipient_id`/`conversation_id` field. A receiving client determines which conversation this belongs to exactly the way it already determines "is this my own echo or someone else's" for `CHAT_MESSAGE`: compare `user_id` to its own identified id.
+
+Revised at implementation (`docs/social/friends-dms-design.md` §4.5): the original design shipped this without a `username` field at all, unlike `CHAT_MESSAGE`/`CHANNEL_MESSAGE` — added here (alongside `display_name`/`avatar_url`) so a DM thread can render a sender name without cross-referencing another response.
 
 Persisted fire-and-forget with bounded retry, reusing `docs/guilds/social-presence-design.md` §4.5's Option B directly — nothing about DMs changes that tradeoff.
 
@@ -1049,10 +1084,23 @@ Response, extended with a `peer_id` echo alongside the existing `channel_id` (ex
 Client to server: `{ "type": "LIST_DM_CONVERSATIONS" }`. Response (`Scope::DIRECT`):
 
 ```json
-{ "type": "DM_CONVERSATION_LIST", "conversations": [ { "peer_id": "u_2", "last_message_at": "2026-08-01T12:00:00Z" } ] }
+{
+  "type": "DM_CONVERSATION_LIST",
+  "conversations": [
+    {
+      "peer_id": "u_2",
+      "username": "web_user",
+      "display_name": null,
+      "avatar_url": null,
+      "last_message_at": "2026-08-01T12:00:00Z"
+    }
+  ]
+}
 ```
 
 Deliberately minimal — no unread counts or message previews.
+
+Revised at implementation (`docs/social/friends-dms-design.md` §4.5): the original design shipped each entry with only `peer_id`/`last_message_at` — unrenderable as a conversation list without a name. `username` is mandatory here (unlike `display_name`/`avatar_url`, which are `null` when unset), the same as every other roster/list entry.
 
 ### ERROR
 

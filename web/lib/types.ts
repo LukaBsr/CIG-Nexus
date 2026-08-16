@@ -24,6 +24,9 @@ export interface WireChatMessage {
   user_id: string;
   username: string;
   content: string;
+  // docs/social/friends-dms-design.md §4.5.
+  display_name: string | null;
+  avatar_url: string | null;
 }
 
 export interface WireGuild {
@@ -101,6 +104,8 @@ export interface WireChannelMessage {
   user_id: string;
   username: string;
   content: string;
+  display_name: string | null;
+  avatar_url: string | null;
 }
 
 // docs/guilds/social-presence-design.md §1.4. Only INVITE_CREATED is modeled on
@@ -127,6 +132,8 @@ export interface WireMember {
   role_rank: number;
   role_label: string;
   joined_at: string;
+  display_name: string | null;
+  avatar_url: string | null;
 }
 
 export interface WireMemberList {
@@ -170,6 +177,8 @@ export interface WireJoinRequestEntry {
   user_id: string;
   username: string;
   requested_at: string;
+  display_name: string | null;
+  avatar_url: string | null;
 }
 
 export interface WireJoinRequestList {
@@ -188,6 +197,140 @@ export interface WireJoinRequestRejected {
   type: "JOIN_REQUEST_REJECTED";
   guild_id: string;
   user_id: string;
+}
+
+// docs/social/friends-dms-design.md §1. Not guild-scoped — a friendship is
+// a relationship between two accounts.
+export interface WireFriendEntry {
+  user_id: string;
+  username: string;
+  display_name: string | null;
+  avatar_url: string | null;
+}
+
+export interface WireFriendRequestEntry {
+  user_id: string; // the other party
+  username: string;
+  created_at: string;
+  display_name: string | null;
+  avatar_url: string | null;
+}
+
+export interface WireFriendRequestSent {
+  type: "FRIEND_REQUEST_SENT";
+  user_id: string;
+}
+
+export interface WireFriendRequestReceived {
+  type: "FRIEND_REQUEST_RECEIVED";
+  user_id: string;
+}
+
+export interface WireFriendAdded {
+  type: "FRIEND_ADDED";
+  user_id: string;
+}
+
+export interface WireFriendRequestRejected {
+  type: "FRIEND_REQUEST_REJECTED";
+  user_id: string;
+}
+
+export interface WireFriendRequestCanceled {
+  type: "FRIEND_REQUEST_CANCELED";
+  user_id: string;
+}
+
+export interface WireFriendRemoved {
+  type: "FRIEND_REMOVED";
+  user_id: string;
+}
+
+export interface WireFriendList {
+  type: "FRIEND_LIST";
+  friends: WireFriendEntry[];
+}
+
+export interface WireFriendRequestList {
+  type: "FRIEND_REQUEST_LIST";
+  incoming: WireFriendRequestEntry[];
+  outgoing: WireFriendRequestEntry[];
+}
+
+export interface WireFriendCode {
+  type: "FRIEND_CODE";
+  code: string;
+}
+
+// docs/social/friends-dms-design.md §2.
+export interface WireBlockEntry {
+  user_id: string;
+  username: string;
+  blocked_at: string;
+  display_name: string | null;
+  avatar_url: string | null;
+}
+
+export interface WireUserBlocked {
+  type: "USER_BLOCKED";
+  user_id: string;
+}
+
+export interface WireUserUnblocked {
+  type: "USER_UNBLOCKED";
+  user_id: string;
+}
+
+export interface WireBlockList {
+  type: "BLOCK_LIST";
+  blocked: WireBlockEntry[];
+}
+
+// docs/social/friends-dms-design.md §3. A DM conversation is addressed by
+// the peer's user_id on the wire, never a conversation id.
+export interface WireDmMessage {
+  type: "DM_MESSAGE";
+  message_id: number;
+  timestamp: number;
+  user_id: string;
+  username: string;
+  content: string;
+  display_name: string | null;
+  avatar_url: string | null;
+}
+
+export interface WireDmConversationEntry {
+  peer_id: string;
+  username: string;
+  display_name: string | null;
+  avatar_url: string | null;
+  last_message_at: string | null;
+}
+
+export interface WireDmConversationList {
+  type: "DM_CONVERSATION_LIST";
+  conversations: WireDmConversationEntry[];
+}
+
+// §3.5 (FETCH_HISTORY, DM scope). peer_id is only present at all on the DM
+// branch of this response — the lobby/channel branch never includes the
+// key (not even as null) — so it's optional here, unlike channel_id.
+export interface WireHistoryMessageEntry {
+  message_id: number;
+  timestamp: number;
+  user_id: string;
+  username: string;
+  content: string;
+  display_name: string | null;
+  avatar_url: string | null;
+}
+
+export interface WireMessageHistory {
+  type: "MESSAGE_HISTORY";
+  channel_id: string | null;
+  peer_id?: string;
+  messages: WireHistoryMessageEntry[];
+  has_more: boolean;
 }
 
 export interface WireError {
@@ -224,6 +367,21 @@ export type WireInboundMessage =
   | WireJoinRequestList
   | WireJoinRequestApproved
   | WireJoinRequestRejected
+  | WireFriendRequestSent
+  | WireFriendRequestReceived
+  | WireFriendAdded
+  | WireFriendRequestRejected
+  | WireFriendRequestCanceled
+  | WireFriendRemoved
+  | WireFriendList
+  | WireFriendRequestList
+  | WireFriendCode
+  | WireUserBlocked
+  | WireUserUnblocked
+  | WireBlockList
+  | WireDmMessage
+  | WireDmConversationList
+  | WireMessageHistory
   | WireError;
 
 // camelCase types components actually consume. useGatewayConnection
@@ -251,6 +409,8 @@ export interface JoinRequest {
   userId: string;
   username: string;
   requestedAt: string;
+  displayName: string | null;
+  avatarUrl: string | null;
 }
 
 export interface Member {
@@ -259,6 +419,8 @@ export interface Member {
   roleRank: number;
   roleLabel: string;
   joinedAt: string;
+  displayName: string | null;
+  avatarUrl: string | null;
 }
 
 export interface Channel {
@@ -273,6 +435,8 @@ export interface ChatMessage {
   userId: string;
   username: string;
   content: string;
+  displayName: string | null;
+  avatarUrl: string | null;
 }
 
 export interface ChannelMessage {
@@ -283,6 +447,8 @@ export interface ChannelMessage {
   userId: string;
   username: string;
   content: string;
+  displayName: string | null;
+  avatarUrl: string | null;
 }
 
 export function mapGuild(wire: WireGuild): Guild {
@@ -290,7 +456,13 @@ export function mapGuild(wire: WireGuild): Guild {
 }
 
 export function mapJoinRequest(wire: WireJoinRequestEntry): JoinRequest {
-  return { userId: wire.user_id, username: wire.username, requestedAt: wire.requested_at };
+  return {
+    userId: wire.user_id,
+    username: wire.username,
+    requestedAt: wire.requested_at,
+    displayName: wire.display_name,
+    avatarUrl: wire.avatar_url
+  };
 }
 
 export function mapInvite(wire: WireInviteCreated): Invite {
@@ -310,7 +482,9 @@ export function mapMember(wire: WireMember): Member {
     username: wire.username,
     roleRank: wire.role_rank,
     roleLabel: wire.role_label,
-    joinedAt: wire.joined_at
+    joinedAt: wire.joined_at,
+    displayName: wire.display_name,
+    avatarUrl: wire.avatar_url
   };
 }
 
@@ -324,7 +498,9 @@ export function mapChatMessage(wire: WireChatMessage): ChatMessage {
     timestamp: wire.timestamp,
     userId: wire.user_id,
     username: wire.username,
-    content: wire.content
+    content: wire.content,
+    displayName: wire.display_name,
+    avatarUrl: wire.avatar_url
   };
 }
 
@@ -336,6 +512,112 @@ export function mapChannelMessage(wire: WireChannelMessage): ChannelMessage {
     timestamp: wire.timestamp,
     userId: wire.user_id,
     username: wire.username,
-    content: wire.content
+    content: wire.content,
+    displayName: wire.display_name,
+    avatarUrl: wire.avatar_url
+  };
+}
+
+export interface Friend {
+  userId: string;
+  username: string;
+  displayName: string | null;
+  avatarUrl: string | null;
+}
+
+export interface FriendRequest {
+  userId: string;
+  username: string;
+  createdAt: string;
+  displayName: string | null;
+  avatarUrl: string | null;
+}
+
+export function mapFriend(wire: WireFriendEntry): Friend {
+  return {
+    userId: wire.user_id,
+    username: wire.username,
+    displayName: wire.display_name,
+    avatarUrl: wire.avatar_url
+  };
+}
+
+export function mapFriendRequest(wire: WireFriendRequestEntry): FriendRequest {
+  return {
+    userId: wire.user_id,
+    username: wire.username,
+    createdAt: wire.created_at,
+    displayName: wire.display_name,
+    avatarUrl: wire.avatar_url
+  };
+}
+
+export interface Block {
+  userId: string;
+  username: string;
+  blockedAt: string;
+  displayName: string | null;
+  avatarUrl: string | null;
+}
+
+export function mapBlock(wire: WireBlockEntry): Block {
+  return {
+    userId: wire.user_id,
+    username: wire.username,
+    blockedAt: wire.blocked_at,
+    displayName: wire.display_name,
+    avatarUrl: wire.avatar_url
+  };
+}
+
+export interface DmMessage {
+  messageId: number;
+  timestamp: number;
+  userId: string;
+  username: string;
+  content: string;
+  displayName: string | null;
+  avatarUrl: string | null;
+}
+
+export interface DmConversation {
+  peerId: string;
+  username: string;
+  displayName: string | null;
+  avatarUrl: string | null;
+  lastMessageAt: string | null;
+}
+
+export function mapDmMessage(wire: WireDmMessage): DmMessage {
+  return {
+    messageId: wire.message_id,
+    timestamp: wire.timestamp,
+    userId: wire.user_id,
+    username: wire.username,
+    content: wire.content,
+    displayName: wire.display_name,
+    avatarUrl: wire.avatar_url
+  };
+}
+
+export function mapHistoryMessageToDmMessage(wire: WireHistoryMessageEntry): DmMessage {
+  return {
+    messageId: wire.message_id,
+    timestamp: wire.timestamp,
+    userId: wire.user_id,
+    username: wire.username,
+    content: wire.content,
+    displayName: wire.display_name,
+    avatarUrl: wire.avatar_url
+  };
+}
+
+export function mapDmConversation(wire: WireDmConversationEntry): DmConversation {
+  return {
+    peerId: wire.peer_id,
+    username: wire.username,
+    displayName: wire.display_name,
+    avatarUrl: wire.avatar_url,
+    lastMessageAt: wire.last_message_at
   };
 }

@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react";
 
+import { FriendsView } from "@/components/FriendsView";
+import { GuildRail } from "@/components/GuildRail";
 import { Header } from "@/components/Header";
 import { InvitePopover } from "@/components/InvitePopover";
 import { JoinRequestInbox } from "@/components/JoinRequestInbox";
@@ -9,7 +11,6 @@ import { LandingView } from "@/components/LandingView";
 import { MemberList } from "@/components/MemberList";
 import { MessageList } from "@/components/MessageList";
 import { SettingsModal } from "@/components/SettingsModal";
-import { TabButton, TabGroup } from "@/components/TabGroup";
 import { TextInputWithSubmit } from "@/components/TextInputWithSubmit";
 import { useGatewayConnection } from "@/hooks/useGatewayConnection";
 import { OFFICER_RANK } from "@/lib/roles";
@@ -60,16 +61,33 @@ export default function Home() {
     createInvite,
     listJoinRequests,
     approveJoinRequest,
-    rejectJoinRequest
+    rejectJoinRequest,
+    friends,
+    incomingFriendRequests,
+    outgoingFriendRequests,
+    friendCode,
+    addFriendByCode,
+    regenerateFriendCode,
+    acceptFriendRequest,
+    rejectFriendRequest,
+    cancelFriendRequest,
+    blockUser,
+    blockedUsers,
+    unblockUser,
+    dmConversations,
+    activeDmPeerId,
+    dmMessages,
+    openDm,
+    sendDm
   } = useGatewayConnection();
 
-  const [view, setView] = useState<"lobby" | "guilds">("lobby");
+  const [view, setView] = useState<"lobby" | "guild" | "friends">("lobby");
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [input, setInput] = useState("");
-  const [guildNameInput, setGuildNameInput] = useState("");
   const [isCreatingChannel, setIsCreatingChannel] = useState(false);
   const [channelNameInput, setChannelNameInput] = useState("");
   const [channelMessageInput, setChannelMessageInput] = useState("");
+  const [dmInput, setDmInput] = useState("");
 
   const handleSend = () => {
     if (input.trim()) {
@@ -78,11 +96,9 @@ export default function Home() {
     }
   };
 
-  const handleCreateGuild = () => {
-    if (guildNameInput.trim()) {
-      createGuild(guildNameInput.trim());
-      setGuildNameInput("");
-    }
+  const handleSelectGuild = (guildId: string) => {
+    selectGuild(guildId);
+    setView("guild");
   };
 
   const handleCreateChannel = () => {
@@ -123,130 +139,76 @@ export default function Home() {
   }
 
   return (
-    <div className="flex h-screen flex-col bg-ink text-ivory">
-      <Header status={status} onOpenSettings={() => setIsSettingsOpen(true)} />
-      {isSettingsOpen && <SettingsModal userId={myUserId} onClose={() => setIsSettingsOpen(false)} />}
+    <div className="flex h-screen bg-ink text-ivory">
+      <GuildRail
+        guilds={guilds}
+        myGuildIds={myGuildIds}
+        myPendingJoinRequestGuildIds={myPendingJoinRequestGuildIds}
+        activeView={view}
+        activeGuildId={activeGuildId}
+        onSelectLobby={() => setView("lobby")}
+        onSelectGuild={handleSelectGuild}
+        onSelectFriends={() => setView("friends")}
+        onJoinGuild={joinGuild}
+        onRequestJoin={requestJoin}
+        onCreateGuild={createGuild}
+      />
 
-      <div className="flex shrink-0 items-center justify-between gap-3 border-b border-slate/20 px-5 py-2.5">
-        <TabGroup>
-          <TabButton active={view === "lobby"} onClick={() => setView("lobby")}>
-            Lobby
-          </TabButton>
-          <TabButton active={view === "guilds"} onClick={() => setView("guilds")}>
-            Guilds
-          </TabButton>
-        </TabGroup>
+      <div className="flex flex-1 flex-col overflow-hidden">
+        <Header status={status} onOpenSettings={() => setIsSettingsOpen(true)} />
+        {isSettingsOpen && (
+          <SettingsModal
+            userId={myUserId}
+            onClose={() => setIsSettingsOpen(false)}
+            blockedUsers={blockedUsers}
+            onUnblock={unblockUser}
+          />
+        )}
 
         {lastError && (
-          <div className="flex min-w-0 flex-1 items-center justify-between gap-2 rounded-md border border-red-400/30 bg-red-400/10 px-3 py-1.5 font-mono text-xs text-red-300">
+          <div className="flex shrink-0 items-center justify-between gap-2 border-b border-slate/20 bg-red-400/10 px-5 py-1.5 font-mono text-xs text-red-300">
             <span className="truncate">{lastError}</span>
             <button onClick={clearError} className="shrink-0 font-semibold text-red-300/70 hover:text-red-300">
               &times;
             </button>
           </div>
         )}
-      </div>
 
-      {view === "lobby" && (
-        <div className="flex flex-1 flex-col overflow-hidden">
-          <div className="shrink-0 px-5 py-2">
-            <h2 className="font-mono text-sm font-semibold text-ivory">Global Lobby</h2>
-            <p className="font-mono text-xs text-ivory/40">Broadcast to every connected client.</p>
-          </div>
+        {view === "lobby" && (
+          <div className="flex flex-1 flex-col overflow-hidden">
+            <div className="shrink-0 px-5 py-2">
+              <h2 className="font-mono text-sm font-semibold text-ivory">Global Lobby</h2>
+              <p className="font-mono text-xs text-ivory/40">Broadcast to every connected client.</p>
+            </div>
 
-          <div className="flex-1 overflow-y-auto px-3">
-            <div className="mx-auto max-w-3xl">
-              <MessageList messages={chatMessages} emptyText="No messages yet — say hello." />
+            <div className="flex-1 overflow-y-auto px-3">
+              <div className="mx-auto max-w-3xl">
+                <MessageList messages={chatMessages} emptyText="No messages yet — say hello." />
+              </div>
+            </div>
+
+            <div className="shrink-0 border-t border-slate/20 p-3">
+              <div className="mx-auto max-w-3xl">
+                <TextInputWithSubmit
+                  value={input}
+                  onChange={setInput}
+                  onSubmit={handleSend}
+                  placeholder="Message the lobby..."
+                  submitLabel="Send"
+                  disabled={status !== "connected"}
+                />
+              </div>
             </div>
           </div>
+        )}
 
-          <div className="shrink-0 border-t border-slate/20 p-3">
-            <div className="mx-auto max-w-3xl">
-              <TextInputWithSubmit
-                value={input}
-                onChange={setInput}
-                onSubmit={handleSend}
-                placeholder="Message the lobby..."
-                submitLabel="Send"
-                disabled={status !== "connected"}
-              />
-            </div>
-          </div>
-        </div>
-      )}
-
-      {view === "guilds" && (
-        <div className="flex flex-1 overflow-hidden">
-          <aside className="flex w-60 shrink-0 flex-col overflow-y-auto border-r border-slate/20 p-3">
-            <h2 className="mb-2 px-1 font-mono text-xs font-semibold tracking-wider text-ivory/40 uppercase">
-              Guilds
-            </h2>
-
-            {guilds.length === 0 ? (
-              <p className="px-1 font-mono text-xs text-ivory/40">No guilds yet — create one below.</p>
-            ) : (
-              <ul className="flex list-none flex-col gap-0.5 p-0">
-                {guilds.map((g) => {
-                  const isMember = myGuildIds.has(g.guildId);
-                  const isPending = myPendingJoinRequestGuildIds.has(g.guildId);
-                  return (
-                    <li
-                      key={g.guildId}
-                      className="flex items-center justify-between gap-2 rounded-md px-1.5 py-1 transition-colors hover:bg-surface/60"
-                    >
-                      {isMember ? (
-                        <button
-                          onClick={() => selectGuild(g.guildId)}
-                          className={`min-w-0 flex-1 truncate text-left font-mono text-sm transition-colors ${
-                            g.guildId === activeGuildId
-                              ? "font-semibold text-teal"
-                              : "text-ivory/80 hover:text-ivory"
-                          }`}
-                        >
-                          {g.name}
-                        </button>
-                      ) : (
-                        <>
-                          <span className="min-w-0 flex-1 truncate font-mono text-sm text-ivory/60">
-                            {g.name}
-                          </span>
-                          {isPending ? (
-                            <span className="shrink-0 rounded-full border border-slate/40 px-2.5 py-1 font-mono text-xs text-ivory/40">
-                              Requested
-                            </span>
-                          ) : (
-                            <button
-                              onClick={() =>
-                                g.visibility === "application" ? requestJoin(g.guildId) : joinGuild(g.guildId)
-                              }
-                              className="shrink-0 rounded-full bg-teal/15 px-2.5 py-1 font-mono text-xs font-semibold text-teal transition-colors hover:bg-teal/25"
-                            >
-                              {g.visibility === "application" ? "Request" : "Join"}
-                            </button>
-                          )}
-                        </>
-                      )}
-                    </li>
-                  );
-                })}
-              </ul>
-            )}
-
-            <div className="mt-3">
-              <TextInputWithSubmit
-                value={guildNameInput}
-                onChange={setGuildNameInput}
-                onSubmit={handleCreateGuild}
-                placeholder="New guild name..."
-                submitLabel="Create"
-              />
-            </div>
-          </aside>
-
+        {view === "guild" && (
           <section className="flex flex-1 flex-col overflow-hidden">
             {!activeGuild ? (
               <div className="flex flex-1 items-center justify-center">
-                <p className="font-mono text-sm text-ivory/40">Select or create a guild to get started.</p>
+                <p className="font-mono text-sm text-ivory/40">
+                  Select a guild from the rail, or use + to browse or create one.
+                </p>
               </div>
             ) : (
               <>
@@ -353,13 +315,41 @@ export default function Home() {
                     )}
                   </div>
 
-                  <MemberList members={members} onlineUserIds={onlineUserIds} />
+                  <MemberList
+                    members={members}
+                    onlineUserIds={onlineUserIds}
+                    myUserId={myUserId}
+                    onBlock={blockUser}
+                  />
                 </div>
               </>
             )}
           </section>
-        </div>
-      )}
+        )}
+
+        {view === "friends" && (
+          <FriendsView
+            friends={friends}
+            incomingFriendRequests={incomingFriendRequests}
+            outgoingFriendRequests={outgoingFriendRequests}
+            friendCode={friendCode}
+            onlineUserIds={onlineUserIds}
+            onAddByCode={addFriendByCode}
+            onRegenerateCode={regenerateFriendCode}
+            onAcceptRequest={acceptFriendRequest}
+            onRejectRequest={rejectFriendRequest}
+            onCancelRequest={cancelFriendRequest}
+            onBlock={blockUser}
+            dmConversations={dmConversations}
+            activeDmPeerId={activeDmPeerId}
+            dmMessages={dmMessages}
+            onOpenDm={openDm}
+            onSendDm={sendDm}
+            dmInput={dmInput}
+            onDmInputChange={setDmInput}
+          />
+        )}
+      </div>
     </div>
   );
 }

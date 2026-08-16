@@ -905,6 +905,43 @@ of these — it has no reason to be attached to every chat message or
 roster snapshot. It's fetched only via `GET /api/users/:id/profile`
 (§4.4), on an explicit "view profile" action.
 
+**Revised at implementation.** The claim above — that `CHAT_MESSAGE`/
+`CHANNEL_MESSAGE`/`DM_MESSAGE` get these fields "for free" because
+`username` is already a live join — turned out to be wrong for exactly
+those three message types, confirmed by reading `ChatHandler.cpp`/
+`ChannelHandler.cpp`/`DMHandler.cpp` directly rather than assuming: their
+`username` field is populated from `Session::username`, cached once at
+`IDENTIFY` from the access JWT's claims, not from a live internal-API call
+on every send (chat/channel/DM sending never touches Postgres
+synchronously — persistence is fire-and-forget, *after* the broadcast,
+exactly as §3.4/§4.5 of the guild doc already establishes). The "already a
+live join" claim is only actually true for `LIST_MEMBERS`, `FETCH_HISTORY`,
+`LIST_FRIENDS`, `LIST_FRIEND_REQUESTS`, and `LIST_JOIN_REQUESTS` — all
+genuinely live, read-through internal API calls — which did get
+`display_name`/`avatar_url` "for free" exactly as described.
+
+For the three live-broadcast message types, `Session` gained
+`display_name`/`avatar_url` fields hydrated at `IDENTIFY`, mirroring the
+existing `guild_ids`/`friend_ids`/`blocked_user_ids` treatment — backed by
+a new `GET /internal/users/:id/profile` endpoint
+(`web/lib/internal/catalog.ts`'s `getUserProfileSummary`) and a new
+`InternalApiClient::fetchUserProfile` call, since no existing internal
+route resolves a single user's profile by id. This carries the same
+staleness window `username` itself already has: a profile edited mid-
+session isn't reflected in that connection's own live-sent messages until
+it reconnects. `FETCH_HISTORY`'s `display_name`/`avatar_url` (a genuine
+live read) do **not** share this staleness — the same message can show a
+stale profile in its original broadcast and the current one when read back
+later via history.
+
+Two more gaps found the same way, both fixed alongside the above: `DM_MESSAGE`
+shipped with **no `username` field at all** (unlike `CHAT_MESSAGE`/
+`CHANNEL_MESSAGE`, which always had one) — added here, not just
+`display_name`/`avatar_url`. `LIST_DM_CONVERSATIONS`' entries shipped with
+only `peer_id`/`last_message_at` — also unrenderable as a conversation list
+without a name — `username` added there too (mandatory, not optional,
+matching every other list entry).
+
 ---
 
 ## 5. Security Checklist

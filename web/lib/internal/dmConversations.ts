@@ -1,9 +1,10 @@
 import { and, desc, eq } from "drizzle-orm";
 
 import { db } from "@/db/client";
-import { dmConversations, messages } from "@/db/schema";
+import { dmConversations, messages, users } from "@/db/schema";
 
 import { InvalidReferenceError } from "./catalog";
+import { resolveAvatarUrl, resolveDisplayName } from "../user/profile";
 import { fromUserWireId, toUserWireId } from "./wireIds";
 
 function orderedPair(a: string, b: string): [string, string] {
@@ -61,6 +62,14 @@ export async function resolveDmConversationId(callerWireId: string, peerWireId: 
 
 export interface WireDmConversation {
   peer_id: string;
+  // Revised at implementation (docs/social/friends-dms-design.md §4.5): the
+  // original design shipped this entry with only peer_id/last_message_at —
+  // unrenderable as a conversation list without a name. username is now
+  // mandatory here (not optional like display_name/avatar_url) for the
+  // same reason it's mandatory on every other roster/list entry.
+  username: string;
+  display_name: string;
+  avatar_url: string | null;
   last_message_at: string | null;
 }
 
@@ -93,8 +102,12 @@ export async function listDmConversations(userWireId: string): Promise<WireDmCon
       .where(eq(messages.dmConversationId, conversation.id))
       .orderBy(desc(messages.seq))
       .limit(1);
+    const [peer] = await db.select().from(users).where(eq(users.id, conversation.peerId));
     result.push({
       peer_id: toUserWireId(conversation.peerId),
+      username: peer.discordUsername,
+      display_name: resolveDisplayName(peer),
+      avatar_url: resolveAvatarUrl(peer),
       last_message_at: lastMessage?.createdAt.toISOString() ?? null
     });
   }

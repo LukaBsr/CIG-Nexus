@@ -138,7 +138,7 @@ TEST_CASE("JoinRequestHandler LIST_JOIN_REQUESTS returns pending requests for an
     session::Session& owner = f.identify(1, "owner");
     f.guilds.upsertGuild("g_1", "First", owner.user_id, guild::GuildVisibility::APPLICATION);
     f.guilds.setMemberRank("g_1", owner.user_id, guild::kOwnerRank);
-    f.api.join_requests_to_return = {{"u_2", "bob", "2026-01-01T00:00:00Z"}};
+    f.api.join_requests_to_return = {{"u_2", "bob", "2026-01-01T00:00:00Z", std::nullopt, std::nullopt}};
 
     const auto response =
         f.handler.handleListJoinRequests(make_message("LIST_JOIN_REQUESTS", {{"guild_id", "g_1"}}), 1);

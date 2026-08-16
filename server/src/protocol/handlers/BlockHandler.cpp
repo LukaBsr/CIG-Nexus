@@ -135,8 +135,11 @@ Message BlockHandler::handleListBlocks(const Message& message, int fd) const {
 
     nlohmann::json blocked_json = nlohmann::json::array();
     for (const auto& b : *blocks) {
-        blocked_json.push_back(
-            nlohmann::json{{"user_id", b.user_id}, {"username", b.username}, {"blocked_at", b.blocked_at}});
+        blocked_json.push_back(nlohmann::json{{"user_id", b.user_id},
+                                              {"username", b.username},
+                                              {"blocked_at", b.blocked_at},
+                                              {"display_name", make_optional_string(b.display_name)},
+                                              {"avatar_url", make_optional_string(b.avatar_url)}});
     }
 
     Message response;

@@ -152,18 +152,38 @@ Matching the discipline already established in `server/` and
 
 ## Deferred
 
-- **Guilds/channels layout rework — partially unblocked, not yet done.**
-  The current structure (a fixed guild rail, a channel-pill row, and a
-  single message pane) is unchanged. Of the features this item was
-  waiting on, roles/permissions beyond owner-only and a member roster now
-  exist end-to-end (`docs/guilds/social-presence-design.md` — `role_rank`,
-  `LIST_MEMBERS`/`SET_MEMBER_ROLE`), but only as data: `members` is
-  fetched and used for permission gating (`web/app/page.tsx`'s
-  `isOfficerOrAbove`), with no visible member-list UI anywhere yet.
-  Guild/member avatars and functional `VOICE` channels are still entirely
-  unbuilt. Revisit the layout once a real member-list panel is worth
-  building, not before — this item stays deferred, just with less
-  remaining to wait on than when it was written.
+- **Guilds/channels layout rework — done, and revised to structural
+  scope.** The features this item was waiting on landed first (a real
+  member-list panel, `web/components/MemberList.tsx`, in the guild-view
+  density/polish pass), which unblocked the layout rework itself in the
+  friends/DMs/profiles UI pass
+  (`docs/social/friends-dms-design.md`). That pass explicitly revised this
+  item's original framing — a prior read of "layout rework" as aesthetic
+  polish only, not a navigation-model change — once a fourth top-level
+  destination (Friends, alongside Lobby/Guilds) made the flat horizontal
+  `TabGroup` genuinely awkward to keep extending. The rework actually
+  built: top-level navigation moved from the horizontal Lobby/Guilds/
+  Friends `TabGroup` to a persistent, Discord-style vertical icon rail
+  (`web/components/GuildRail.tsx`) — a pinned Lobby icon, one icon per
+  guild the user belongs to (existing `LIST_GUILDS` order; no
+  drag-to-reorder), and a pinned Friends icon, with guild browse/join/
+  create relocated behind a `+` popover on the rail
+  (`web/components/GuildBrowsePopover.tsx`) rather than an
+  always-visible guild-name list. Deliberately no unread/mention badges
+  anywhere on the rail, consistent with `LIST_DM_CONVERSATIONS`' own
+  "deliberately minimal, no unread counts" decision
+  (`docs/social/friends-dms-design.md` §3.5). Functional `VOICE` channels
+  remain entirely unbuilt and still out of scope.
+- **Guild icons — deferred, not built.** No custom guild-icon upload
+  exists in the data model or the internal API — `GuildRail.tsx` (and
+  `GuildBrowsePopover.tsx`) render a deterministic fallback instead
+  (`web/components/GuildIcon.tsx`: initials plus a hash-derived accent
+  color from the guild id), the same way Discord itself renders a server
+  with no uploaded icon. A real upload feature would be a natural,
+  separable future extension mirroring
+  `docs/social/friends-dms-design.md` §4.2's avatar-upload pattern
+  (local-disk storage, a dynamic serving route, magic-byte validation) —
+  not attempted here.
 - **Selectable themes — done.** `docs/settings/appearance-design.md`
   built this: a settings modal with an Appearance section, a
   `data-theme`-attribute token system, and two themes (`abyss` default,

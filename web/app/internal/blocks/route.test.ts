@@ -78,6 +78,14 @@ describe("GET /internal/blocks", () => {
     const response = await GET(request);
     expect(response.status).toBe(200);
     const body = (await response.json()) as { blocks: { user_id: string }[] };
-    expect(body.blocks).toEqual([{ user_id: toUserWireId(b.id), username: "user_2", blocked_at: expect.any(String) }]);
+    expect(body.blocks).toEqual([
+      {
+        user_id: toUserWireId(b.id),
+        username: "user_2",
+        blocked_at: expect.any(String),
+        display_name: "user_2",
+        avatar_url: null
+      }
+    ]);
   });
 });

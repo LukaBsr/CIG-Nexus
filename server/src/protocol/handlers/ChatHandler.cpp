@@ -101,7 +101,9 @@ Message ChatHandler::handle(const Message& message, int fd) const {
                                       {"timestamp", static_cast<long>(timestamp)},
                                       {"user_id", session->user_id},
                                       {"username", session->username},
-                                      {"content", content}};
+                                      {"content", content},
+                                      {"display_name", make_optional_string(session->display_name)},
+                                      {"avatar_url", make_optional_string(session->avatar_url)}};
 
     // docs/guilds/social-presence-design.md §4.5: fire-and-forget — enqueue after
     // building the broadcast response, never block on it. std::nullopt

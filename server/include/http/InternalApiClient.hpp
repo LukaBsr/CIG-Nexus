@@ -31,6 +31,13 @@ struct WireMember {
     int role_rank;
     std::string role_label;
     std::string joined_at;
+    // docs/social/friends-dms-design.md §4.5: resolved server-side
+    // (Next.js) the same way every other profile-bearing field here is —
+    // display_name is unset only if the internal API response omits it
+    // (it shouldn't, in practice — resolveDisplayName never returns null),
+    // avatar_url is unset when the user has no avatar at all.
+    std::optional<std::string> display_name;
+    std::optional<std::string> avatar_url;
 };
 
 struct WireChannel {
@@ -57,6 +64,9 @@ struct WireJoinRequest {
     std::string user_id;
     std::string username;
     std::string requested_at;
+    // docs/social/friends-dms-design.md §4.5.
+    std::optional<std::string> display_name;
+    std::optional<std::string> avatar_url;
 };
 
 // §1.9 (REQUEST_JOIN). FAILED covers malformed/unreachable — distinct from
@@ -94,6 +104,9 @@ struct WireMessage {
     std::string user_id;
     std::string username;
     std::string content;
+    // docs/social/friends-dms-design.md §4.5.
+    std::optional<std::string> display_name;
+    std::optional<std::string> avatar_url;
 };
 
 struct HistoryPage {
@@ -106,12 +119,17 @@ struct HistoryPage {
 struct WireFriend {
     std::string user_id;
     std::string username;
+    // docs/social/friends-dms-design.md §4.5.
+    std::optional<std::string> display_name;
+    std::optional<std::string> avatar_url;
 };
 
 struct WireFriendRequest {
     std::string user_id; // the other party
     std::string username;
     std::string created_at;
+    std::optional<std::string> display_name;
+    std::optional<std::string> avatar_url;
 };
 
 // §1.4's ordered validation, all evaluated server-side (Next.js) in one
@@ -155,6 +173,9 @@ struct WireBlock {
     std::string user_id; // the blocked user
     std::string username;
     std::string blocked_at;
+    // docs/social/friends-dms-design.md §4.5.
+    std::optional<std::string> display_name;
+    std::optional<std::string> avatar_url;
 };
 
 // §4.3: the durable high-water mark for each of the two message id-spaces
@@ -170,9 +191,30 @@ struct LastSequence {
     std::optional<int> dm_seq;
 };
 
-// docs/social/friends-dms-design.md §3.5 (LIST_DM_CONVERSATIONS).
+// docs/social/friends-dms-design.md §4.5, revised at implementation: the
+// backing shape for Session::display_name/avatar_url's IDENTIFY-time
+// hydration (IdentifyHandler.cpp) — a single-user lookup, mirroring
+// fetchBlocks/fetchFriends' role for blocked_user_ids/friend_ids. Needed
+// because CHAT_MESSAGE/CHANNEL_MESSAGE/DM_MESSAGE are built directly from
+// Session's cached identity with no per-message internal API call, unlike
+// LIST_MEMBERS/LIST_FRIENDS/FETCH_HISTORY which are already live reads and
+// get these fields for free by extending their existing query.
+struct WireUserProfile {
+    std::string user_id;
+    std::string username;
+    std::optional<std::string> display_name;
+    std::optional<std::string> avatar_url;
+};
+
+// docs/social/friends-dms-design.md §3.5 (LIST_DM_CONVERSATIONS). Revised
+// at implementation (§4.5): the original shape carried only peer_id/
+// last_message_at, unrenderable as a conversation list without a name —
+// username is mandatory here, the same as every other roster/list entry.
 struct WireDmConversation {
     std::string peer_id;
+    std::string username;
+    std::optional<std::string> display_name;
+    std::optional<std::string> avatar_url;
     std::optional<std::string> last_message_at;
 };
 
@@ -313,6 +355,11 @@ class InternalApiClient {
     virtual bool blockUser(const std::string& blocker_id, const std::string& blocked_id) = 0;
     virtual bool unblockUser(const std::string& blocker_id, const std::string& blocked_id) = 0;
     virtual std::optional<std::vector<WireBlock>> fetchBlocks(const std::string& user_id) = 0;
+
+    // §4.5: called once at IDENTIFY to hydrate Session::display_name/
+    // avatar_url — see WireUserProfile's comment for why this is a
+    // separate call rather than reusing an existing live-join query.
+    virtual std::optional<WireUserProfile> fetchUserProfile(const std::string& user_id) = 0;
 };
 
 } // namespace http

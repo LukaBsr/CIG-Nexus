@@ -91,7 +91,15 @@ describe("listBlocks", () => {
     await blockUser(toUserWireId(a.id), toUserWireId(b.id));
 
     const blocks = await listBlocks(toUserWireId(a.id));
-    expect(blocks).toEqual([{ user_id: toUserWireId(b.id), username: "user_2", blocked_at: expect.any(String) }]);
+    expect(blocks).toEqual([
+      {
+        user_id: toUserWireId(b.id),
+        username: "user_2",
+        blocked_at: expect.any(String),
+        display_name: "user_2",
+        avatar_url: null
+      }
+    ]);
   });
 });
 

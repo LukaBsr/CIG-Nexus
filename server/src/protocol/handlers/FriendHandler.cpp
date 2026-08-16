@@ -358,7 +358,10 @@ Message FriendHandler::handleListFriends(const Message& message, int fd) const {
 
     nlohmann::json friends_json = nlohmann::json::array();
     for (const auto& f : *friends) {
-        friends_json.push_back(nlohmann::json{{"user_id", f.user_id}, {"username", f.username}});
+        friends_json.push_back(nlohmann::json{{"user_id", f.user_id},
+                                              {"username", f.username},
+                                              {"display_name", make_optional_string(f.display_name)},
+                                              {"avatar_url", make_optional_string(f.avatar_url)}});
     }
 
     Message response;
@@ -391,8 +394,11 @@ Message FriendHandler::handleListFriendRequests(const Message& message, int fd) 
     auto toJson = [](const std::vector<http::WireFriendRequest>& requests) {
         nlohmann::json array = nlohmann::json::array();
         for (const auto& r : requests) {
-            array.push_back(
-                nlohmann::json{{"user_id", r.user_id}, {"username", r.username}, {"created_at", r.created_at}});
+            array.push_back(nlohmann::json{{"user_id", r.user_id},
+                                           {"username", r.username},
+                                           {"created_at", r.created_at},
+                                           {"display_name", make_optional_string(r.display_name)},
+                                           {"avatar_url", make_optional_string(r.avatar_url)}});
         }
         return array;
     };

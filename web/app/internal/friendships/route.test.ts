@@ -40,6 +40,8 @@ describe("GET /internal/friendships", () => {
     const response = await GET(request);
     expect(response.status).toBe(200);
     const body = (await response.json()) as { friends: { user_id: string }[] };
-    expect(body.friends).toEqual([{ user_id: toUserWireId(b.id), username: "bob" }]);
+    expect(body.friends).toEqual([
+      { user_id: toUserWireId(b.id), username: "bob", display_name: "bob", avatar_url: null }
+    ]);
   });
 });
