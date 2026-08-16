@@ -78,7 +78,8 @@ Message GuildHandler::handleCreateGuild(const Message& message, int fd) const {
         if (!message.payload["visibility"].is_string()) {
             return makeError("MALFORMED_MESSAGE", "CREATE_GUILD visibility must be a string");
         }
-        const auto parsed = guild::guildVisibilityFromString(message.payload["visibility"].get<std::string>());
+        const auto parsed =
+            guild::guildVisibilityFromString(message.payload["visibility"].get<std::string>());
         if (!parsed) {
             return makeError("MALFORMED_MESSAGE",
                              "CREATE_GUILD visibility must be open, application, or private");
@@ -101,8 +102,9 @@ Message GuildHandler::handleCreateGuild(const Message& message, int fd) const {
     }
 
     const auto created_visibility = guild::guildVisibilityFromString(created->visibility);
-    guild::Guild& new_guild = guild_manager_->upsertGuild(
-        created->guild_id, created->name, created->owner_id, created_visibility.value_or(visibility));
+    guild::Guild& new_guild =
+        guild_manager_->upsertGuild(created->guild_id, created->name, created->owner_id,
+                                    created_visibility.value_or(visibility));
     session_manager_->addGuildMembership(fd, new_guild.id);
     // Maintained by construction, not by trusting a role_rank the internal
     // API would otherwise have to echo back (docs/guilds/social-presence-design.md
@@ -141,7 +143,8 @@ Message GuildHandler::handleListGuilds(const Message& message, int fd) const {
     // error.
     nlohmann::json guilds = nlohmann::json::array();
     for (const auto& g : guild_manager_->listGuilds()) {
-        if (g.visibility == guild::GuildVisibility::PRIVATE && !session_manager_->isMemberOfGuild(fd, g.id)) {
+        if (g.visibility == guild::GuildVisibility::PRIVATE &&
+            !session_manager_->isMemberOfGuild(fd, g.id)) {
             continue;
         }
         guilds.push_back({{"guild_id", g.id},
@@ -397,19 +400,20 @@ Message GuildHandler::handleListMembers(const Message& message, int fd) const {
 
     nlohmann::json members_json = nlohmann::json::array();
     for (const auto& m : *members) {
-        members_json.push_back(nlohmann::json{{"user_id", m.user_id},
-                                              {"username", m.username},
-                                              {"role_rank", m.role_rank},
-                                              {"role_label", m.role_label},
-                                              {"joined_at", m.joined_at},
-                                              {"display_name", make_optional_string(m.display_name)},
-                                              {"avatar_url", make_optional_string(m.avatar_url)}});
+        members_json.push_back(
+            nlohmann::json{{"user_id", m.user_id},
+                           {"username", m.username},
+                           {"role_rank", m.role_rank},
+                           {"role_label", m.role_label},
+                           {"joined_at", m.joined_at},
+                           {"display_name", make_optional_string(m.display_name)},
+                           {"avatar_url", make_optional_string(m.avatar_url)}});
     }
 
     Message response;
     response.type = "MEMBER_LIST";
-    response.payload = nlohmann::json{
-        {"type", "MEMBER_LIST"}, {"guild_id", guild_id}, {"members", members_json}};
+    response.payload =
+        nlohmann::json{{"type", "MEMBER_LIST"}, {"guild_id", guild_id}, {"members", members_json}};
     return response;
 }
 
@@ -433,7 +437,8 @@ Message GuildHandler::handleSetMemberRole(const Message& message, int fd) const 
     if (!message.payload.contains("user_id") || !message.payload["user_id"].is_string()) {
         return makeError("MALFORMED_MESSAGE", "SET_MEMBER_ROLE missing required field: user_id");
     }
-    if (!message.payload.contains("role_rank") || !message.payload["role_rank"].is_number_integer()) {
+    if (!message.payload.contains("role_rank") ||
+        !message.payload["role_rank"].is_number_integer()) {
         return makeError("MALFORMED_MESSAGE", "SET_MEMBER_ROLE missing required field: role_rank");
     }
 
@@ -508,13 +513,16 @@ Message GuildHandler::handleSetGuildVisibility(const Message& message, int fd) c
     }
 
     if (!message.payload.contains("guild_id") || !message.payload["guild_id"].is_string()) {
-        return makeError("MALFORMED_MESSAGE", "SET_GUILD_VISIBILITY missing required field: guild_id");
+        return makeError("MALFORMED_MESSAGE",
+                         "SET_GUILD_VISIBILITY missing required field: guild_id");
     }
     if (!message.payload.contains("visibility") || !message.payload["visibility"].is_string()) {
-        return makeError("MALFORMED_MESSAGE", "SET_GUILD_VISIBILITY missing required field: visibility");
+        return makeError("MALFORMED_MESSAGE",
+                         "SET_GUILD_VISIBILITY missing required field: visibility");
     }
 
-    const auto visibility = guild::guildVisibilityFromString(message.payload["visibility"].get<std::string>());
+    const auto visibility =
+        guild::guildVisibilityFromString(message.payload["visibility"].get<std::string>());
     if (!visibility) {
         return makeError("MALFORMED_MESSAGE",
                          "SET_GUILD_VISIBILITY visibility must be open, application, or private");
@@ -551,8 +559,9 @@ Message GuildHandler::handleSetGuildVisibility(const Message& message, int fd) c
     response.type = "GUILD_VISIBILITY_CHANGED";
     response.scope = Scope::TARGETED;
     response.target_fds = session_manager_->getFdsInGuild(guild_id);
-    response.payload = nlohmann::json{
-        {"type", "GUILD_VISIBILITY_CHANGED"}, {"guild_id", guild_id}, {"visibility", *updated_visibility}};
+    response.payload = nlohmann::json{{"type", "GUILD_VISIBILITY_CHANGED"},
+                                      {"guild_id", guild_id},
+                                      {"visibility", *updated_visibility}};
     return response;
 }
 

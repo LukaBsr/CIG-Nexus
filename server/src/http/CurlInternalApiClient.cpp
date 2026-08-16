@@ -88,7 +88,8 @@ std::optional<WireMessage> parseWireMessage(const nlohmann::json& json) {
 
 std::optional<WireMember> parseWireMember(const nlohmann::json& json) {
     if (!json.is_object() || !json.contains("user_id") || !json.contains("username") ||
-        !json.contains("role_rank") || !json.contains("role_label") || !json.contains("joined_at")) {
+        !json.contains("role_rank") || !json.contains("role_label") ||
+        !json.contains("joined_at")) {
         return std::nullopt;
     }
     if (!json["user_id"].is_string() || !json["username"].is_string() ||
@@ -96,17 +97,21 @@ std::optional<WireMember> parseWireMember(const nlohmann::json& json) {
         !json["joined_at"].is_string()) {
         return std::nullopt;
     }
-    WireMember member{json["user_id"].get<std::string>(), json["username"].get<std::string>(),
-                      json["role_rank"].get<int>(), json["role_label"].get<std::string>(),
-                      json["joined_at"].get<std::string>(), std::nullopt, std::nullopt};
+    WireMember member{json["user_id"].get<std::string>(),
+                      json["username"].get<std::string>(),
+                      json["role_rank"].get<int>(),
+                      json["role_label"].get<std::string>(),
+                      json["joined_at"].get<std::string>(),
+                      std::nullopt,
+                      std::nullopt};
     parseProfileFields(json, member.display_name, member.avatar_url);
     return member;
 }
 
 std::optional<WireInvite> parseWireInvite(const nlohmann::json& json) {
     if (!json.is_object() || !json.contains("code") || !json.contains("max_uses") ||
-        !json.contains("use_count") || !json.contains("expires_at") || !json.contains("revoked_at") ||
-        !json.contains("created_at")) {
+        !json.contains("use_count") || !json.contains("expires_at") ||
+        !json.contains("revoked_at") || !json.contains("created_at")) {
         return std::nullopt;
     }
     if (!json["code"].is_string() || !json["use_count"].is_number_integer() ||
@@ -119,13 +124,16 @@ std::optional<WireInvite> parseWireInvite(const nlohmann::json& json) {
 
     WireInvite invite;
     invite.code = json["code"].get<std::string>();
-    invite.max_uses =
-        json["max_uses"].is_number_integer() ? std::make_optional(json["max_uses"].get<int>()) : std::nullopt;
+    invite.max_uses = json["max_uses"].is_number_integer()
+                          ? std::make_optional(json["max_uses"].get<int>())
+                          : std::nullopt;
     invite.use_count = json["use_count"].get<int>();
-    invite.expires_at = json["expires_at"].is_string() ? std::make_optional(json["expires_at"].get<std::string>())
-                                                        : std::nullopt;
-    invite.revoked_at = json["revoked_at"].is_string() ? std::make_optional(json["revoked_at"].get<std::string>())
-                                                        : std::nullopt;
+    invite.expires_at = json["expires_at"].is_string()
+                            ? std::make_optional(json["expires_at"].get<std::string>())
+                            : std::nullopt;
+    invite.revoked_at = json["revoked_at"].is_string()
+                            ? std::make_optional(json["revoked_at"].get<std::string>())
+                            : std::nullopt;
     invite.created_at = json["created_at"].get<std::string>();
     return invite;
 }
@@ -161,15 +169,15 @@ RedeemInviteResult parseRedeemInviteResult(const nlohmann::json& json) {
         }
         result.guild_id = json["guild_id"].get<std::string>();
         result.is_join_request = json["kind"].get<std::string>() == "join_request";
-        if (!result.is_join_request && json.contains("role_rank") && json["role_rank"].is_number_integer()) {
+        if (!result.is_join_request && json.contains("role_rank") &&
+            json["role_rank"].is_number_integer()) {
             result.role_rank = json["role_rank"].get<int>();
         }
         return result;
     }
 
-    const std::string error = json.contains("error") && json["error"].is_string()
-                                  ? json["error"].get<std::string>()
-                                  : "";
+    const std::string error =
+        json.contains("error") && json["error"].is_string() ? json["error"].get<std::string>() : "";
     if (error == "not_found") {
         result.error = RedeemInviteError::NOT_FOUND;
     } else if (error == "revoked") {
@@ -193,8 +201,8 @@ std::optional<WireFriend> parseWireFriend(const nlohmann::json& json) {
     if (!json["user_id"].is_string() || !json["username"].is_string()) {
         return std::nullopt;
     }
-    WireFriend friend_{json["user_id"].get<std::string>(), json["username"].get<std::string>(), std::nullopt,
-                      std::nullopt};
+    WireFriend friend_{json["user_id"].get<std::string>(), json["username"].get<std::string>(),
+                       std::nullopt, std::nullopt};
     parseProfileFields(json, friend_.display_name, friend_.avatar_url);
     return friend_;
 }
@@ -204,10 +212,12 @@ std::optional<WireFriendRequest> parseWireFriendRequest(const nlohmann::json& js
         !json.contains("created_at")) {
         return std::nullopt;
     }
-    if (!json["user_id"].is_string() || !json["username"].is_string() || !json["created_at"].is_string()) {
+    if (!json["user_id"].is_string() || !json["username"].is_string() ||
+        !json["created_at"].is_string()) {
         return std::nullopt;
     }
-    WireFriendRequest request{json["user_id"].get<std::string>(), json["username"].get<std::string>(),
+    WireFriendRequest request{json["user_id"].get<std::string>(),
+                              json["username"].get<std::string>(),
                               json["created_at"].get<std::string>(), std::nullopt, std::nullopt};
     parseProfileFields(json, request.display_name, request.avatar_url);
     return request;
@@ -224,19 +234,20 @@ SendFriendRequestResult parseSendFriendRequestResult(const nlohmann::json& json)
 
     if (json["ok"].get<bool>()) {
         if (!json.contains("kind") || !json["kind"].is_string() || !json.contains("user_id") ||
-            !json["user_id"].is_string() || !json.contains("username") || !json["username"].is_string()) {
+            !json["user_id"].is_string() || !json.contains("username") ||
+            !json["username"].is_string()) {
             return SendFriendRequestResult{}; // malformed success body — treat as failure
         }
         result.user_id = json["user_id"].get<std::string>();
         result.username = json["username"].get<std::string>();
-        result.outcome = json["kind"].get<std::string>() == "friends" ? SendFriendRequestOutcome::FRIENDS_ADDED
-                                                                       : SendFriendRequestOutcome::REQUEST_CREATED;
+        result.outcome = json["kind"].get<std::string>() == "friends"
+                             ? SendFriendRequestOutcome::FRIENDS_ADDED
+                             : SendFriendRequestOutcome::REQUEST_CREATED;
         return result;
     }
 
-    const std::string error = json.contains("error") && json["error"].is_string()
-                                  ? json["error"].get<std::string>()
-                                  : "";
+    const std::string error =
+        json.contains("error") && json["error"].is_string() ? json["error"].get<std::string>() : "";
     if (error == "user_not_found") {
         result.outcome = SendFriendRequestOutcome::USER_NOT_FOUND;
     } else if (error == "self") {
@@ -256,7 +267,8 @@ std::optional<WireBlock> parseWireBlock(const nlohmann::json& json) {
         !json.contains("blocked_at")) {
         return std::nullopt;
     }
-    if (!json["user_id"].is_string() || !json["username"].is_string() || !json["blocked_at"].is_string()) {
+    if (!json["user_id"].is_string() || !json["username"].is_string() ||
+        !json["blocked_at"].is_string()) {
         return std::nullopt;
     }
     WireBlock block{json["user_id"].get<std::string>(), json["username"].get<std::string>(),
@@ -363,8 +375,8 @@ std::optional<Catalog> CurlInternalApiClient::fetchCatalog() {
                 continue;
             }
             catalog.memberships.push_back({m["guild_id"].get<std::string>(),
-                                          m["user_id"].get<std::string>(),
-                                          m["role_rank"].get<int>()});
+                                           m["user_id"].get<std::string>(),
+                                           m["role_rank"].get<int>()});
         }
         for (const auto& c : json["channels"]) {
             if (auto channel = parseWireChannel(c)) {
@@ -399,10 +411,12 @@ bool CurlInternalApiClient::deleteGuild(const std::string& guild_id) {
     return response && response->status == 200;
 }
 
-std::optional<std::string> CurlInternalApiClient::setGuildVisibility(const std::string& guild_id,
-                                                                      const std::string& visibility) {
+std::optional<std::string>
+CurlInternalApiClient::setGuildVisibility(const std::string& guild_id,
+                                          const std::string& visibility) {
     const nlohmann::json body{{"visibility", visibility}};
-    const auto response = request("POST", "/internal/guilds/" + guild_id + "/visibility", body.dump());
+    const auto response =
+        request("POST", "/internal/guilds/" + guild_id + "/visibility", body.dump());
     if (!response || response->status != 200) {
         return std::nullopt;
     }
@@ -419,9 +433,10 @@ std::optional<std::string> CurlInternalApiClient::setGuildVisibility(const std::
 }
 
 std::optional<int> CurlInternalApiClient::createMembership(const std::string& guild_id,
-                                                            const std::string& user_id,
-                                                            int role_rank) {
-    const nlohmann::json body{{"guild_id", guild_id}, {"user_id", user_id}, {"role_rank", role_rank}};
+                                                           const std::string& user_id,
+                                                           int role_rank) {
+    const nlohmann::json body{
+        {"guild_id", guild_id}, {"user_id", user_id}, {"role_rank", role_rank}};
     const auto response = request("POST", "/internal/guild-memberships", body.dump());
     if (!response || response->status != 201) {
         return std::nullopt;
@@ -429,7 +444,8 @@ std::optional<int> CurlInternalApiClient::createMembership(const std::string& gu
 
     try {
         const auto json = nlohmann::json::parse(response->body);
-        if (!json.is_object() || !json.contains("role_rank") || !json["role_rank"].is_number_integer()) {
+        if (!json.is_object() || !json.contains("role_rank") ||
+            !json["role_rank"].is_number_integer()) {
             return std::nullopt;
         }
         return json["role_rank"].get<int>();
@@ -472,8 +488,8 @@ CurlInternalApiClient::fetchGuildMembers(const std::string& guild_id) {
 }
 
 std::optional<std::string> CurlInternalApiClient::setMemberRole(const std::string& guild_id,
-                                                                 const std::string& user_id,
-                                                                 int role_rank) {
+                                                                const std::string& user_id,
+                                                                int role_rank) {
     const nlohmann::json body{{"role_rank", role_rank}};
     const auto response =
         request("PATCH", "/internal/guild-memberships/" + guild_id + "/" + user_id, body.dump());
@@ -554,25 +570,26 @@ bool CurlInternalApiClient::createMessage(const std::optional<std::string>& chan
                                           const std::optional<std::string>& dm_peer_id,
                                           const std::string& user_id, const std::string& content,
                                           int seq) {
-    const nlohmann::json body{{"channel_id", channel_id.has_value() ? nlohmann::json(*channel_id) : nullptr},
-                              {"peer_id", dm_peer_id.has_value() ? nlohmann::json(*dm_peer_id) : nullptr},
-                              {"user_id", user_id},
-                              {"content", content},
-                              {"seq", seq}};
+    const nlohmann::json body{
+        {"channel_id", channel_id.has_value() ? nlohmann::json(*channel_id) : nullptr},
+        {"peer_id", dm_peer_id.has_value() ? nlohmann::json(*dm_peer_id) : nullptr},
+        {"user_id", user_id},
+        {"content", content},
+        {"seq", seq}};
     const auto response = request("POST", "/internal/messages", body.dump());
     return response && response->status == 201;
 }
 
-std::optional<HistoryPage> CurlInternalApiClient::fetchMessages(const std::optional<std::string>& channel_id,
-                                                                 const std::optional<std::string>& dm_peer_id,
-                                                                 const std::string& requester_user_id,
-                                                                 std::optional<int> before_seq, int limit) {
+std::optional<HistoryPage> CurlInternalApiClient::fetchMessages(
+    const std::optional<std::string>& channel_id, const std::optional<std::string>& dm_peer_id,
+    const std::string& requester_user_id, std::optional<int> before_seq, int limit) {
     std::string path = "/internal/messages?limit=" + std::to_string(limit);
     if (channel_id.has_value()) {
         path += "&channel_id=" + urlEncode(*channel_id);
     }
     if (dm_peer_id.has_value()) {
-        path += "&peer_id=" + urlEncode(*dm_peer_id) + "&requester_id=" + urlEncode(requester_user_id);
+        path +=
+            "&peer_id=" + urlEncode(*dm_peer_id) + "&requester_id=" + urlEncode(requester_user_id);
     }
     if (before_seq.has_value()) {
         path += "&before_seq=" + std::to_string(*before_seq);
@@ -631,8 +648,10 @@ LastSequence CurlInternalApiClient::fetchLastSequence() {
     return result;
 }
 
-std::optional<std::vector<WireDmConversation>> CurlInternalApiClient::fetchDmConversations(const std::string& user_id) {
-    const auto response = request("GET", "/internal/dm-conversations?user_id=" + urlEncode(user_id), "");
+std::optional<std::vector<WireDmConversation>>
+CurlInternalApiClient::fetchDmConversations(const std::string& user_id) {
+    const auto response =
+        request("GET", "/internal/dm-conversations?user_id=" + urlEncode(user_id), "");
     if (!response || response->status != 200) {
         return std::nullopt;
     }
@@ -663,8 +682,10 @@ std::optional<std::vector<WireDmConversation>> CurlInternalApiClient::fetchDmCon
     return conversations;
 }
 
-std::optional<std::vector<std::string>> CurlInternalApiClient::fetchGuildIdsForUser(const std::string& user_id) {
-    const auto response = request("GET", "/internal/guild-memberships?user_id=" + urlEncode(user_id), "");
+std::optional<std::vector<std::string>>
+CurlInternalApiClient::fetchGuildIdsForUser(const std::string& user_id) {
+    const auto response =
+        request("GET", "/internal/guild-memberships?user_id=" + urlEncode(user_id), "");
     if (!response || response->status != 200) {
         return std::nullopt;
     }
@@ -686,10 +707,10 @@ std::optional<std::vector<std::string>> CurlInternalApiClient::fetchGuildIdsForU
     return guild_ids;
 }
 
-std::optional<WireInvite> CurlInternalApiClient::createInvite(const std::string& guild_id,
-                                                               const std::string& created_by,
-                                                               std::optional<int> max_uses,
-                                                               std::optional<int> expires_in_seconds) {
+std::optional<WireInvite>
+CurlInternalApiClient::createInvite(const std::string& guild_id, const std::string& created_by,
+                                    std::optional<int> max_uses,
+                                    std::optional<int> expires_in_seconds) {
     const nlohmann::json body{
         {"guild_id", guild_id},
         {"created_by", created_by},
@@ -708,8 +729,10 @@ std::optional<WireInvite> CurlInternalApiClient::createInvite(const std::string&
     }
 }
 
-std::optional<std::vector<WireInvite>> CurlInternalApiClient::fetchInvites(const std::string& guild_id) {
-    const auto response = request("GET", "/internal/guild-invites?guild_id=" + urlEncode(guild_id), "");
+std::optional<std::vector<WireInvite>>
+CurlInternalApiClient::fetchInvites(const std::string& guild_id) {
+    const auto response =
+        request("GET", "/internal/guild-invites?guild_id=" + urlEncode(guild_id), "");
     if (!response || response->status != 200) {
         return std::nullopt;
     }
@@ -734,14 +757,16 @@ std::optional<std::vector<WireInvite>> CurlInternalApiClient::fetchInvites(const
 
 bool CurlInternalApiClient::revokeInvite(const std::string& guild_id, const std::string& code) {
     const auto response = request(
-        "DELETE", "/internal/guild-invites/" + urlEncode(code) + "?guild_id=" + urlEncode(guild_id), "");
+        "DELETE", "/internal/guild-invites/" + urlEncode(code) + "?guild_id=" + urlEncode(guild_id),
+        "");
     return response && response->status == 200;
 }
 
 RedeemInviteResult CurlInternalApiClient::redeemInvite(const std::string& code,
                                                        const std::string& user_id) {
     const nlohmann::json body{{"user_id", user_id}};
-    const auto response = request("POST", "/internal/guild-invites/" + urlEncode(code) + "/redeem", body.dump());
+    const auto response =
+        request("POST", "/internal/guild-invites/" + urlEncode(code) + "/redeem", body.dump());
     if (!response || response->status != 200) {
         return RedeemInviteResult{};
     }
@@ -754,7 +779,7 @@ RedeemInviteResult CurlInternalApiClient::redeemInvite(const std::string& code,
 }
 
 CreateJoinRequestResult CurlInternalApiClient::createJoinRequest(const std::string& guild_id,
-                                                                  const std::string& user_id) {
+                                                                 const std::string& user_id) {
     const nlohmann::json body{{"guild_id", guild_id}, {"user_id", user_id}};
     const auto response = request("POST", "/internal/guild-join-requests", body.dump());
     if (!response || response->status != 201) {
@@ -806,16 +831,17 @@ CurlInternalApiClient::fetchJoinRequests(const std::string& guild_id) {
 }
 
 std::optional<int> CurlInternalApiClient::approveJoinRequest(const std::string& guild_id,
-                                                              const std::string& user_id) {
-    const auto response =
-        request("POST", "/internal/guild-join-requests/" + guild_id + "/" + user_id + "/approve", "");
+                                                             const std::string& user_id) {
+    const auto response = request(
+        "POST", "/internal/guild-join-requests/" + guild_id + "/" + user_id + "/approve", "");
     if (!response || response->status != 200) {
         return std::nullopt;
     }
 
     try {
         const auto json = nlohmann::json::parse(response->body);
-        if (!json.is_object() || !json.contains("role_rank") || !json["role_rank"].is_number_integer()) {
+        if (!json.is_object() || !json.contains("role_rank") ||
+            !json["role_rank"].is_number_integer()) {
             return std::nullopt;
         }
         return json["role_rank"].get<int>();
@@ -824,14 +850,15 @@ std::optional<int> CurlInternalApiClient::approveJoinRequest(const std::string& 
     }
 }
 
-bool CurlInternalApiClient::rejectJoinRequest(const std::string& guild_id, const std::string& user_id) {
+bool CurlInternalApiClient::rejectJoinRequest(const std::string& guild_id,
+                                              const std::string& user_id) {
     const auto response =
         request("DELETE", "/internal/guild-join-requests/" + guild_id + "/" + user_id, "");
     return response && response->status == 200;
 }
 
 SendFriendRequestResult CurlInternalApiClient::sendFriendRequest(const std::string& requester_id,
-                                                                  const std::string& recipient_id) {
+                                                                 const std::string& recipient_id) {
     const nlohmann::json body{{"requester_id", requester_id}, {"recipient_id", recipient_id}};
     const auto response = request("POST", "/internal/friend-requests", body.dump());
     if (!response || response->status != 200) {
@@ -845,7 +872,7 @@ SendFriendRequestResult CurlInternalApiClient::sendFriendRequest(const std::stri
 }
 
 SendFriendRequestResult CurlInternalApiClient::addFriendByCode(const std::string& requester_id,
-                                                                const std::string& code) {
+                                                               const std::string& code) {
     const nlohmann::json body{{"requester_id", requester_id}, {"code", code}};
     const auto response = request("POST", "/internal/friend-requests", body.dump());
     if (!response || response->status != 200) {
@@ -858,18 +885,19 @@ SendFriendRequestResult CurlInternalApiClient::addFriendByCode(const std::string
     }
 }
 
-AcceptFriendRequestResult CurlInternalApiClient::acceptFriendRequest(const std::string& requester_id,
-                                                                      const std::string& recipient_id) {
-    const auto response =
-        request("POST", "/internal/friend-requests/" + requester_id + "/" + recipient_id + "/accept", "");
+AcceptFriendRequestResult
+CurlInternalApiClient::acceptFriendRequest(const std::string& requester_id,
+                                           const std::string& recipient_id) {
+    const auto response = request(
+        "POST", "/internal/friend-requests/" + requester_id + "/" + recipient_id + "/accept", "");
     if (!response || response->status != 200) {
         return AcceptFriendRequestResult{};
     }
     try {
         const auto json = nlohmann::json::parse(response->body);
-        if (!json.is_object() || !json.contains("ok") || !json["ok"].is_boolean() || !json["ok"].get<bool>() ||
-            !json.contains("user_id") || !json["user_id"].is_string() || !json.contains("username") ||
-            !json["username"].is_string()) {
+        if (!json.is_object() || !json.contains("ok") || !json["ok"].is_boolean() ||
+            !json["ok"].get<bool>() || !json.contains("user_id") || !json["user_id"].is_string() ||
+            !json.contains("username") || !json["username"].is_string()) {
             return AcceptFriendRequestResult{};
         }
         return AcceptFriendRequestResult{true, json["user_id"].get<std::string>(),
@@ -886,12 +914,15 @@ bool CurlInternalApiClient::deleteFriendRequest(const std::string& requester_id,
     return response && response->status == 200;
 }
 
-bool CurlInternalApiClient::removeFriend(const std::string& user_id_a, const std::string& user_id_b) {
-    const auto response = request("DELETE", "/internal/friendships/" + user_id_a + "/" + user_id_b, "");
+bool CurlInternalApiClient::removeFriend(const std::string& user_id_a,
+                                         const std::string& user_id_b) {
+    const auto response =
+        request("DELETE", "/internal/friendships/" + user_id_a + "/" + user_id_b, "");
     return response && response->status == 200;
 }
 
-std::optional<std::vector<WireFriend>> CurlInternalApiClient::fetchFriends(const std::string& user_id) {
+std::optional<std::vector<WireFriend>>
+CurlInternalApiClient::fetchFriends(const std::string& user_id) {
     const auto response = request("GET", "/internal/friendships?user_id=" + urlEncode(user_id), "");
     if (!response || response->status != 200) {
         return std::nullopt;
@@ -914,8 +945,10 @@ std::optional<std::vector<WireFriend>> CurlInternalApiClient::fetchFriends(const
     return friends;
 }
 
-std::optional<FriendRequestList> CurlInternalApiClient::fetchFriendRequests(const std::string& user_id) {
-    const auto response = request("GET", "/internal/friend-requests?user_id=" + urlEncode(user_id), "");
+std::optional<FriendRequestList>
+CurlInternalApiClient::fetchFriendRequests(const std::string& user_id) {
+    const auto response =
+        request("GET", "/internal/friend-requests?user_id=" + urlEncode(user_id), "");
     if (!response || response->status != 200) {
         return std::nullopt;
     }
@@ -974,18 +1007,22 @@ std::optional<std::string> CurlInternalApiClient::regenerateFriendCode(const std
     }
 }
 
-bool CurlInternalApiClient::blockUser(const std::string& blocker_id, const std::string& blocked_id) {
+bool CurlInternalApiClient::blockUser(const std::string& blocker_id,
+                                      const std::string& blocked_id) {
     const nlohmann::json body{{"blocker_id", blocker_id}, {"blocked_id", blocked_id}};
     const auto response = request("POST", "/internal/blocks", body.dump());
     return response && response->status == 200;
 }
 
-bool CurlInternalApiClient::unblockUser(const std::string& blocker_id, const std::string& blocked_id) {
-    const auto response = request("DELETE", "/internal/blocks/" + blocker_id + "/" + blocked_id, "");
+bool CurlInternalApiClient::unblockUser(const std::string& blocker_id,
+                                        const std::string& blocked_id) {
+    const auto response =
+        request("DELETE", "/internal/blocks/" + blocker_id + "/" + blocked_id, "");
     return response && response->status == 200;
 }
 
-std::optional<std::vector<WireBlock>> CurlInternalApiClient::fetchBlocks(const std::string& user_id) {
+std::optional<std::vector<WireBlock>>
+CurlInternalApiClient::fetchBlocks(const std::string& user_id) {
     const auto response = request("GET", "/internal/blocks?user_id=" + urlEncode(user_id), "");
     if (!response || response->status != 200) {
         return std::nullopt;

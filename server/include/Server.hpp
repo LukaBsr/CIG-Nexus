@@ -71,7 +71,8 @@ class Server {
     // SessionManager::removeSession() erases the subject's own Session.
     // Empty input returns empty output — the common case costs one
     // no-op loop, not a lookup.
-    std::vector<int> computePresenceExclusionFds(const std::vector<std::string>& blocked_user_ids) const;
+    std::vector<int>
+    computePresenceExclusionFds(const std::vector<std::string>& blocked_user_ids) const;
 
     // Startup catalog hydration and the periodic revocation poll/sweep
     // (design doc §8.1, §9) — no-ops if internal_api_client_ is unset.

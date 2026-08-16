@@ -555,10 +555,12 @@ TEST_CASE("Server excludes a blocked user's connections from the blocker's PRESE
     identify_raw(fd_bob, "u_bob", "bob");
     REQUIRE(!recv_frame_raw(fd_bob).empty()); // bob's own online broadcast, drained
     auto bob_online_seen_by_carol = nlohmann::json::parse(recv_frame_raw(fd_carol));
-    REQUIRE(bob_online_seen_by_carol["user_id"] == "u_bob"); // sanity: carol sees unrelated presence normally
+    REQUIRE(bob_online_seen_by_carol["user_id"] ==
+            "u_bob"); // sanity: carol sees unrelated presence normally
 
     // alice has blocked bob — hydrated at her IDENTIFY below.
-    api_ptr->blocks_to_return = {{"u_bob", "bob", "2026-01-01T00:00:00Z", std::nullopt, std::nullopt}};
+    api_ptr->blocks_to_return = {
+        {"u_bob", "bob", "2026-01-01T00:00:00Z", std::nullopt, std::nullopt}};
 
     int fd_alice = tcp_connect(server.bound_port());
     REQUIRE(fd_alice >= 0);

@@ -178,7 +178,7 @@ TEST_CASE("SessionManager incrementPresence reports only the 0->1 transition") {
 
     REQUIRE_FALSE(manager.isOnline("u_1"));
 
-    REQUIRE(manager.incrementPresence("u_1"));       // 0 -> 1: first connection
+    REQUIRE(manager.incrementPresence("u_1")); // 0 -> 1: first connection
     REQUIRE(manager.isOnline("u_1"));
     REQUIRE_FALSE(manager.incrementPresence("u_1")); // 1 -> 2: second tab, no transition
     REQUIRE_FALSE(manager.incrementPresence("u_1")); // 2 -> 3: third tab, no transition
@@ -195,7 +195,7 @@ TEST_CASE("SessionManager decrementPresence reports only the 1->0 transition") {
     REQUIRE(manager.isOnline("u_1"));
     REQUIRE_FALSE(manager.decrementPresence("u_1")); // 2 -> 1: still online
     REQUIRE(manager.isOnline("u_1"));
-    REQUIRE(manager.decrementPresence("u_1"));        // 1 -> 0: last connection closed
+    REQUIRE(manager.decrementPresence("u_1")); // 1 -> 0: last connection closed
     REQUIRE_FALSE(manager.isOnline("u_1"));
 }
 

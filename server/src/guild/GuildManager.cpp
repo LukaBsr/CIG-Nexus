@@ -209,11 +209,13 @@ bool GuildManager::canCreateInvite(const std::string& guild_id, const std::strin
     return isOfficerOrAbove(guild_id, user_id);
 }
 
-bool GuildManager::canApproveJoinRequest(const std::string& guild_id, const std::string& user_id) const {
+bool GuildManager::canApproveJoinRequest(const std::string& guild_id,
+                                         const std::string& user_id) const {
     return isOfficerOrAbove(guild_id, user_id);
 }
 
-bool GuildManager::canSetGuildVisibility(const std::string& guild_id, const std::string& user_id) const {
+bool GuildManager::canSetGuildVisibility(const std::string& guild_id,
+                                         const std::string& user_id) const {
     return hasRankAtLeast(guild_id, user_id, kOwnerRank);
 }
 

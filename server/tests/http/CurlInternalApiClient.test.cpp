@@ -44,7 +44,8 @@ TEST_CASE("CurlInternalApiClient::fetchCatalog returns nullopt on a non-200 resp
 TEST_CASE("CurlInternalApiClient::createGuild posts the expected JSON body and parses the response",
           "[CurlInternalApiClient]") {
     TestHttpServer server(
-        201, R"({"guild_id": "g_2", "name": "My Guild", "owner_id": "u_1", "visibility": "private"})");
+        201,
+        R"({"guild_id": "g_2", "name": "My Guild", "owner_id": "u_1", "visibility": "private"})");
     http::CurlInternalApiClient client(server.baseUrl(), "test-secret");
 
     const auto guild = client.createGuild("My Guild", "u_1", "private");
@@ -150,7 +151,8 @@ TEST_CASE("CurlInternalApiClient::deleteMembership targets the composite path",
     CHECK(request->path == "/internal/guild-memberships/g_1/u_2");
 }
 
-TEST_CASE("CurlInternalApiClient::fetchGuildMembers parses the roster and sends guild_id as a query param",
+TEST_CASE("CurlInternalApiClient::fetchGuildMembers parses the roster and sends guild_id as a "
+          "query param",
           "[CurlInternalApiClient]") {
     TestHttpServer server(200, R"({
         "members": [
@@ -272,7 +274,8 @@ TEST_CASE("CurlInternalApiClient::createInvite posts the expected body and parse
     CHECK(request->body.find("\"expires_in_seconds\":null") != std::string::npos);
 }
 
-TEST_CASE("CurlInternalApiClient::createInvite returns nullopt on a 400", "[CurlInternalApiClient]") {
+TEST_CASE("CurlInternalApiClient::createInvite returns nullopt on a 400",
+          "[CurlInternalApiClient]") {
     TestHttpServer server(400, R"({"error": "invalid request"})");
     http::CurlInternalApiClient client(server.baseUrl(), "test-secret");
 
@@ -313,7 +316,8 @@ TEST_CASE("CurlInternalApiClient::revokeInvite issues DELETE with guild_id as a 
 
 TEST_CASE("CurlInternalApiClient::redeemInvite parses an ok:true member result",
           "[CurlInternalApiClient]") {
-    TestHttpServer server(200, R"({"ok": true, "kind": "member", "guild_id": "g_1", "role_rank": 0})");
+    TestHttpServer server(200,
+                          R"({"ok": true, "kind": "member", "guild_id": "g_1", "role_rank": 0})");
     http::CurlInternalApiClient client(server.baseUrl(), "test-secret");
 
     const auto result = client.redeemInvite("abc123", "u_2");
@@ -340,7 +344,8 @@ TEST_CASE("CurlInternalApiClient::redeemInvite parses an ok:true join_request re
     CHECK_FALSE(result.role_rank.has_value());
 }
 
-TEST_CASE("CurlInternalApiClient::redeemInvite parses each ok:false error", "[CurlInternalApiClient]") {
+TEST_CASE("CurlInternalApiClient::redeemInvite parses each ok:false error",
+          "[CurlInternalApiClient]") {
     auto check_error = [](const std::string& wire_error, http::RedeemInviteError expected) {
         TestHttpServer server(200, R"({"ok": false, "error": ")" + wire_error + R"("})");
         http::CurlInternalApiClient client(server.baseUrl(), "test-secret");
@@ -380,7 +385,8 @@ TEST_CASE("CurlInternalApiClient::createJoinRequest parses created and already_p
     {
         TestHttpServer server(201, R"({"result": "already_pending"})");
         http::CurlInternalApiClient client(server.baseUrl(), "test-secret");
-        CHECK(client.createJoinRequest("g_1", "u_2") == http::CreateJoinRequestResult::ALREADY_PENDING);
+        CHECK(client.createJoinRequest("g_1", "u_2") ==
+              http::CreateJoinRequestResult::ALREADY_PENDING);
     }
 }
 
@@ -392,8 +398,9 @@ TEST_CASE("CurlInternalApiClient::createJoinRequest returns FAILED on a non-201"
     CHECK(client.createJoinRequest("g_1", "u_2") == http::CreateJoinRequestResult::FAILED);
 }
 
-TEST_CASE("CurlInternalApiClient::fetchJoinRequests parses the list and sends guild_id as a query param",
-          "[CurlInternalApiClient]") {
+TEST_CASE(
+    "CurlInternalApiClient::fetchJoinRequests parses the list and sends guild_id as a query param",
+    "[CurlInternalApiClient]") {
     TestHttpServer server(
         200,
         R"({"requests": [{"user_id": "u_2", "username": "bob", "requested_at": "2026-01-01T00:00:00Z"}]})");

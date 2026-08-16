@@ -64,7 +64,8 @@ TEST_CASE("JoinRequestHandler REQUEST_JOIN creates a request against an applicat
     REQUIRE(responses[1].payload["username"] == "bob");
 }
 
-TEST_CASE("JoinRequestHandler REQUEST_JOIN omits JOIN_REQUEST_RECEIVED when no officer is connected") {
+TEST_CASE(
+    "JoinRequestHandler REQUEST_JOIN omits JOIN_REQUEST_RECEIVED when no officer is connected") {
     Fixture f;
     f.identify(1, "bob");
     f.guilds.upsertGuild("g_1", "First", "u_owner", guild::GuildVisibility::APPLICATION);
@@ -138,10 +139,11 @@ TEST_CASE("JoinRequestHandler LIST_JOIN_REQUESTS returns pending requests for an
     session::Session& owner = f.identify(1, "owner");
     f.guilds.upsertGuild("g_1", "First", owner.user_id, guild::GuildVisibility::APPLICATION);
     f.guilds.setMemberRank("g_1", owner.user_id, guild::kOwnerRank);
-    f.api.join_requests_to_return = {{"u_2", "bob", "2026-01-01T00:00:00Z", std::nullopt, std::nullopt}};
+    f.api.join_requests_to_return = {
+        {"u_2", "bob", "2026-01-01T00:00:00Z", std::nullopt, std::nullopt}};
 
-    const auto response =
-        f.handler.handleListJoinRequests(make_message("LIST_JOIN_REQUESTS", {{"guild_id", "g_1"}}), 1);
+    const auto response = f.handler.handleListJoinRequests(
+        make_message("LIST_JOIN_REQUESTS", {{"guild_id", "g_1"}}), 1);
 
     REQUIRE(response.type == "JOIN_REQUEST_LIST");
     REQUIRE(response.payload["requests"].size() == 1);
@@ -154,8 +156,8 @@ TEST_CASE("JoinRequestHandler LIST_JOIN_REQUESTS rejects a crew-rank caller") {
     f.guilds.upsertGuild("g_1", "First", "u_owner", guild::GuildVisibility::APPLICATION);
     f.guilds.setMemberRank("g_1", crew.user_id, guild::kMemberRank);
 
-    const auto response =
-        f.handler.handleListJoinRequests(make_message("LIST_JOIN_REQUESTS", {{"guild_id", "g_1"}}), 1);
+    const auto response = f.handler.handleListJoinRequests(
+        make_message("LIST_JOIN_REQUESTS", {{"guild_id", "g_1"}}), 1);
 
     REQUIRE(response.payload["code"] == "NOT_GUILD_OFFICER");
 }
@@ -172,7 +174,9 @@ TEST_CASE("JoinRequestHandler APPROVE_JOIN_REQUEST creates the membership and no
     f.api.approve_join_request_returns_rank = guild::kMemberRank;
 
     const auto responses = f.handler.handleApproveJoinRequest(
-        make_message("APPROVE_JOIN_REQUEST", {{"guild_id", "g_1"}, {"user_id", requester_tab1.user_id}}), 1);
+        make_message("APPROVE_JOIN_REQUEST",
+                     {{"guild_id", "g_1"}, {"user_id", requester_tab1.user_id}}),
+        1);
 
     REQUIRE(responses.size() == 2);
     REQUIRE(responses[0].type == "JOIN_REQUEST_APPROVED");
@@ -237,7 +241,8 @@ TEST_CASE("JoinRequestHandler REJECT_JOIN_REQUEST deletes the request and notifi
     f.guilds.setMemberRank("g_1", owner.user_id, guild::kOwnerRank);
 
     const auto responses = f.handler.handleRejectJoinRequest(
-        make_message("REJECT_JOIN_REQUEST", {{"guild_id", "g_1"}, {"user_id", requester.user_id}}), 1);
+        make_message("REJECT_JOIN_REQUEST", {{"guild_id", "g_1"}, {"user_id", requester.user_id}}),
+        1);
 
     REQUIRE(responses.size() == 2);
     REQUIRE(responses[0].type == "JOIN_REQUEST_REJECTED");

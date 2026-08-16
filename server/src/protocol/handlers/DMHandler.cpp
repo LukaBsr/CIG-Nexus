@@ -81,7 +81,8 @@ bool DMHandler::canSendDm(const session::Session* session, const std::string& pe
         if (peer_session) {
             shares_guild = intersects(session->guild_ids, peer_session->guild_ids);
         } else if (internal_api_client_) {
-            if (const auto peer_guild_ids = internal_api_client_->fetchGuildIdsForUser(peer_user_id)) {
+            if (const auto peer_guild_ids =
+                    internal_api_client_->fetchGuildIdsForUser(peer_user_id)) {
                 shares_guild = intersects(session->guild_ids, *peer_guild_ids);
             }
         }
@@ -219,7 +220,8 @@ Message DMHandler::handleFetchHistory(const Message& message, int fd) const {
     std::optional<int> before_seq;
     if (message.payload.contains("before_seq") && !message.payload["before_seq"].is_null()) {
         if (!message.payload["before_seq"].is_number_integer()) {
-            return makeError("MALFORMED_MESSAGE", "FETCH_HISTORY before_seq must be an integer or null");
+            return makeError("MALFORMED_MESSAGE",
+                             "FETCH_HISTORY before_seq must be an integer or null");
         }
         before_seq = message.payload["before_seq"].get<int>();
     }
@@ -232,7 +234,7 @@ Message DMHandler::handleFetchHistory(const Message& message, int fd) const {
         limit = message.payload["limit"].get<int>();
         if (limit < 1 || limit > kMaxHistoryLimit) {
             return makeError("MALFORMED_MESSAGE", "FETCH_HISTORY limit must be between 1 and " +
-                                                       std::to_string(kMaxHistoryLimit));
+                                                      std::to_string(kMaxHistoryLimit));
         }
     }
 
@@ -240,8 +242,8 @@ Message DMHandler::handleFetchHistory(const Message& message, int fd) const {
         return makeError("INTERNAL_ERROR", "History unavailable");
     }
 
-    const std::optional<http::HistoryPage> page =
-        internal_api_client_->fetchMessages(std::nullopt, peer_id, session->user_id, before_seq, limit);
+    const std::optional<http::HistoryPage> page = internal_api_client_->fetchMessages(
+        std::nullopt, peer_id, session->user_id, before_seq, limit);
     if (!page) {
         return makeError("INTERNAL_ERROR", "Failed to fetch message history");
     }
@@ -290,12 +292,14 @@ Message DMHandler::handleListDmConversations(const Message& message, int fd) con
             {"username", c.username},
             {"display_name", make_optional_string(c.display_name)},
             {"avatar_url", make_optional_string(c.avatar_url)},
-            {"last_message_at", c.last_message_at.has_value() ? nlohmann::json(*c.last_message_at) : nullptr}});
+            {"last_message_at",
+             c.last_message_at.has_value() ? nlohmann::json(*c.last_message_at) : nullptr}});
     }
 
     Message response;
     response.type = "DM_CONVERSATION_LIST";
-    response.payload = nlohmann::json{{"type", "DM_CONVERSATION_LIST"}, {"conversations", conversations_json}};
+    response.payload =
+        nlohmann::json{{"type", "DM_CONVERSATION_LIST"}, {"conversations", conversations_json}};
     return response;
 }
 

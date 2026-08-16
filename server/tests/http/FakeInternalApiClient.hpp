@@ -21,12 +21,14 @@ class FakeInternalApiClient : public http::InternalApiClient {
         if (fail_create_guild) {
             return std::nullopt;
         }
-        return http::WireGuild{"g_fake_" + std::to_string(next_guild_id_++), name, owner_id, visibility};
+        return http::WireGuild{"g_fake_" + std::to_string(next_guild_id_++), name, owner_id,
+                               visibility};
     }
 
     bool deleteGuild(const std::string&) override { return !fail_delete_guild; }
 
-    std::optional<std::string> setGuildVisibility(const std::string&, const std::string& visibility) override {
+    std::optional<std::string> setGuildVisibility(const std::string&,
+                                                  const std::string& visibility) override {
         if (fail_set_guild_visibility) {
             return std::nullopt;
         }
@@ -77,20 +79,22 @@ class FakeInternalApiClient : public http::InternalApiClient {
         return revoked_ids_to_return;
     }
 
-    bool createMessage(const std::optional<std::string>& channel_id, const std::optional<std::string>& dm_peer_id,
-                       const std::string& user_id, const std::string& content, int seq) override {
+    bool createMessage(const std::optional<std::string>& channel_id,
+                       const std::optional<std::string>& dm_peer_id, const std::string& user_id,
+                       const std::string& content, int seq) override {
         if (fail_create_message) {
             return false;
         }
-        created_messages.push_back(
-            http::WireMessage{seq, channel_id, 0, user_id, "", content, std::nullopt, std::nullopt});
+        created_messages.push_back(http::WireMessage{seq, channel_id, 0, user_id, "", content,
+                                                     std::nullopt, std::nullopt});
         last_created_dm_peer_id = dm_peer_id;
         return true;
     }
 
     std::optional<http::HistoryPage> fetchMessages(const std::optional<std::string>&,
-                                                    const std::optional<std::string>&, const std::string&,
-                                                    std::optional<int>, int) override {
+                                                   const std::optional<std::string>&,
+                                                   const std::string&, std::optional<int>,
+                                                   int) override {
         if (fail_fetch_messages) {
             return std::nullopt;
         }
@@ -99,7 +103,8 @@ class FakeInternalApiClient : public http::InternalApiClient {
 
     http::LastSequence fetchLastSequence() override { return last_sequence_to_return; }
 
-    std::optional<std::vector<http::WireDmConversation>> fetchDmConversations(const std::string&) override {
+    std::optional<std::vector<http::WireDmConversation>>
+    fetchDmConversations(const std::string&) override {
         if (fail_fetch_dm_conversations) {
             return std::nullopt;
         }
@@ -144,11 +149,13 @@ class FakeInternalApiClient : public http::InternalApiClient {
         return redeem_invite_returns;
     }
 
-    http::CreateJoinRequestResult createJoinRequest(const std::string&, const std::string&) override {
+    http::CreateJoinRequestResult createJoinRequest(const std::string&,
+                                                    const std::string&) override {
         return create_join_request_returns;
     }
 
-    std::optional<std::vector<http::WireJoinRequest>> fetchJoinRequests(const std::string&) override {
+    std::optional<std::vector<http::WireJoinRequest>>
+    fetchJoinRequests(const std::string&) override {
         if (fail_fetch_join_requests) {
             return std::nullopt;
         }
@@ -166,7 +173,8 @@ class FakeInternalApiClient : public http::InternalApiClient {
         return !fail_reject_join_request;
     }
 
-    http::SendFriendRequestResult sendFriendRequest(const std::string&, const std::string&) override {
+    http::SendFriendRequestResult sendFriendRequest(const std::string&,
+                                                    const std::string&) override {
         return send_friend_request_returns;
     }
 
@@ -174,7 +182,8 @@ class FakeInternalApiClient : public http::InternalApiClient {
         return add_friend_by_code_returns;
     }
 
-    http::AcceptFriendRequestResult acceptFriendRequest(const std::string&, const std::string&) override {
+    http::AcceptFriendRequestResult acceptFriendRequest(const std::string&,
+                                                        const std::string&) override {
         return accept_friend_request_returns;
     }
 
@@ -182,7 +191,9 @@ class FakeInternalApiClient : public http::InternalApiClient {
         return !fail_delete_friend_request;
     }
 
-    bool removeFriend(const std::string&, const std::string&) override { return !fail_remove_friend; }
+    bool removeFriend(const std::string&, const std::string&) override {
+        return !fail_remove_friend;
+    }
 
     std::optional<std::vector<http::WireFriend>> fetchFriends(const std::string&) override {
         if (fail_fetch_friends) {
@@ -282,7 +293,8 @@ class FakeInternalApiClient : public http::InternalApiClient {
     std::string create_invite_returns_code; // empty = auto-generate a fake one
     std::vector<http::WireInvite> invites_to_return;
     http::RedeemInviteResult redeem_invite_returns;
-    http::CreateJoinRequestResult create_join_request_returns = http::CreateJoinRequestResult::CREATED;
+    http::CreateJoinRequestResult create_join_request_returns =
+        http::CreateJoinRequestResult::CREATED;
     std::vector<http::WireJoinRequest> join_requests_to_return;
     int approve_join_request_returns_rank = 0;
     http::SendFriendRequestResult send_friend_request_returns;

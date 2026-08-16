@@ -112,9 +112,10 @@ Server::Server(uint16_t port) : port_(port), running_(false), listener_(port) {
         return std::vector<protocol::Message>{guild_handler_.handleSetMemberRole(msg, fd)};
     });
 
-    dispatcher_.registerHandler("SET_GUILD_VISIBILITY", [this](const protocol::Message& msg, int fd) {
-        return std::vector<protocol::Message>{guild_handler_.handleSetGuildVisibility(msg, fd)};
-    });
+    dispatcher_.registerHandler(
+        "SET_GUILD_VISIBILITY", [this](const protocol::Message& msg, int fd) {
+            return std::vector<protocol::Message>{guild_handler_.handleSetGuildVisibility(msg, fd)};
+        });
 
     dispatcher_.registerHandler("LIST_CHANNELS", [this](const protocol::Message& msg, int fd) {
         return std::vector<protocol::Message>{channel_handler_.handleListChannels(msg, fd)};
@@ -146,15 +147,16 @@ Server::Server(uint16_t port) : port_(port), running_(false), listener_(port) {
     // which field the payload carries, rather than teaching ChannelHandler
     // about DMs or vice versa.
     dispatcher_.registerHandler("FETCH_HISTORY", [this](const protocol::Message& msg, int fd) {
-        const bool has_peer_id =
-            msg.payload.is_object() && msg.payload.contains("peer_id") && !msg.payload["peer_id"].is_null();
-        const bool has_channel_id =
-            msg.payload.is_object() && msg.payload.contains("channel_id") && !msg.payload["channel_id"].is_null();
+        const bool has_peer_id = msg.payload.is_object() && msg.payload.contains("peer_id") &&
+                                 !msg.payload["peer_id"].is_null();
+        const bool has_channel_id = msg.payload.is_object() && msg.payload.contains("channel_id") &&
+                                    !msg.payload["channel_id"].is_null();
         if (has_peer_id && has_channel_id) {
             protocol::Message error;
             error.type = "ERROR";
-            error.payload = protocol::make_error("MALFORMED_MESSAGE",
-                                                 "FETCH_HISTORY: channel_id and peer_id are mutually exclusive");
+            error.payload = protocol::make_error(
+                "MALFORMED_MESSAGE",
+                "FETCH_HISTORY: channel_id and peer_id are mutually exclusive");
             return std::vector<protocol::Message>{error};
         }
         if (has_peer_id) {
@@ -184,36 +186,43 @@ Server::Server(uint16_t port) : port_(port), running_(false), listener_(port) {
     });
 
     dispatcher_.registerHandler("LIST_JOIN_REQUESTS", [this](const protocol::Message& msg, int fd) {
-        return std::vector<protocol::Message>{join_request_handler_.handleListJoinRequests(msg, fd)};
+        return std::vector<protocol::Message>{
+            join_request_handler_.handleListJoinRequests(msg, fd)};
     });
 
-    dispatcher_.registerHandler("APPROVE_JOIN_REQUEST", [this](const protocol::Message& msg, int fd) {
-        return join_request_handler_.handleApproveJoinRequest(msg, fd);
-    });
+    dispatcher_.registerHandler("APPROVE_JOIN_REQUEST",
+                                [this](const protocol::Message& msg, int fd) {
+                                    return join_request_handler_.handleApproveJoinRequest(msg, fd);
+                                });
 
-    dispatcher_.registerHandler("REJECT_JOIN_REQUEST", [this](const protocol::Message& msg, int fd) {
-        return join_request_handler_.handleRejectJoinRequest(msg, fd);
-    });
+    dispatcher_.registerHandler("REJECT_JOIN_REQUEST",
+                                [this](const protocol::Message& msg, int fd) {
+                                    return join_request_handler_.handleRejectJoinRequest(msg, fd);
+                                });
 
-    dispatcher_.registerHandler("SEND_FRIEND_REQUEST", [this](const protocol::Message& msg, int fd) {
-        return friend_handler_.handleSendFriendRequest(msg, fd);
-    });
+    dispatcher_.registerHandler("SEND_FRIEND_REQUEST",
+                                [this](const protocol::Message& msg, int fd) {
+                                    return friend_handler_.handleSendFriendRequest(msg, fd);
+                                });
 
     dispatcher_.registerHandler("ADD_FRIEND_BY_CODE", [this](const protocol::Message& msg, int fd) {
         return friend_handler_.handleAddFriendByCode(msg, fd);
     });
 
-    dispatcher_.registerHandler("ACCEPT_FRIEND_REQUEST", [this](const protocol::Message& msg, int fd) {
-        return friend_handler_.handleAcceptFriendRequest(msg, fd);
-    });
+    dispatcher_.registerHandler("ACCEPT_FRIEND_REQUEST",
+                                [this](const protocol::Message& msg, int fd) {
+                                    return friend_handler_.handleAcceptFriendRequest(msg, fd);
+                                });
 
-    dispatcher_.registerHandler("REJECT_FRIEND_REQUEST", [this](const protocol::Message& msg, int fd) {
-        return friend_handler_.handleRejectFriendRequest(msg, fd);
-    });
+    dispatcher_.registerHandler("REJECT_FRIEND_REQUEST",
+                                [this](const protocol::Message& msg, int fd) {
+                                    return friend_handler_.handleRejectFriendRequest(msg, fd);
+                                });
 
-    dispatcher_.registerHandler("CANCEL_FRIEND_REQUEST", [this](const protocol::Message& msg, int fd) {
-        return friend_handler_.handleCancelFriendRequest(msg, fd);
-    });
+    dispatcher_.registerHandler("CANCEL_FRIEND_REQUEST",
+                                [this](const protocol::Message& msg, int fd) {
+                                    return friend_handler_.handleCancelFriendRequest(msg, fd);
+                                });
 
     dispatcher_.registerHandler("REMOVE_FRIEND", [this](const protocol::Message& msg, int fd) {
         return friend_handler_.handleRemoveFriend(msg, fd);
@@ -223,7 +232,8 @@ Server::Server(uint16_t port) : port_(port), running_(false), listener_(port) {
         return std::vector<protocol::Message>{friend_handler_.handleListFriends(msg, fd)};
     });
 
-    dispatcher_.registerHandler("LIST_FRIEND_REQUESTS", [this](const protocol::Message& msg, int fd) {
+    dispatcher_.registerHandler("LIST_FRIEND_REQUESTS", [this](const protocol::Message& msg,
+                                                               int fd) {
         return std::vector<protocol::Message>{friend_handler_.handleListFriendRequests(msg, fd)};
     });
 
@@ -231,7 +241,8 @@ Server::Server(uint16_t port) : port_(port), running_(false), listener_(port) {
         return std::vector<protocol::Message>{friend_handler_.handleFetchFriendCode(msg, fd)};
     });
 
-    dispatcher_.registerHandler("REGENERATE_FRIEND_CODE", [this](const protocol::Message& msg, int fd) {
+    dispatcher_.registerHandler("REGENERATE_FRIEND_CODE", [this](const protocol::Message& msg,
+                                                                 int fd) {
         return std::vector<protocol::Message>{friend_handler_.handleRegenerateFriendCode(msg, fd)};
     });
 
@@ -251,9 +262,10 @@ Server::Server(uint16_t port) : port_(port), running_(false), listener_(port) {
         return std::vector<protocol::Message>{dm_handler_.handleDmSend(msg, fd)};
     });
 
-    dispatcher_.registerHandler("LIST_DM_CONVERSATIONS", [this](const protocol::Message& msg, int fd) {
-        return std::vector<protocol::Message>{dm_handler_.handleListDmConversations(msg, fd)};
-    });
+    dispatcher_.registerHandler(
+        "LIST_DM_CONVERSATIONS", [this](const protocol::Message& msg, int fd) {
+            return std::vector<protocol::Message>{dm_handler_.handleListDmConversations(msg, fd)};
+        });
 }
 
 void Server::configureAuth(const std::string& jwt_public_key_pem) {
@@ -330,8 +342,8 @@ void Server::hydrateMessageSequences() {
     dm_handler_.seedMessageCounter(last_seq.dm_seq);
 
     std::cout << "Hydrated message sequence counters (lobby=" << last_seq.lobby_seq.value_or(0)
-              << ", channel=" << last_seq.channel_seq.value_or(0) << ", dm=" << last_seq.dm_seq.value_or(0)
-              << ")" << std::endl;
+              << ", channel=" << last_seq.channel_seq.value_or(0)
+              << ", dm=" << last_seq.dm_seq.value_or(0) << ")" << std::endl;
 }
 
 void Server::pollRevocationCache() {
@@ -378,7 +390,8 @@ protocol::Message Server::makePresenceUpdate(const std::string& user_id, bool on
     return presence;
 }
 
-std::vector<int> Server::computePresenceExclusionFds(const std::vector<std::string>& blocked_user_ids) const {
+std::vector<int>
+Server::computePresenceExclusionFds(const std::vector<std::string>& blocked_user_ids) const {
     std::vector<int> excluded;
     for (const auto& blocked_user_id : blocked_user_ids) {
         const std::vector<int> fds = session_manager_.getFdsForUser(blocked_user_id);
@@ -393,7 +406,8 @@ void Server::removeSessionTrackingPresence(int fd) {
     // docs/social/friends-dms-design.md §2.5: captured *before*
     // removeSession() below erases this connection's Session — the
     // exclusion set still needs to reflect who this user had blocked.
-    const std::vector<std::string> blocked_user_ids = session ? session->blocked_user_ids : std::vector<std::string>();
+    const std::vector<std::string> blocked_user_ids =
+        session ? session->blocked_user_ids : std::vector<std::string>();
 
     session_manager_.removeSession(fd);
 
@@ -401,7 +415,8 @@ void Server::removeSessionTrackingPresence(int fd) {
     // completing IDENTIFY — it never incremented presence, so there's
     // nothing to decrement or announce.
     if (!user_id.empty() && session_manager_.decrementPresence(user_id)) {
-        broadcastExcluding(makePresenceUpdate(user_id, false), computePresenceExclusionFds(blocked_user_ids));
+        broadcastExcluding(makePresenceUpdate(user_id, false),
+                           computePresenceExclusionFds(blocked_user_ids));
     }
 }
 
@@ -507,7 +522,7 @@ void Server::start() {
                     const session::Session* session = session_manager_.getSession(fd);
                     if (session && session_manager_.incrementPresence(session->user_id)) {
                         broadcastExcluding(makePresenceUpdate(session->user_id, true),
-                                          computePresenceExclusionFds(session->blocked_user_ids));
+                                           computePresenceExclusionFds(session->blocked_user_ids));
                     }
                 }
             }
@@ -556,7 +571,8 @@ void Server::broadcast(const protocol::Message& message) {
     }
 }
 
-void Server::broadcastExcluding(const protocol::Message& message, const std::vector<int>& excluded_fds) {
+void Server::broadcastExcluding(const protocol::Message& message,
+                                const std::vector<int>& excluded_fds) {
     if (excluded_fds.empty()) {
         broadcast(message);
         return;

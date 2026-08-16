@@ -11,7 +11,8 @@ struct WireGuild {
     std::string guild_id;
     std::string name;
     std::string owner_id;
-    std::string visibility; // "open" | "application" | "private" (docs/guilds/social-presence-design.md §1.7)
+    std::string visibility; // "open" | "application" | "private"
+                            // (docs/guilds/social-presence-design.md §1.7)
 };
 
 struct WireMembership {
@@ -78,13 +79,20 @@ enum class CreateJoinRequestResult { CREATED, ALREADY_PENDING, FAILED };
 // RedeemInviteResult discriminated union: on success, is_join_request
 // distinguishes §1.8's "invite still requires approval" diversion
 // (`application`-visibility guilds) from ordinary direct membership.
-enum class RedeemInviteError { NOT_FOUND, REVOKED, EXPIRED, MAX_USES_REACHED, ALREADY_MEMBER, FAILED };
+enum class RedeemInviteError {
+    NOT_FOUND,
+    REVOKED,
+    EXPIRED,
+    MAX_USES_REACHED,
+    ALREADY_MEMBER,
+    FAILED
+};
 
 struct RedeemInviteResult {
     bool ok = false;
-    bool is_join_request = false; // only meaningful when ok
-    std::string guild_id;         // only meaningful when ok
-    std::optional<int> role_rank; // only set when ok && !is_join_request
+    bool is_join_request = false;                        // only meaningful when ok
+    std::string guild_id;                                // only meaningful when ok
+    std::optional<int> role_rank;                        // only set when ok && !is_join_request
     RedeemInviteError error = RedeemInviteError::FAILED; // only meaningful when !ok
 };
 
@@ -230,14 +238,15 @@ class InternalApiClient {
 
     virtual std::optional<Catalog> fetchCatalog() = 0;
 
-    virtual std::optional<WireGuild> createGuild(const std::string& name, const std::string& owner_id,
+    virtual std::optional<WireGuild> createGuild(const std::string& name,
+                                                 const std::string& owner_id,
                                                  const std::string& visibility) = 0;
     virtual bool deleteGuild(const std::string& guild_id) = 0;
 
     // §1.10 (SET_GUILD_VISIBILITY). Returns the new visibility on success,
     // nullopt if the guild doesn't exist.
     virtual std::optional<std::string> setGuildVisibility(const std::string& guild_id,
-                                                           const std::string& visibility) = 0;
+                                                          const std::string& visibility) = 0;
 
     // Returns the *actual* resulting role_rank, not necessarily role_rank:
     // idempotent-rejoin (an existing row from a prior session) is a no-op
@@ -251,12 +260,13 @@ class InternalApiClient {
 
     // docs/guilds/social-presence-design.md §2.3: a live read, never cached here —
     // LIST_MEMBERS calls this directly on every request.
-    virtual std::optional<std::vector<WireMember>> fetchGuildMembers(const std::string& guild_id) = 0;
+    virtual std::optional<std::vector<WireMember>>
+    fetchGuildMembers(const std::string& guild_id) = 0;
 
     // §2.4 (SET_MEMBER_ROLE). Returns the resolved role_label on success,
     // nullopt if the membership doesn't exist.
     virtual std::optional<std::string> setMemberRole(const std::string& guild_id,
-                                                      const std::string& user_id, int role_rank) = 0;
+                                                     const std::string& user_id, int role_rank) = 0;
 
     virtual std::optional<WireChannel> createChannel(const std::string& guild_id,
                                                      const std::string& name,
@@ -277,8 +287,8 @@ class InternalApiClient {
     // implementation detail of persisting the message, not a prerequisite
     // checked before broadcasting it.
     virtual bool createMessage(const std::optional<std::string>& channel_id,
-                               const std::optional<std::string>& dm_peer_id, const std::string& user_id,
-                               const std::string& content, int seq) = 0;
+                               const std::optional<std::string>& dm_peer_id,
+                               const std::string& user_id, const std::string& content, int seq) = 0;
 
     // §4.4: the first read-through (not write-through) internal API call —
     // never cached in GuildManager. before_seq unset fetches the most
@@ -288,21 +298,23 @@ class InternalApiClient {
     // scope addition — a peer with no conversation yet yields an empty
     // page, not an error.
     virtual std::optional<HistoryPage> fetchMessages(const std::optional<std::string>& channel_id,
-                                                      const std::optional<std::string>& dm_peer_id,
-                                                      const std::string& requester_user_id,
-                                                      std::optional<int> before_seq, int limit) = 0;
+                                                     const std::optional<std::string>& dm_peer_id,
+                                                     const std::string& requester_user_id,
+                                                     std::optional<int> before_seq, int limit) = 0;
 
     // §4.3/§3.4: called once at server startup, alongside fetchCatalog().
     virtual LastSequence fetchLastSequence() = 0;
 
     // docs/social/friends-dms-design.md §3.6 (LIST_DM_CONVERSATIONS).
-    virtual std::optional<std::vector<WireDmConversation>> fetchDmConversations(const std::string& user_id) = 0;
+    virtual std::optional<std::vector<WireDmConversation>>
+    fetchDmConversations(const std::string& user_id) = 0;
 
     // §3.3: canSendDm()'s live fallback for the shared-guild-membership
     // check when the peer has zero active connections (no in-memory
     // Session::guild_ids to intersect against) — mirrors fetchBlocks'
     // equivalent role for the blocked-check's same fallback case.
-    virtual std::optional<std::vector<std::string>> fetchGuildIdsForUser(const std::string& user_id) = 0;
+    virtual std::optional<std::vector<std::string>>
+    fetchGuildIdsForUser(const std::string& user_id) = 0;
 
     // §1.4/§1.5 (CREATE_INVITE/LIST_INVITES/REVOKE_INVITE/JOIN_VIA_INVITE).
     // Not cached in GuildManager — same "live read/write, not write-through"
@@ -313,12 +325,14 @@ class InternalApiClient {
                                                    std::optional<int> expires_in_seconds) = 0;
     virtual std::optional<std::vector<WireInvite>> fetchInvites(const std::string& guild_id) = 0;
     virtual bool revokeInvite(const std::string& guild_id, const std::string& code) = 0;
-    virtual RedeemInviteResult redeemInvite(const std::string& code, const std::string& user_id) = 0;
+    virtual RedeemInviteResult redeemInvite(const std::string& code,
+                                            const std::string& user_id) = 0;
 
     // §1.9 (REQUEST_JOIN/LIST_JOIN_REQUESTS/APPROVE_JOIN_REQUEST/REJECT_JOIN_REQUEST).
     virtual CreateJoinRequestResult createJoinRequest(const std::string& guild_id,
                                                       const std::string& user_id) = 0;
-    virtual std::optional<std::vector<WireJoinRequest>> fetchJoinRequests(const std::string& guild_id) = 0;
+    virtual std::optional<std::vector<WireJoinRequest>>
+    fetchJoinRequests(const std::string& guild_id) = 0;
     // Returns the new member's role_rank on success, nullopt if no such
     // request exists.
     virtual std::optional<int> approveJoinRequest(const std::string& guild_id,
@@ -332,16 +346,17 @@ class InternalApiClient {
     // read/write, not write-through" treatment as invites (§1.5) and join
     // requests.
     virtual SendFriendRequestResult sendFriendRequest(const std::string& requester_id,
-                                                       const std::string& recipient_id) = 0;
+                                                      const std::string& recipient_id) = 0;
     virtual SendFriendRequestResult addFriendByCode(const std::string& requester_id,
-                                                     const std::string& code) = 0;
+                                                    const std::string& code) = 0;
     virtual AcceptFriendRequestResult acceptFriendRequest(const std::string& requester_id,
-                                                           const std::string& recipient_id) = 0;
+                                                          const std::string& recipient_id) = 0;
     // Used for both REJECT_FRIEND_REQUEST and CANCEL_FRIEND_REQUEST — same
     // deletion either way (docs/social/friends-dms-design.md §1.4); the
     // handler decides which wire response to send based on which message
     // came in, not this call's return shape.
-    virtual bool deleteFriendRequest(const std::string& requester_id, const std::string& recipient_id) = 0;
+    virtual bool deleteFriendRequest(const std::string& requester_id,
+                                     const std::string& recipient_id) = 0;
     virtual bool removeFriend(const std::string& user_id_a, const std::string& user_id_b) = 0;
     virtual std::optional<std::vector<WireFriend>> fetchFriends(const std::string& user_id) = 0;
     virtual std::optional<FriendRequestList> fetchFriendRequests(const std::string& user_id) = 0;
