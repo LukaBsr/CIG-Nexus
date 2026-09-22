@@ -119,6 +119,18 @@ host — only reachable from within the Compose network.
 
 ### Server
 
+Building outside Docker requires CMake >= 3.20 and OpenSSL + libcurl
+development headers — `server/CMakeLists.txt`'s `find_package(OpenSSL
+REQUIRED)` and `find_package(CURL REQUIRED)`, used for RS256 JWT
+verification and the internal-API HTTP client:
+
+- Debian/Ubuntu: `sudo apt install libssl-dev libcurl4-openssl-dev`
+- Fedora: `sudo dnf install openssl-devel libcurl-devel`
+- macOS: `brew install openssl curl`
+
+The Docker Compose path above already has these baked into the server
+image, so this only applies when building `server/` directly on the host.
+
 ```bash
 cd server
 mkdir -p build
