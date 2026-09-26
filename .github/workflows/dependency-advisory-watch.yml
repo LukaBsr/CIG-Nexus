@@ -1,0 +1,54 @@
+name: Dependency Advisory Watch
+
+on:
+  schedule:
+    - cron: "0 6 * * 1" # Monday 06:00 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  watch:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # 22, matches web/Dockerfile's node:22-alpine base image and the
+      # other workflows in this repo.
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install web dependencies
+        run: |
+          cd web
+          npm install
+
+      # npm audit exits non-zero when it finds vulnerabilities, which
+      # would otherwise fail this step before the diff script ever runs.
+      # `|| true` is deliberate: this job doesn't gate on npm audit's own
+      # exit code, it's the drift script below that decides whether
+      # anything needs surfacing.
+      - name: Audit web
+        run: |
+          cd web
+          npm audit --json > ../web-audit.json || true
+
+      - name: Install gateway dependencies
+        run: |
+          cd gateway
+          npm install
+
+      - name: Audit gateway
+        run: |
+          cd gateway
+          npm audit --json > ../gateway-audit.json || true
+
+      - name: Check advisory drift
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: node .github/scripts/check-advisory-drift.mjs

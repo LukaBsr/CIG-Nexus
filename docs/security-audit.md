@@ -333,33 +333,103 @@ correct state here.**
 
 ### 2.5 Dependency vulnerabilities
 
-**`web/` — `npm audit`:** 3 high-severity advisories in production
-dependencies (`next@16.2.10` and its transitive `postcss`/`sharp`), 24
-total (4 moderate, 20 high) including dev dependencies. Advisory titles
-for `next`: middleware/proxy bypass (Turbopack + single-locale),
-Server Actions DoS/SSRF/unbounded-payload, cache confusion on requests
-with bodies, SSRF via `rewrites()` with attacker-controlled hostname,
-Image Optimization API DoS via SVG, unauthenticated disclosure of internal
-Server Function endpoints.
+**Last exposure review: 2026-09-22** — the date exposure was last actually
+traced against the code, not just the date `npm audit` was last run (see
+below on why those two things need to be tracked separately).
+
+**`web/` — `npm audit`:** counts drift over time even with an unchanged
+lockfile, since `npm audit` resolves against the live GitHub Advisory
+Database rather than a static snapshot. Three audits against the same
+pinned `next@16.2.10` produced three different totals within under two
+months: 24 (4 moderate, 20 high) at the original audit, 15 (8 moderate, 6
+high, 1 critical) as of this update. Treat any single count as a
+point-in-time reading, not a stable baseline.
+
+As of this update, advisory titles for `next`: middleware/proxy bypass
+(Turbopack + single-locale), Server Actions DoS/SSRF/unbounded-payload,
+cache confusion on requests with bodies (plain and invalid-UTF-8
+variants), SSRF via `rewrites()` with attacker-controlled hostname, Image
+Optimization API DoS via SVG, unauthenticated disclosure of internal
+Server Function endpoints, **unauthenticated RCE on Windows-hosted
+servers (`GHSA-p293-qw3h-jr36`, critical)**, **unauthenticated RCE in the
+Image Optimization API via AVIF (`GHSA-2xp9-vwfh-vxw4`, critical)** — the
+latter two are new since the original audit.
 
 At the time of this audit, `npm audit`'s fixed-version ranges for these
-land only in `16.3.0-preview.*` builds — no stable release carries the fix
-yet, so "just bump the version" isn't currently available as a clean
-options; running `npm audit fix` would pull a preview/prerelease build.
+land only in `16.3.0-preview.*` builds — no stable release carries the
+fix yet, so "just bump the version" isn't currently available as a clean
+option; running `npm audit fix` would pull a preview/prerelease build.
 
 **Practical exposure, checked against this app's actual code (not
-assumed):** confirmed via grep that this app uses none of the specific
-features several of these advisories require — no `"use server"` Server
-Actions anywhere, no `next/image` usage (so `sharp` is an inert transitive
-dependency, never invoked), no `middleware.ts`, no `rewrites()` in
-`next.config.ts` (the file is the empty default stub), and the build/dev
-scripts don't pass `--turbo`. This meaningfully narrows real-world
-exposure for the Server-Actions-specific, Image-Optimization-specific, and
-Turbopack-specific advisories in this specific deployment, though the
-vulnerable package version is still present in the dependency tree and
-should still be tracked for when a stable fix ships.
+assumed):**
 
-**`gateway/` — `npm audit`:** 0 vulnerabilities.
+- No `"use server"` Server Actions anywhere, no `middleware.ts`, no
+  `rewrites()` in `next.config.ts` (still the empty default stub), and
+  the build/dev scripts don't pass `--turbo` — narrows the
+  Server-Actions- and Turbopack-specific advisories.
+- Windows RCE (`GHSA-p293-qw3h-jr36`): `web/Dockerfile` builds and runs
+  on `node:22-alpine` — Linux only. Not applicable to the deployed path.
+- **Correction to a prior claim:** the original audit stated "no
+  `next/image` usage, so `sharp` is an inert transitive dependency, never
+  invoked." That's no longer accurate — `components/Logo.tsx` and
+  `components/GuildRail.tsx` both now import and render via `next/image`.
+  Traced concretely: both usages only ever pass a static, local,
+  first-party SVG (`/branding/icon.svg`); `next.config.ts` configures no
+  `images.remotePatterns`/`domains`; and the one place
+  user/Discord-CDN-controlled avatar URLs are rendered
+  (`components/Avatar.tsx`) deliberately uses a plain `<img>` instead of
+  `next/image`, with an inline comment explaining why
+  ("user-uploaded/Discord-CDN URLs, not build-time-known assets"). So the
+  Image Optimization API's AVIF RCE (`GHSA-2xp9-vwfh-vxw4`) and the SVG
+  DoS advisory both stay unreachable in practice — no attacker-controlled
+  URL or file ever reaches `next/image`/`sharp` — but "sharp is inert" as
+  a blanket statement is now false and shouldn't be repeated as-is; the
+  accurate claim is "reachable only with local, first-party SVG input,
+  never remote or user-controlled input."
+
+This meaningfully narrows real-world exposure for the advisories above in
+this specific deployment, though the vulnerable package versions are
+still present in the dependency tree and should still be tracked for
+when a stable fix ships.
+
+**Additional packages flagged since the original audit:**
+
+- **`js-yaml`** (high) — dev-only. Traced via `npm explain`: reachable
+  solely through `eslint@9` → `@eslint/eslintrc` → `js-yaml`. Never in
+  the production dependency tree.
+- **`nanoid`** (high) — reachable from two places: dev tooling
+  (`@tailwindcss/postcss`, `vitest`'s bundled `vite`) and
+  `next@16.2.10`'s own bundled `postcss`
+  (`node_modules/next/node_modules/postcss`), which is a production
+  dependency. Traced concretely whether that second path executes at
+  runtime: `postcss`'s only call to `nanoid()` is in `lib/input.js`, used
+  when constructing a CSS `Input` without an explicit id. Every reference
+  to `postcss` inside `next`'s compiled output lives under
+  `next/dist/build/webpack/...` (the webpack/CSS-loader pipeline) — zero
+  references exist under `next/dist/server` (the code that actually runs
+  in the deployed process), and `server.mjs` (the production entrypoint)
+  doesn't require `postcss` or any `next/dist/build` module either.
+  `npm run build` runs once in the Docker builder stage; the runtime
+  image only ever runs `node server.mjs`. So this path executes during
+  image build, never during request handling — not runtime/SSR-reachable.
+- **`drizzle-kit`** (moderate, via `@esbuild-kit/esm-loader` →
+  `@esbuild-kit/core-utils` → `esbuild`) — a direct `devDependency`, but
+  its actual execution path matters more than the dev/prod label: per
+  `server/Dockerfile`'s `CMD`, `npx drizzle-kit migrate` runs once at
+  container startup, before `node server.mjs` starts accepting
+  connections. Traced what that invocation touches: `@esbuild-kit/esm-
+  loader` is used only to transpile/load `drizzle.config.ts` (a
+  repo-controlled TypeScript file) in-process — it does not start an
+  esbuild dev server. The underlying advisory (`GHSA-67mh-4wv8-2f99`) is
+  specifically about esbuild's dev server accepting cross-origin
+  requests; that code path is never invoked here. After loading config,
+  the command reads `DATABASE_URL` (operator-supplied env var) and
+  applies whichever of the SQL files under `db/migrations/` (generated
+  via `npm run db:generate`, committed to the repo, baked into the image
+  at build time) aren't yet recorded as applied. No request, network, or
+  otherwise attacker-controlled input reaches this path at any point.
+
+**`gateway/` — `npm audit`:** 0 vulnerabilities (unchanged, re-verified).
 
 **`server/` — pinned `FetchContent` versions**
 (`server/CMakeLists.txt`/`server/tests/CMakeLists.txt`): `nlohmann/json
@@ -377,9 +447,16 @@ picks up upstream security patches automatically on every rebuild rather
 than needing this repo to track CVEs against a frozen version; noted as a
 tradeoff, not a finding requiring action.
 
-**Verdict: `web/`'s production `next` dependency needs tracking (no clean
-fix available yet upstream); `gateway/` and `server/`'s pinned dependencies
-are clean.**
+**Verdict:** `web/`'s production `next` dependency needs tracking (no
+clean fix available yet upstream, and now includes two critical
+advisories that weren't present in the original audit, though both
+remain unreachable in this app's actual usage as traced above); the
+"sharp is inert" framing from the original audit should not be repeated
+verbatim — replace with "reachable only via a local first-party SVG, not
+remote/user-controlled input." `js-yaml`, `nanoid`, and `drizzle-kit`'s
+flagged dependency chain are all confirmed non-reachable from
+user/request input under current usage. `gateway/` and `server/`'s
+pinned dependencies remain clean.
 
 ## 3. Additional Observations
 
