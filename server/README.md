@@ -126,6 +126,15 @@ rationale.
 
 ## Build
 
+Requires CMake >= 3.20 and OpenSSL + libcurl development headers
+(`find_package(OpenSSL REQUIRED)` / `find_package(CURL REQUIRED)` in
+`CMakeLists.txt`, used for RS256 JWT verification and the internal-API
+HTTP client):
+
+- Debian/Ubuntu: `sudo apt install libssl-dev libcurl4-openssl-dev`
+- Fedora: `sudo dnf install openssl-devel libcurl-devel`
+- macOS: `brew install openssl curl`
+
 ```bash
 mkdir -p build
 cd build
