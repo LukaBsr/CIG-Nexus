@@ -4,17 +4,19 @@
 	"private": true,
 	"description": "CIG Nexus WebSocket Gateway v0.7",
 	"main": "dist/index.js",
-	"dev": "ts-node src/index.ts",
-	"ts-node": "^10.x",
+	"engines": {
+		"node": ">=24"
+	},
 	"scripts": {
 		"build": "tsc -p tsconfig.json",
-		"start": "node dist/index.js"
+		"start": "node dist/index.js",
+		"test": "tsc -p tsconfig.test.json && node --test --test-timeout=10000 \"dist-test/test/*.test.js\""
 	},
 	"dependencies": {
 		"ws": "^8.18.0"
 	},
 	"devDependencies": {
-		"@types/node": "^20.11.30",
+		"@types/node": "^24.19.0",
 		"@types/ws": "^8.5.10",
 		"typescript": "^5.4.2"
 	}

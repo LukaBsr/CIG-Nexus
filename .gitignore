@@ -45,6 +45,7 @@ build/
 build_docker/
 node_modules/
 dist/
+dist-test/
 
 # TypeScript incremental build info
 *.tsbuildinfo

@@ -1,10 +1,10 @@
 # Build stage
-FROM node:18-alpine AS builder
+FROM node:24-alpine AS builder
 
 WORKDIR /app
 
 COPY package.json package-lock.json* ./
-RUN npm install
+RUN npm ci
 
 COPY tsconfig.json ./
 COPY src ./src
@@ -12,12 +12,12 @@ COPY src ./src
 RUN npm run build
 
 # Runtime stage
-FROM node:18-alpine
+FROM node:24-alpine
 
 WORKDIR /app
 
 COPY package.json package-lock.json* ./
-RUN npm install --production
+RUN npm ci --omit=dev
 
 COPY --from=builder /app/dist ./dist
 

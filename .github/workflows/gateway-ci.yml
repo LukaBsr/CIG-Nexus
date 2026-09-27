@@ -18,20 +18,25 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # 18, not 20: matches gateway/Dockerfile's node:18-alpine base image.
-      # Found to be mismatched (a copy-paste from web-ci.yml's original
-      # value) while diagnosing the same class of issue in web-ci.yml.
+      # 24: matches gateway/Dockerfile's node:24-alpine base image. Node 18
+      # reached end-of-life in April 2025; the gateway is the one service
+      # that directly faces browser-supplied input.
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: 18
+          node-version: 24
 
       - name: Install dependencies
         run: |
           cd gateway
-          npm install
+          npm ci
 
       - name: Build
         run: |
           cd gateway
           npm run build
+
+      - name: Test
+        run: |
+          cd gateway
+          npm test
