@@ -58,11 +58,13 @@ class Server {
   private:
     // Network send helpers
     bool sendMessage(int fd, const protocol::Message& message);
+    // Delivers to every *identified* connection only. A socket that hasn't
+    // completed IDENTIFY has no authenticated session, so it must not see
+    // lobby chat or presence (user ids, online status) either.
     void broadcast(const protocol::Message& message);
     // docs/social/friends-dms-design.md §2.5: broadcast() minus a set of
     // fds to skip — the mechanism presence delivery uses to exclude a
-    // blocked user's connections (broadcast() itself is unchanged, and
-    // stays the plain "every connection" version other callers still use).
+    // blocked user's connections. Same identified-only delivery rule.
     void broadcastExcluding(const protocol::Message& message, const std::vector<int>& excluded_fds);
     // Every fd currently identified as any user in blocked_user_ids — the
     // exclusion set for the presence-subject's own PRESENCE_UPDATE

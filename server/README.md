@@ -12,7 +12,7 @@ The CIG Nexus Server is the authoritative TCP backend for the platform. It accep
 - Manage in-memory sessions keyed by socket fd, including guild membership and active-channel state
 - Manage the in-memory guild/channel catalog (`GuildManager`)
 - Return direct responses for handshake and validation errors
-- Broadcast valid chat messages to all connected clients using `Message.scope`
+- Broadcast valid chat messages to all identified clients using `Message.scope`
 - Deliver guild/channel responses to a targeted subset of connections (e.g. "current guild members") using `Scope::TARGETED`
 
 ## Implemented Protocol Features
@@ -68,7 +68,7 @@ The server validates:
 - `content` is not empty
 - `content` length is at most `500` characters
 
-On success, the server returns a normalized chat message and broadcasts it to every active connection.
+On success, the server returns a normalized chat message and broadcasts it to every identified connection.
 
 Current chat payloads include:
 
@@ -115,7 +115,7 @@ rationale.
 - **I/O approach**: accept loop plus per-connection polling in the main loop
 - **Routing model**: `Message.scope` drives response behavior:
 	- `Scope::DIRECT`: response sent only to sender
-	- `Scope::BROADCAST`: response sent to all active connections
+	- `Scope::BROADCAST`: response sent to all identified connections (never to a connection that hasn't completed `IDENTIFY`)
 	- `Scope::TARGETED`: response sent to an explicit fd list the handler computes (e.g. "current guild members")
 
 ## Directory Layout
