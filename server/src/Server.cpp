@@ -293,7 +293,6 @@ void Server::setInternalApiClient(std::unique_ptr<http::InternalApiClient> clien
     friend_handler_.setInternalApiClient(internal_api_client_.get());
     block_handler_.setInternalApiClient(internal_api_client_.get());
     dm_handler_.setInternalApiClient(internal_api_client_.get());
-    identify_handler_.setInternalApiClient(internal_api_client_.get());
 
     // docs/guilds/social-presence-design.md §4.5: constructed here (not at Server
     // construction) because it needs internal_api_client_.get(), which
@@ -304,6 +303,18 @@ void Server::setInternalApiClient(std::unique_ptr<http::InternalApiClient> clien
     chat_handler_.setMessagePersistenceWorker(message_worker_.get());
     channel_handler_.setMessagePersistenceWorker(message_worker_.get());
     dm_handler_.setMessagePersistenceWorker(message_worker_.get());
+
+    // IDENTIFY hardening (B2): same constructed-here-not-at-Server-
+    // construction reasoning as message_worker_ above. IdentifyHandler no
+    // longer holds an InternalApiClient at all — this worker (and
+    // processHydrationResults(), which drains it) fully own the
+    // post-IDENTIFY load instead.
+    hydration_worker_ = std::make_unique<session::SessionHydrationWorker>(
+        internal_api_client_.get(), hydration_retry_delays_);
+}
+
+void Server::setHydrationRetryDelaysForTesting(std::vector<std::chrono::milliseconds> delays) {
+    hydration_retry_delays_ = std::move(delays);
 }
 
 void Server::hydrateGuildCatalog() {
@@ -419,18 +430,86 @@ void Server::removeSessionTrackingPresence(int fd) {
     // exclusion set still needs to reflect who this user had blocked.
     const std::vector<std::string> blocked_user_ids =
         session ? session->blocked_user_ids : std::vector<std::string>();
+    // IDENTIFY hardening (B2): a session whose async hydration
+    // (processHydrationResults()) never completed never incremented
+    // presence either — decrementing here anyway wouldn't just be a
+    // harmless no-op, it would wrongly erode a *different*,
+    // already-online connection's real count for this same user_id (two
+    // tabs, one still pending, one fully online: the pending tab
+    // disconnecting must not make the online tab look offline). Checking
+    // session_context_ready, not just "did this fd ever get a user_id,"
+    // is what makes that distinction.
+    const bool had_presence = session && session->session_context_ready;
 
     util::logPresenceDebug("removeSessionTrackingPresence fd=" + std::to_string(fd) +
-                           " user_id=" + (user_id.empty() ? "(never identified)" : user_id));
+                           " user_id=" + (user_id.empty() ? "(never identified)" : user_id) +
+                           (had_presence ? "" : " (no matching presence increment)"));
 
     session_manager_.removeSession(fd);
 
-    // user_id is empty for a connection that disconnected before ever
-    // completing IDENTIFY — it never incremented presence, so there's
-    // nothing to decrement or announce.
-    if (!user_id.empty() && session_manager_.decrementPresence(user_id)) {
+    if (had_presence && session_manager_.decrementPresence(user_id)) {
         broadcastExcluding(makePresenceUpdate(user_id, false),
                            computePresenceExclusionFds(blocked_user_ids));
+    }
+}
+
+void Server::processHydrationResults() {
+    if (!hydration_worker_) {
+        return;
+    }
+
+    for (const auto& result : hydration_worker_->drainResults()) {
+        const auto conn_it = connections_.find(result.fd);
+        if (conn_it == connections_.end()) {
+            continue; // Connection already gone by the time this landed.
+        }
+
+        session::Session* session = session_manager_.getSession(result.fd);
+        if (!session || session->app_session_id != result.app_session_id) {
+            // fd reused by an unrelated connection/IDENTIFY since this job
+            // was enqueued (docs/known-issues.md's fd-reuse-race idea) —
+            // matching on app_session_id, not just fd, catches that case
+            // and drops the stale result instead of misapplying it to the
+            // wrong session.
+            continue;
+        }
+
+        if (result.succeeded) {
+            for (const auto& block : result.context.blocks) {
+                session->blocked_user_ids.push_back(block.user_id);
+            }
+            for (const auto& f : result.context.friends) {
+                session->friend_ids.push_back(f.user_id);
+            }
+            session->display_name = result.context.profile.display_name;
+            session->avatar_url = result.context.profile.avatar_url;
+            session->session_context_ready = true;
+
+            util::logPresenceDebug("hydration complete fd=" + std::to_string(result.fd) +
+                                   " user_id=" + session->user_id);
+            if (session_manager_.incrementPresence(session->user_id)) {
+                broadcastExcluding(makePresenceUpdate(session->user_id, true),
+                                   computePresenceExclusionFds(session->blocked_user_ids));
+            }
+        } else {
+            // shared/protocol/README.md's Asynchronous IDENTIFY Hydration
+            // section: fail closed, not open — an unenforced block list is
+            // worse than a dropped connection the client must reconnect
+            // for.
+            util::logPresenceDebug("hydration failed fd=" + std::to_string(result.fd) +
+                                   " user_id=" + session->user_id + " -- disconnecting");
+
+            protocol::Message error;
+            error.type = "ERROR";
+            error.scope = protocol::Scope::DIRECT;
+            error.payload =
+                protocol::make_error("SESSION_CONTEXT_UNAVAILABLE",
+                                     "Could not load account context in time; please reconnect");
+            sendMessage(result.fd, error);
+
+            removeSessionTrackingPresence(result.fd); // invalidates `session` above
+            connections_.erase(conn_it);
+        }
     }
 }
 
@@ -447,6 +526,9 @@ void Server::start() {
     hydrateMessageSequences();
     if (message_worker_) {
         message_worker_->start();
+    }
+    if (hydration_worker_) {
+        hydration_worker_->start();
     }
     // docs/security-audit.md §1.5: without this, every restart opens a
     // window of up to kRevocationPollInterval where a session revoked
@@ -526,26 +608,48 @@ void Server::start() {
                     }
                 }
 
-                // docs/guilds/social-presence-design.md §3.2: emitted from here,
-                // after IDENTIFY's own IDENTIFIED response has already been
-                // sent above — a separate, unrelated broadcast to everyone
-                // else, not a replacement for it. Checked by message type
-                // rather than inside IdentifyHandler itself: see
-                // Server::makePresenceUpdate's doc comment for why.
+                // IDENTIFY hardening (B2): presence is no longer
+                // incremented here — it's deferred until this connection's
+                // async post-IDENTIFY load actually succeeds
+                // (processHydrationResults(), below the connections_ loop),
+                // since the PRESENCE_UPDATE broadcast needs a real
+                // blocked_user_ids to exclude correctly, not the empty
+                // default a freshly-created Session starts with. This is
+                // also why removeSessionTrackingPresence() no longer
+                // assumes "has a user_id" implies "incremented presence."
                 if (message.type == "IDENTIFY" && identified) {
-                    const session::Session* session = session_manager_.getSession(fd);
-                    if (session) {
+                    session::Session* session = session_manager_.getSession(fd);
+                    if (session && hydration_worker_) {
                         util::logPresenceDebug("identify success fd=" + std::to_string(fd) +
-                                               " user_id=" + session->user_id);
-                    }
-                    if (session && session_manager_.incrementPresence(session->user_id)) {
-                        broadcastExcluding(makePresenceUpdate(session->user_id, true),
-                                           computePresenceExclusionFds(session->blocked_user_ids));
+                                               " user_id=" + session->user_id +
+                                               " (hydration enqueued)");
+                        hydration_worker_->enqueue({fd, session->user_id, session->app_session_id});
+                    } else if (session) {
+                        // No internal API client configured at all (unlike
+                        // "configured but the load is still in flight") —
+                        // there is nothing to wait for, so there is nothing
+                        // to gate on. Proceed exactly as IDENTIFY did before
+                        // B2: vacuously ready, presence increments
+                        // immediately. This is the path every test that
+                        // exercises IDENTIFY without setInternalApiClient()
+                        // takes, same as it always has.
+                        session->session_context_ready = true;
+                        util::logPresenceDebug("identify success fd=" + std::to_string(fd) +
+                                               " user_id=" + session->user_id +
+                                               " (no internal API client; proceeding "
+                                               "synchronously)");
+                        if (session_manager_.incrementPresence(session->user_id)) {
+                            broadcastExcluding(
+                                makePresenceUpdate(session->user_id, true),
+                                computePresenceExclusionFds(session->blocked_user_ids));
+                        }
                     }
                 }
             }
             ++it;
         }
+
+        processHydrationResults();
 
         // design doc §9: pull-based revocation cache, polled on an interval
         // rather than a network call per IDENTIFY. Also sweeps already-
@@ -562,6 +666,9 @@ void Server::start() {
 
     if (message_worker_) {
         message_worker_->stop();
+    }
+    if (hydration_worker_) {
+        hydration_worker_->stop();
     }
 
     std::cout << "CIG Nexus Server stopped" << std::endl;

@@ -30,10 +30,16 @@ struct Fixture {
         handler.setRateLimiter(&limiter);
     }
 
+    // session_context_ready defaults to true here — IDENTIFY hardening
+    // (B2) gates DM_SEND on it, and every existing test using this helper
+    // predates that gating and assumes a fully-identified, fully-hydrated
+    // session; the dedicated "not ready yet" test below overrides it back
+    // to false explicitly instead.
     session::Session& identify(int fd, const std::string& username) {
         session::Session& session = sessions.createSession(fd);
         session.username = username;
         session.user_id = "u_" + std::to_string(fd);
+        session.session_context_ready = true;
         return session;
     }
 };
@@ -47,6 +53,22 @@ TEST_CASE("DMHandler DM_SEND requires identification") {
     const auto response =
         f.handler.handleDmSend(make_message("DM_SEND", {{"user_id", "u_2"}, {"content", "hi"}}), 1);
     REQUIRE(response.payload["code"] == "NOT_IDENTIFIED");
+}
+
+TEST_CASE("DMHandler DM_SEND returns SESSION_HYDRATING before the async post-IDENTIFY load "
+          "completes (IDENTIFY hardening B2)") {
+    Fixture f;
+    session::Session& alice = f.identify(1, "alice");
+    session::Session& bob = f.identify(2, "bob");
+    alice.guild_ids = {"g_1"};
+    bob.guild_ids = {"g_1"};
+    alice.session_context_ready = false; // still pending, unlike identify()'s default
+
+    const auto response =
+        f.handler.handleDmSend(make_message("DM_SEND", {{"user_id", "u_2"}, {"content", "hi"}}), 1);
+
+    REQUIRE(response.type == "ERROR");
+    REQUIRE(response.payload["code"] == "SESSION_HYDRATING");
 }
 
 TEST_CASE("DMHandler DM_SEND requires user_id and content") {

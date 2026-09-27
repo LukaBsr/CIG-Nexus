@@ -1148,6 +1148,39 @@ Current error codes used by the implementation:
 | `FRIEND_CODE_NOT_FOUND` | `ADD_FRIEND_BY_CODE`'s `code` does not belong to any account |
 | `DM_NOT_PERMITTED` | `DM_SEND` sent to a user who isn't a friend and shares no guild with the caller, or where either party has blocked the other (deliberately indistinguishable — see [Blocking](#blocking)) |
 | `RATE_LIMITED` | caller exceeded the per-user, per-action rate limit for the message type just sent — see [Rate Limits](#rate-limits) for which types are limited and at what threshold. Retry after a pause; no `retry_after` field is included |
+| `SESSION_HYDRATING` | `DM_SEND` sent before the connection's post-`IDENTIFY` account-context load (blocks/friends/profile — see [Asynchronous IDENTIFY Hydration](#asynchronous-identify-hydration)) has finished. Retryable — the client should wait briefly and resend, not treat this as a permanent failure |
+
+## Asynchronous IDENTIFY Hydration
+
+`IDENTIFIED` is sent as soon as the session token is verified — it does not
+wait for the connection's blocks/friends/profile data to finish loading
+from the internal API. That load happens on a background worker so a
+slow or unreachable internal API can never stall the single-threaded
+server's handling of *other* connections' traffic, which a synchronous
+load would (this was a real problem before: up to ~15s of blocked traffic
+for every other connection during one slow `IDENTIFY`).
+
+Two consequences a client should handle:
+
+- **A `DM_SEND` sent immediately after `IDENTIFIED`** may return
+  `SESSION_HYDRATING` if the background load hasn't finished yet — this is
+  normal, not an error condition; wait briefly and resend. `CHAT_MESSAGE`/
+  `CHANNEL_MESSAGE` are unaffected (they don't depend on this data) and the
+  connection's own `PRESENCE_UPDATE` (`online`) is not broadcast until the
+  load succeeds either, for the same reason: broadcasting online before
+  the blocked-user exclusion list is known would let a blocking user's
+  intent be silently unenforced for that window.
+- **If the internal API stays unreachable for the load's entire retry
+  budget** (bounded, currently well under a minute — the server does not
+  retry forever), the server sends `SESSION_CONTEXT_UNAVAILABLE` and closes
+  the connection, rather than proceeding indefinitely with an empty,
+  unenforced block list. The client should treat this like any other
+  disconnect and reconnect/re-`IDENTIFY` from scratch. **Known limitation**:
+  the web client has no automatic reconnect logic today
+  (`docs/known-issues.md`), so this currently surfaces as a dropped
+  connection the user must refresh to recover from — a real, disclosed
+  tradeoff of choosing a bounded retry window over retrying forever, not an
+  oversight.
 
 ## Rate Limits
 
@@ -1169,6 +1202,12 @@ Every other message type (`LIST_*`, `JOIN_GUILD`, `LEAVE_*`, `SET_MEMBER_ROLE`, 
 
 ## Behavior Notes
 
+- `SESSION_CONTEXT_UNAVAILABLE` is sent, unprompted, immediately before the
+  server closes a connection whose [asynchronous IDENTIFY
+  hydration](#asynchronous-identify-hydration) never succeeded within its
+  retry budget — the one case in this protocol where the server
+  proactively ends a connection outside of a client request or a session
+  being revoked.
 - The server is authoritative.
 - The gateway is transport-only and does not validate protocol payloads.
 - Valid `CHAT_MESSAGE` responses are broadcast to all identified clients. `BROADCAST` never reaches a connection that hasn't completed `IDENTIFY` — an unauthenticated socket sees no lobby chat and no presence.

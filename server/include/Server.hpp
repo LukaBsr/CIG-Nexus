@@ -21,6 +21,7 @@
 #include "guild/GuildManager.hpp"
 #include "http/InternalApiClient.hpp"
 #include "persistence/MessagePersistenceWorker.hpp"
+#include "session/SessionHydrationWorker.hpp"
 #include "session/SessionManager.hpp"
 #include "util/RateLimiter.hpp"
 
@@ -51,6 +52,13 @@ class Server {
     // test_helpers::FakeInternalApiClient here instead of a real
     // CurlInternalApiClient.
     void setInternalApiClient(std::unique_ptr<http::InternalApiClient> client);
+
+    // Test-only hook: overrides the ~60s-total default retry schedule
+    // session::SessionHydrationWorker uses for the post-IDENTIFY load.
+    // Must be called before setInternalApiClient(), since that's where the
+    // worker is actually constructed — a call after that point has no
+    // effect on the already-constructed worker.
+    void setHydrationRetryDelaysForTesting(std::vector<std::chrono::milliseconds> delays);
 
     void start();
     void stop();
@@ -103,6 +111,19 @@ class Server {
     // consistently checks the 1->0 presence transition — never call
     // session_manager_.removeSession() directly outside this.
     void removeSessionTrackingPresence(int fd);
+    // IDENTIFY hardening (B2): drains session::SessionHydrationWorker's
+    // completed jobs and applies each to the still-matching session (fd +
+    // app_session_id both still current — see SessionHydrationResult's
+    // comment on why both). A successful result populates
+    // blocked_user_ids/friend_ids/display_name/avatar_url and only then
+    // performs the presence increment/broadcast this connection's
+    // IDENTIFY deferred. A failed result (retry budget exhausted) sends
+    // SESSION_CONTEXT_UNAVAILABLE and force-closes the connection, per
+    // shared/protocol/README.md's Asynchronous IDENTIFY Hydration section
+    // — called once per main-loop tick, unconditionally (unlike the
+    // interval-gated revocation poll, draining an empty queue costs
+    // nothing).
+    void processHydrationResults();
 
     // Server runtime state
     uint16_t port_;
@@ -146,6 +167,11 @@ class Server {
     // thread) first — it holds a raw pointer into internal_api_client_ and
     // must never outlive it (docs/guilds/social-presence-design.md §4.5).
     std::unique_ptr<persistence::MessagePersistenceWorker> message_worker_;
+    // Same ownership/lifetime reasoning as message_worker_ above, for
+    // IDENTIFY hardening (B2)'s post-IDENTIFY hydration load.
+    std::vector<std::chrono::milliseconds> hydration_retry_delays_ =
+        session::SessionHydrationWorker::defaultRetryDelays();
+    std::unique_ptr<session::SessionHydrationWorker> hydration_worker_;
 };
 
 #endif // CIG_NEXUS_SERVER_HPP

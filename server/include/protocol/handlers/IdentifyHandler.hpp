@@ -16,28 +16,28 @@ class JwtVerifier;
 class RevocationCache;
 } // namespace auth
 
-namespace http {
-class InternalApiClient;
-}
-
 namespace protocol {
 
 // design doc §8: IDENTIFY no longer takes a client-chosen username — it
 // takes a session_token (the access JWT from §6), and identity (user_id,
 // username, discord_id) is derived entirely from its verified claims.
+//
+// IDENTIFY hardening (B2): this handler no longer makes any internal-API
+// call itself. Through B1 it called InternalApiClient::fetchSessionContext
+// synchronously here to hydrate blocked_user_ids/friend_ids/display_name/
+// avatar_url before returning IDENTIFIED — but that meant a slow or
+// unreachable internal API stalled this server's single-threaded main
+// loop for every other connection, not just this one. That load is now
+// Server's responsibility: on seeing this handler's IDENTIFIED response,
+// Server enqueues a session::SessionHydrationJob on a background worker
+// and applies the result later, off this handler entirely. See
+// shared/protocol/README.md's Asynchronous IDENTIFY Hydration section.
 class IdentifyHandler {
   public:
     void setSessionManager(session::SessionManager* session_manager);
     void setJwtVerifier(const auth::JwtVerifier* jwt_verifier);
     void setRevocationCache(const auth::RevocationCache* revocation_cache);
     void setGuildManager(const guild::GuildManager* guild_manager);
-    // docs/social/friends-dms-design.md §3.3: unlike guild_ids (a pure
-    // in-memory GuildManager lookup), blocked_user_ids has no equivalent
-    // process-wide cache — hydrating it needs one live internal API call
-    // per IDENTIFY. Optional the same way internal_api_client_ is
-    // elsewhere: unset means blocked_user_ids just stays empty, not an
-    // IDENTIFY failure.
-    void setInternalApiClient(http::InternalApiClient* internal_api_client);
 
     Message handle(const Message& message, int fd);
 
@@ -46,7 +46,6 @@ class IdentifyHandler {
     const auth::JwtVerifier* jwt_verifier_ = nullptr;
     const auth::RevocationCache* revocation_cache_ = nullptr;
     const guild::GuildManager* guild_manager_ = nullptr;
-    http::InternalApiClient* internal_api_client_ = nullptr;
 };
 
 } // namespace protocol
