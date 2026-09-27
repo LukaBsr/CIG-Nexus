@@ -67,17 +67,34 @@ based test connections as *other* users. Restarting the server fixed it
 immediately, consistent with in-memory state, not persisted/Postgres
 state, being the location of the stuck count.
 
+**Instrumented (2026-09), not yet left running long enough to catch it**:
+`SessionManager::incrementPresence`/`decrementPresence`,
+`Server::removeSessionTrackingPresence`, and `IdentifyHandler::handle`'s
+entry and post-session-creation points now log to stderr
+(`server/include/util/DebugFlags.hpp`,
+`server/src/util/DebugFlags.cpp`) when `CIG_NEXUS_DEBUG_PRESENCE=1` is set
+in the server's environment — off by default, zero output otherwise
+(verified: a real reconnect-cycle run produces zero `[presence-debug]`
+lines without the flag, and the full expected sequence with it). Each line
+carries `fd`, `user_id`, and the before/after count. What to look for once
+a long, mixed, realistic session (real browser + concurrent scripts +
+occasional container restarts) is run with the flag on:
+
+- An `incrementPresence` line for some `user_id` with no later
+  `decrementPresence` line for that same `user_id`'s connection — the
+  count-stuck-high symptom directly.
+- An `IdentifyHandler session created fd=X user_id=Y` line with no
+  following `identify success fd=X user_id=Y` line — a session that got
+  created but never reached the point where presence would increment,
+  which would itself explain the *next* `removeSessionTrackingPresence` for
+  that fd finding a `user_id` that was never counted as online (see
+  `decrementPresence`'s "decrement without a matching increment" line).
+- `removeSessionTrackingPresence` firing for a `fd` that was reused
+  unexpectedly close in time to a `Client connected` log for the same `fd`
+  number, per the fd-reuse-race idea below.
+
 **Not yet tried**:
 
-- Instrumenting `SessionManager::incrementPresence`/`decrementPresence`
-  and `Server::removeSessionTrackingPresence` with temporary logging
-  (user_id, resulting count, fd) and leaving a long, mixed, realistic
-  session running (real browser + concurrent scripts + occasional
-  container restarts) until it recurs, to catch the actual sequence of
-  calls around the moment it happens — every attempt so far has been a
-  *clean, isolated* reproduction strategy, and the one real occurrence
-  happened during genuinely mixed, concurrent activity that none of the
-  attempts above fully replicate.
 - Checking whether `docker compose up --build -d web` (rebuilding only
   the `web` service) has any observable effect on the `gateway`/`server`
   containers' existing connections — expected to be none (separate
@@ -104,11 +121,15 @@ The instrumentation plan below is still the right next step, and it should
 also log the IDENTIFY handler's entry/exit per fd so any dispatch that
 creates a session but never produces `IDENTIFIED` shows up.
 
-**If picked up again**: start from the instrumentation approach above
-rather than re-running clean stress tests — this issue has now survived
-four different deliberate reproduction attempts, so further "try to
-reproduce it cleanly" effort has a low expected return relative to
-"catch it happening organically with logging in place."
+**Update**: this instrumentation now exists — see "Instrumented (2026-09)"
+above. It hasn't yet been run against a real long, mixed session.
+
+**If picked up again**: set `CIG_NEXUS_DEBUG_PRESENCE=1` and run a long,
+mixed, realistic session rather than re-running clean stress tests — this
+issue has now survived four different deliberate reproduction attempts, so
+further "try to reproduce it cleanly" effort has a low expected return
+relative to "catch it happening organically with logging in place," which
+is what the instrumentation above is for.
 
 ---
 

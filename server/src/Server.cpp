@@ -1,6 +1,7 @@
 #include "Server.hpp"
 #include "protocol/MessageBuilders.hpp"
 #include "protocol/MessageParser.hpp"
+#include "util/DebugFlags.hpp"
 
 #include <algorithm>
 #include <arpa/inet.h>
@@ -409,6 +410,9 @@ void Server::removeSessionTrackingPresence(int fd) {
     const std::vector<std::string> blocked_user_ids =
         session ? session->blocked_user_ids : std::vector<std::string>();
 
+    util::logPresenceDebug("removeSessionTrackingPresence fd=" + std::to_string(fd) +
+                           " user_id=" + (user_id.empty() ? "(never identified)" : user_id));
+
     session_manager_.removeSession(fd);
 
     // user_id is empty for a connection that disconnected before ever
@@ -520,6 +524,10 @@ void Server::start() {
                 // Server::makePresenceUpdate's doc comment for why.
                 if (message.type == "IDENTIFY" && identified) {
                     const session::Session* session = session_manager_.getSession(fd);
+                    if (session) {
+                        util::logPresenceDebug("identify success fd=" + std::to_string(fd) +
+                                               " user_id=" + session->user_id);
+                    }
                     if (session && session_manager_.incrementPresence(session->user_id)) {
                         broadcastExcluding(makePresenceUpdate(session->user_id, true),
                                            computePresenceExclusionFds(session->blocked_user_ids));
