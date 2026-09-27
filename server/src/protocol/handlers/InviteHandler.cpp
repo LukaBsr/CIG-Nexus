@@ -5,6 +5,9 @@
 #include "http/InternalApiClient.hpp"
 #include "protocol/MessageBuilders.hpp"
 #include "session/SessionManager.hpp"
+#include "util/RateLimiter.hpp"
+
+#include <chrono>
 
 namespace protocol {
 
@@ -18,6 +21,10 @@ void InviteHandler::setGuildManager(guild::GuildManager* guild_manager) {
 
 void InviteHandler::setInternalApiClient(http::InternalApiClient* internal_api_client) {
     internal_api_client_ = internal_api_client;
+}
+
+void InviteHandler::setRateLimiter(util::RateLimiter* rate_limiter) {
+    rate_limiter_ = rate_limiter;
 }
 
 Message InviteHandler::makeError(const std::string& code, const std::string& msg) {
@@ -121,6 +128,12 @@ Message InviteHandler::handleCreateInvite(const Message& message, int fd) const 
     // below.
     if (!guild_manager_->canCreateInvite(guild_id, session->user_id)) {
         return makeError("NOT_GUILD_OFFICER", "Must be an officer or above to create invites");
+    }
+
+    // shared/protocol/README.md's Rate Limits table: 20 / hour.
+    if (rate_limiter_ &&
+        !rate_limiter_->allow("create-invite", session->user_id, std::chrono::hours(1), 20)) {
+        return makeError("RATE_LIMITED", "Too many invites created, please try again later");
     }
 
     const std::optional<http::WireInvite> invite = internal_api_client_->createInvite(
@@ -254,6 +267,13 @@ std::vector<Message> InviteHandler::handleJoinViaInvite(const Message& message, 
 
     if (!guild_manager_ || !internal_api_client_) {
         return {makeError("INTERNAL_ERROR", "Guild context unavailable")};
+    }
+
+    // shared/protocol/README.md's Rate Limits table: 10 / minute — blunts
+    // brute-forcing invite codes, alongside code entropy.
+    if (rate_limiter_ &&
+        !rate_limiter_->allow("join-via-invite", session->user_id, std::chrono::minutes(1), 10)) {
+        return {makeError("RATE_LIMITED", "Too many invite redemptions, please try again later")};
     }
 
     const std::string code = message.payload["code"].get<std::string>();

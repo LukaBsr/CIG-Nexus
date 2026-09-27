@@ -4,9 +4,16 @@
 "Revised at implementation" notes inside record where building it corrected
 the plan. Not built, or built differently:
 
-- **§5's rate limits** (`ADD_FRIEND_BY_CODE`, `SEND_FRIEND_REQUEST`) were not
-  built, and every §5 checklist box is a design-time item, not a completion
-  marker.
+- **§5's rate limits** (`ADD_FRIEND_BY_CODE`, `SEND_FRIEND_REQUEST`) are now
+  built, but not as designed: this section calls for the internal API's
+  Redis-backed mechanism; what shipped is an in-memory, per-process
+  `util::RateLimiter` in the C++ protocol layer instead (10/minute, one
+  shared bucket for both message types — alternating between them doesn't
+  double the effective rate). `REGENERATE_FRIEND_CODE` (3/hour) was added
+  too, though this checklist item doesn't name it. See
+  `shared/protocol/README.md`'s Rate Limits section for current
+  thresholds. Every other §5 checklist box remains a design-time item, not
+  a completion marker.
 - **Profile fields**: `bio`, `status_message` and `accent_color` are stored
   and editable (Settings → Profile), but no UI displays them — the "view
   profile" action §4.3/§4.4 imply doesn't exist, even though
@@ -963,15 +970,13 @@ matching every other list entry).
   entropy plus rate limiting (next item) — there's no equivalent of
   `INVITE_MAX_USES_REACHED` eventually shutting a guessing campaign down
   on its own.
-- [ ] **Rate limiting on `ADD_FRIEND_BY_CODE` and `SEND_FRIEND_REQUEST`.**
-  Both go through the internal API, keyed by `user_id`, same Redis-backed
-  sliding-window mechanism the guild doc's §5 already calls for on invite
-  redemption — capped per-caller per-minute. Without this, a compromised
-  or malicious account can machine-guess friend codes (mitigated by
-  entropy alone, but rate limiting is the actual defense-in-depth per the
-  guild doc's own framing) or mass-spam `SEND_FRIEND_REQUEST` at
-  sequential/enumerated `user_id`s as a harassment vector independent of
-  guessing anything.
+- [x] **Rate limiting on `ADD_FRIEND_BY_CODE` and `SEND_FRIEND_REQUEST`.**
+  Built as an in-memory, per-`user_id` `util::RateLimiter` in the C++
+  handler layer (10/minute, shared bucket) rather than the Redis-backed
+  internal-API mechanism this item originally called for — see the status
+  note at the top of this document. Blunts machine-guessing friend codes
+  (alongside code entropy) and mass-spamming `SEND_FRIEND_REQUEST` at
+  sequential/enumerated `user_id`s.
 - [ ] **DM authorization enforcement is server-side and re-checked, not
   trusted from client state.** `DM_SEND` always evaluates `canSendDm`
   fresh server-side (§3.2/§3.3) — a client that cached "I'm allowed to

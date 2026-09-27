@@ -18,6 +18,10 @@ namespace http {
 class InternalApiClient;
 }
 
+namespace util {
+class RateLimiter;
+}
+
 namespace protocol {
 
 // `application`-visibility guild join requests: REQUEST_JOIN,
@@ -28,6 +32,7 @@ class JoinRequestHandler {
     void setSessionManager(session::SessionManager* session_manager);
     void setGuildManager(guild::GuildManager* guild_manager);
     void setInternalApiClient(http::InternalApiClient* internal_api_client);
+    void setRateLimiter(util::RateLimiter* rate_limiter);
 
     // JOIN_REQUESTED to the requester, plus JOIN_REQUEST_RECEIVED to every
     // currently-connected officer-or-above member (§1.9) — the first
@@ -51,6 +56,7 @@ class JoinRequestHandler {
     session::SessionManager* session_manager_ = nullptr;
     guild::GuildManager* guild_manager_ = nullptr;
     http::InternalApiClient* internal_api_client_ = nullptr;
+    util::RateLimiter* rate_limiter_ = nullptr;
 };
 
 } // namespace protocol

@@ -4,6 +4,7 @@
 #include "guild/RoleRank.hpp"
 #include "protocol/handlers/JoinRequestHandler.hpp"
 #include "session/SessionManager.hpp"
+#include "util/RateLimiter.hpp"
 
 #include "../http/FakeInternalApiClient.hpp"
 
@@ -23,12 +24,14 @@ struct Fixture {
     session::SessionManager sessions;
     guild::GuildManager guilds;
     test_helpers::FakeInternalApiClient api;
+    util::RateLimiter limiter;
     protocol::JoinRequestHandler handler;
 
     Fixture() {
         handler.setSessionManager(&sessions);
         handler.setGuildManager(&guilds);
         handler.setInternalApiClient(&api);
+        handler.setRateLimiter(&limiter);
     }
 
     session::Session& identify(int fd, const std::string& username) {
@@ -291,4 +294,26 @@ TEST_CASE("JoinRequestHandler REJECT_JOIN_REQUEST rejects a crew-rank caller") {
         make_message("REJECT_JOIN_REQUEST", {{"guild_id", "g_1"}, {"user_id", "u_2"}}), 1);
 
     REQUIRE(responses[0].payload["code"] == "NOT_GUILD_OFFICER");
+}
+
+TEST_CASE("JoinRequestHandler REQUEST_JOIN returns RATE_LIMITED after the per-minute cap, "
+          "without calling the internal API again") {
+    Fixture f;
+    f.identify(1, "bob");
+    f.guilds.upsertGuild("g_1", "First", "u_owner", guild::GuildVisibility::APPLICATION);
+    f.api.create_join_request_returns = http::CreateJoinRequestResult::CREATED;
+
+    for (int i = 0; i < 5; ++i) {
+        const auto responses =
+            f.handler.handleRequestJoin(make_message("REQUEST_JOIN", {{"guild_id", "g_1"}}), 1);
+        REQUIRE(responses[0].type == "JOIN_REQUESTED");
+    }
+    REQUIRE(f.api.create_join_request_call_count == 5);
+
+    const auto limited =
+        f.handler.handleRequestJoin(make_message("REQUEST_JOIN", {{"guild_id", "g_1"}}), 1);
+
+    REQUIRE(limited.size() == 1);
+    REQUIRE(limited[0].payload["code"] == "RATE_LIMITED");
+    REQUIRE(f.api.create_join_request_call_count == 5);
 }

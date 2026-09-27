@@ -7,10 +7,15 @@ upgrade, optional `/internal/*` network segmentation, the `secure`-cookie
 `NODE_ENV` dependency) remain open; the dependency findings in §2.5 were
 re-traced in 2026-09 and a weekly advisory watch now runs in CI. Found
 after this audit was written: the lobby `BROADCAST` reached unauthenticated
-sockets (fixed in #30), the web app's OAuth routes are the only
-rate-limited surface (invite, join-request, and friend routes are not), and
-the C++ JWT verifier does not check the `iss` claim. The body below is
-left as the original point-in-time audit.
+sockets (fixed in #30); the C++ protocol layer now rate-limits invite
+creation/redemption, join requests, friend requests/codes, guild creation,
+and chat/channel/DM sends (in-memory, per-user — see
+`shared/protocol/README.md`'s Rate Limits section for exact thresholds);
+the web app's `/api/*` routes still only cover OAuth login/callback as of
+this note (a separate change extending that to the profile/appearance/
+avatar routes may land before or after this one); and the C++ JWT
+verifier does not check the `iss` claim. The body below is left as the
+original point-in-time audit.
 
 **Scope**: everything merged into `main` as of this audit — Discord OAuth2
 (PKCE), session/JWT handling, Postgres persistence, the `/internal/*` API

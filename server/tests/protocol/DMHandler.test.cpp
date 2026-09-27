@@ -2,6 +2,7 @@
 
 #include "protocol/handlers/DMHandler.hpp"
 #include "session/SessionManager.hpp"
+#include "util/RateLimiter.hpp"
 
 #include "../http/FakeInternalApiClient.hpp"
 
@@ -20,11 +21,13 @@ protocol::Message make_message(const std::string& type, nlohmann::json extra = {
 struct Fixture {
     session::SessionManager sessions;
     test_helpers::FakeInternalApiClient api;
+    util::RateLimiter limiter;
     protocol::DMHandler handler;
 
     Fixture() {
         handler.setSessionManager(&sessions);
         handler.setInternalApiClient(&api);
+        handler.setRateLimiter(&limiter);
     }
 
     session::Session& identify(int fd, const std::string& username) {
@@ -245,4 +248,24 @@ TEST_CASE("DMHandler LIST_DM_CONVERSATIONS returns DM_CONVERSATION_LIST") {
     REQUIRE(response.payload["conversations"][0]["username"] == "bob");
     REQUIRE(response.payload["conversations"][0]["display_name"] == "Bobby");
     REQUIRE(response.payload["conversations"][0]["avatar_url"].is_null());
+}
+
+TEST_CASE("DMHandler DM_SEND returns RATE_LIMITED after the per-10-second cap") {
+    Fixture f;
+    session::Session& alice = f.identify(1, "alice");
+    session::Session& bob = f.identify(2, "bob");
+    alice.guild_ids = {"g_1"};
+    bob.guild_ids = {"g_1"};
+
+    for (int i = 0; i < 20; ++i) {
+        const auto response = f.handler.handleDmSend(
+            make_message("DM_SEND", {{"user_id", "u_2"}, {"content", "hi"}}), 1);
+        REQUIRE(response.type == "DM_MESSAGE");
+    }
+
+    const auto limited =
+        f.handler.handleDmSend(make_message("DM_SEND", {{"user_id", "u_2"}, {"content", "hi"}}), 1);
+
+    REQUIRE(limited.type == "ERROR");
+    REQUIRE(limited.payload["code"] == "RATE_LIMITED");
 }

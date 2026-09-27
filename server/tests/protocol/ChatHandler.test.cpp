@@ -4,6 +4,7 @@
 #include "protocol/Message.hpp"
 #include "protocol/handlers/ChatHandler.hpp"
 #include "session/SessionManager.hpp"
+#include "util/RateLimiter.hpp"
 
 #include "../http/FakeInternalApiClient.hpp"
 
@@ -200,4 +201,30 @@ TEST_CASE("ChatHandler seedMessageCounter is a no-op for std::nullopt") {
     const auto response = handler.handle(message, -1);
 
     REQUIRE(response.payload["message_id"].get<int>() == 1);
+}
+
+TEST_CASE("ChatHandler CHAT_MESSAGE returns RATE_LIMITED after the per-10-second cap") {
+    protocol::ChatHandler handler;
+    session::SessionManager sessions;
+    util::RateLimiter limiter;
+    handler.setSessionManager(&sessions);
+    handler.setRateLimiter(&limiter);
+
+    auto& session = sessions.createSession(77);
+    session.username = "alice";
+
+    protocol::Message message;
+    message.type = "CHAT_MESSAGE";
+    message.payload = {{"type", "CHAT_MESSAGE"}, {"content", "hello"}};
+
+    for (int i = 0; i < 20; ++i) {
+        REQUIRE(handler.handle(message, 77).type == "CHAT_MESSAGE");
+    }
+
+    // Stays rejected, not a one-off — two calls in a row both hit the cap.
+    for (int i = 0; i < 2; ++i) {
+        const auto limited = handler.handle(message, 77);
+        REQUIRE(limited.type == "ERROR");
+        REQUIRE(limited.payload["code"] == "RATE_LIMITED");
+    }
 }

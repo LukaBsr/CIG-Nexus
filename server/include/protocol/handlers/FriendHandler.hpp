@@ -15,6 +15,10 @@ namespace http {
 class InternalApiClient;
 }
 
+namespace util {
+class RateLimiter;
+}
+
 namespace protocol {
 
 // Friend system: SEND_FRIEND_REQUEST, ACCEPT/REJECT/CANCEL_FRIEND_REQUEST,
@@ -26,6 +30,7 @@ class FriendHandler {
   public:
     void setSessionManager(session::SessionManager* session_manager);
     void setInternalApiClient(http::InternalApiClient* internal_api_client);
+    void setRateLimiter(util::RateLimiter* rate_limiter);
 
     // Both can produce the FRIEND_REQUEST_SENT/RECEIVED pair or, on the
     // reverse-pending auto-accept path (§1.4 step 5), the FRIEND_ADDED
@@ -67,6 +72,7 @@ class FriendHandler {
 
     session::SessionManager* session_manager_ = nullptr;
     http::InternalApiClient* internal_api_client_ = nullptr;
+    util::RateLimiter* rate_limiter_ = nullptr;
 };
 
 } // namespace protocol

@@ -6,6 +6,9 @@
 - `BROADCAST` (lobby chat and `PRESENCE_UPDATE`) now reaches identified connections only; previously a socket that never completed `IDENTIFY` still received them (#30)
 - `GUILD_LIST` entries carry `is_member`, so a returning user's guild rail and Join buttons are correct after a page load (#31)
 
+**Security**
+- In-memory, per-user rate limiting in the C++ protocol layer (`util::RateLimiter`): `CREATE_INVITE` (20/hour), `JOIN_VIA_INVITE` (10/minute), `REQUEST_JOIN` (5/minute), `SEND_FRIEND_REQUEST`/`ADD_FRIEND_BY_CODE` (10/minute, shared bucket), `REGENERATE_FRIEND_CODE` (3/hour), `CREATE_GUILD` (10/hour), `CHAT_MESSAGE`/`CHANNEL_MESSAGE`/`DM_SEND` (20/10 seconds each) — new `RATE_LIMITED` error code, documented in `shared/protocol/README.md`'s new Rate Limits section
+
 **Docs & CI**
 - Documented the OpenSSL/libcurl build prerequisites for non-Docker server builds (#28)
 - `docs/security-audit.md` §2.5 re-traced against real `npm audit` output; new weekly Dependency Advisory Watch workflow that files an issue only when a high/critical advisory ID appears or disappears (#29)

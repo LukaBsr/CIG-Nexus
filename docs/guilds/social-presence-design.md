@@ -13,11 +13,17 @@ planning, not a changelog of the shipped code. The one genuine exception is
 discussed there was never built, per that section's own "ship without
 solving this fully" recommendation — still accurate as written.
 
-Two further deviations, found in a later consistency review: **§5's
-rate limits were not built** (invite creation/redemption, join-request
-creation — only the OAuth routes are rate limited today, and every §5
-checklist box is a design-time item, not a completion marker), and the
-join-request internal endpoints shipped as
+Two further deviations, found in a later consistency review, one since
+resolved: **§5's rate limits were not built** at the time of that review
+(invite creation/redemption, join-request creation — only the OAuth
+routes were rate limited then, and every §5 checklist box is a
+design-time item, not a completion marker). **Update**: invite creation
+(20/hour), invite redemption (10/minute), and join-request creation
+(5/minute) are now rate-limited in-memory, per-user, in the C++ protocol
+layer (`util::RateLimiter`, wired into `InviteHandler`/
+`JoinRequestHandler`) — see `shared/protocol/README.md`'s Rate Limits
+section for the authoritative thresholds, which may be retuned after this
+note was written. The join-request internal endpoints shipped as
 `/internal/guild-join-requests/[guildId]/[userId]/approve` and
 `.../[guildId]/[userId]` (DELETE) rather than the `/:id` shapes in §1.9;
 `web/app/internal/` is authoritative. `web/test/internalIsolation.test.ts`

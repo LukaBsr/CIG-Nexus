@@ -66,6 +66,16 @@ Server::Server(uint16_t port) : port_(port), running_(false), listener_(port) {
     block_handler_.setSessionManager(&session_manager_);
     dm_handler_.setSessionManager(&session_manager_);
 
+    // shared/protocol/README.md's Rate Limits table — every handler with a
+    // limited message type shares the one process-wide RateLimiter.
+    chat_handler_.setRateLimiter(&rate_limiter_);
+    channel_handler_.setRateLimiter(&rate_limiter_);
+    dm_handler_.setRateLimiter(&rate_limiter_);
+    guild_handler_.setRateLimiter(&rate_limiter_);
+    invite_handler_.setRateLimiter(&rate_limiter_);
+    join_request_handler_.setRateLimiter(&rate_limiter_);
+    friend_handler_.setRateLimiter(&rate_limiter_);
+
     // docs/guilds/social-presence-design.md §1.9/§6 step 5: most registrations below
     // wrap their handler's single Message in a one-element vector — the
     // dispatcher contract is std::vector<Message>, but only the handlers

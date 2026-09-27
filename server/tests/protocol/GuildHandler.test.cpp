@@ -4,6 +4,7 @@
 #include "guild/RoleRank.hpp"
 #include "protocol/handlers/GuildHandler.hpp"
 #include "session/SessionManager.hpp"
+#include "util/RateLimiter.hpp"
 
 #include "../http/FakeInternalApiClient.hpp"
 
@@ -23,12 +24,14 @@ struct Fixture {
     session::SessionManager sessions;
     guild::GuildManager guilds;
     test_helpers::FakeInternalApiClient api;
+    util::RateLimiter limiter;
     protocol::GuildHandler handler;
 
     Fixture() {
         handler.setSessionManager(&sessions);
         handler.setGuildManager(&guilds);
         handler.setInternalApiClient(&api);
+        handler.setRateLimiter(&limiter);
     }
 
     // Creates a session and completes "identification" without going
@@ -709,4 +712,24 @@ TEST_CASE(
 
     REQUIRE(response.payload["code"] == "INTERNAL_ERROR");
     REQUIRE(f.guilds.getGuild("g_1")->visibility == guild::GuildVisibility::OPEN); // unchanged
+}
+
+TEST_CASE("GuildHandler CREATE_GUILD returns RATE_LIMITED after the hourly cap, without calling "
+          "the internal API again") {
+    Fixture f;
+    f.identify(1, "alice");
+
+    for (int i = 0; i < 10; ++i) {
+        const auto response = f.handler.handleCreateGuild(
+            make_message("CREATE_GUILD", {{"name", "Guild " + std::to_string(i)}}), 1);
+        REQUIRE(response.type == "GUILD_CREATED");
+    }
+    REQUIRE(f.api.create_guild_call_count == 10);
+
+    const auto limited =
+        f.handler.handleCreateGuild(make_message("CREATE_GUILD", {{"name", "One Too Many"}}), 1);
+
+    REQUIRE(limited.type == "ERROR");
+    REQUIRE(limited.payload["code"] == "RATE_LIMITED");
+    REQUIRE(f.api.create_guild_call_count == 10);
 }

@@ -18,6 +18,7 @@ class FakeInternalApiClient : public http::InternalApiClient {
 
     std::optional<http::WireGuild> createGuild(const std::string& name, const std::string& owner_id,
                                                const std::string& visibility) override {
+        ++create_guild_call_count;
         if (fail_create_guild) {
             return std::nullopt;
         }
@@ -121,6 +122,7 @@ class FakeInternalApiClient : public http::InternalApiClient {
     std::optional<http::WireInvite> createInvite(const std::string&, const std::string&,
                                                  std::optional<int> max_uses,
                                                  std::optional<int>) override {
+        ++create_invite_call_count;
         if (fail_create_invite) {
             return std::nullopt;
         }
@@ -146,11 +148,13 @@ class FakeInternalApiClient : public http::InternalApiClient {
     }
 
     http::RedeemInviteResult redeemInvite(const std::string&, const std::string&) override {
+        ++redeem_invite_call_count;
         return redeem_invite_returns;
     }
 
     http::CreateJoinRequestResult createJoinRequest(const std::string&,
                                                     const std::string&) override {
+        ++create_join_request_call_count;
         return create_join_request_returns;
     }
 
@@ -175,10 +179,12 @@ class FakeInternalApiClient : public http::InternalApiClient {
 
     http::SendFriendRequestResult sendFriendRequest(const std::string&,
                                                     const std::string&) override {
+        ++send_friend_request_call_count;
         return send_friend_request_returns;
     }
 
     http::SendFriendRequestResult addFriendByCode(const std::string&, const std::string&) override {
+        ++add_friend_by_code_call_count;
         return add_friend_by_code_returns;
     }
 
@@ -217,6 +223,7 @@ class FakeInternalApiClient : public http::InternalApiClient {
     }
 
     std::optional<std::string> regenerateFriendCode(const std::string&) override {
+        ++regenerate_friend_code_call_count;
         if (fail_regenerate_friend_code) {
             return std::nullopt;
         }
@@ -308,6 +315,17 @@ class FakeInternalApiClient : public http::InternalApiClient {
     // the requested user_id, so existing IDENTIFY-flow tests that don't
     // care about display_name/avatar_url don't need to configure this.
     std::optional<http::WireUserProfile> user_profile_to_return;
+
+    // Call counters — used by rate-limiting tests to assert the internal
+    // API is never reached once a caller is limited, not just that the
+    // response is RATE_LIMITED.
+    int create_guild_call_count = 0;
+    int create_invite_call_count = 0;
+    int redeem_invite_call_count = 0;
+    int create_join_request_call_count = 0;
+    int send_friend_request_call_count = 0;
+    int add_friend_by_code_call_count = 0;
+    int regenerate_friend_code_call_count = 0;
 
   private:
     int next_guild_id_ = 1;

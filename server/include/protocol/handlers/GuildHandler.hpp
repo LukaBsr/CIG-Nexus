@@ -16,6 +16,10 @@ namespace http {
 class InternalApiClient;
 }
 
+namespace util {
+class RateLimiter;
+}
+
 namespace protocol {
 
 // Guild lifecycle: CREATE_GUILD, LIST_GUILDS, JOIN_GUILD, LEAVE_GUILD,
@@ -30,6 +34,7 @@ class GuildHandler {
     void setSessionManager(session::SessionManager* session_manager);
     void setGuildManager(guild::GuildManager* guild_manager);
     void setInternalApiClient(http::InternalApiClient* internal_api_client);
+    void setRateLimiter(util::RateLimiter* rate_limiter);
 
     Message handleCreateGuild(const Message& message, int fd) const;
     Message handleListGuilds(const Message& message, int fd) const;
@@ -50,6 +55,7 @@ class GuildHandler {
     session::SessionManager* session_manager_ = nullptr;
     guild::GuildManager* guild_manager_ = nullptr;
     http::InternalApiClient* internal_api_client_ = nullptr;
+    util::RateLimiter* rate_limiter_ = nullptr;
 };
 
 } // namespace protocol
