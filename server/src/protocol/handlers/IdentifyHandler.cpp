@@ -116,36 +116,28 @@ Message IdentifyHandler::handle(const Message& message, int fd) {
         session.guild_ids = guild_manager_->getGuildIdsForUser(session.user_id);
     }
 
-    // docs/social/friends-dms-design.md §3.3: hydrate blocked_user_ids the
-    // same way, except this one is a live internal API call (no
-    // process-wide block cache exists the way GuildManager caches every
-    // membership) — a bounded, once-per-IDENTIFY cost, not a per-message
-    // one. A failed/unset call just leaves blocked_user_ids empty rather
-    // than failing IDENTIFY — presence exclusion (Server.cpp) degrades to
-    // "no exclusion" in that case, not a hard error.
+    // docs/social/friends-dms-design.md §3.3/§4.5: hydrate
+    // blocked_user_ids, friend_ids, and display_name/avatar_url from one
+    // combined internal-API call (WireSessionContext) rather than three
+    // sequential ones — IDENTIFY hardening B1. This server is
+    // single-threaded, so three round trips here previously meant every
+    // other connection's traffic waited behind up to three back-to-back
+    // 5s-timeout HTTP calls on a slow/unreachable web service; one call
+    // halves that worst case. A failed/unset call leaves all three at
+    // their empty defaults rather than failing IDENTIFY — presence
+    // exclusion (Server.cpp) degrades to "no exclusion," canSendDm() to
+    // "no cached friendship," and sent messages carry no display_name/
+    // avatar_url, none of which block identification itself.
     if (internal_api_client_) {
-        if (const auto blocks = internal_api_client_->fetchBlocks(session.user_id)) {
-            for (const auto& block : *blocks) {
+        if (const auto context = internal_api_client_->fetchSessionContext(session.user_id)) {
+            for (const auto& block : context->blocks) {
                 session.blocked_user_ids.push_back(block.user_id);
             }
-        }
-
-        // §3.3: friend_ids hydrated the same way, for canSendDm()'s
-        // in-memory friend check.
-        if (const auto friends = internal_api_client_->fetchFriends(session.user_id)) {
-            for (const auto& f : *friends) {
+            for (const auto& f : context->friends) {
                 session.friend_ids.push_back(f.user_id);
             }
-        }
-
-        // §4.5, revised at implementation: display_name/avatar_url,
-        // hydrated once here for the reasons WireUserProfile's comment
-        // explains — a failed/unset call just leaves both unset, degrading
-        // to "no display_name/avatar_url on this session's own sent
-        // messages" rather than failing IDENTIFY.
-        if (const auto profile = internal_api_client_->fetchUserProfile(session.user_id)) {
-            session.display_name = profile->display_name;
-            session.avatar_url = profile->avatar_url;
+            session.display_name = context->profile.display_name;
+            session.avatar_url = context->profile.avatar_url;
         }
     }
 

@@ -85,6 +85,8 @@ class CurlInternalApiClient : public InternalApiClient {
 
     std::optional<WireUserProfile> fetchUserProfile(const std::string& user_id) override;
 
+    std::optional<WireSessionContext> fetchSessionContext(const std::string& user_id) override;
+
   private:
     struct HttpResponse {
         long status = 0;

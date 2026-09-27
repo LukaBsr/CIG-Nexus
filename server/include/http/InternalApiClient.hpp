@@ -214,6 +214,17 @@ struct WireUserProfile {
     std::optional<std::string> avatar_url;
 };
 
+// Combines fetchUserProfile/fetchBlocks/fetchFriends into the single
+// GET /internal/users/:id/session-context call IdentifyHandler makes at
+// IDENTIFY (B1 of the IDENTIFY-hardening follow-up) — those three
+// individual methods are unchanged and still used elsewhere (LIST_FRIENDS,
+// LIST_BLOCKS, DMHandler's live peer-block fallback); this is additive.
+struct WireSessionContext {
+    WireUserProfile profile;
+    std::vector<WireBlock> blocks;
+    std::vector<WireFriend> friends;
+};
+
 // docs/social/friends-dms-design.md §3.5 (LIST_DM_CONVERSATIONS). Revised
 // at implementation (§4.5): the original shape carried only peer_id/
 // last_message_at, unrenderable as a conversation list without a name —
@@ -375,6 +386,11 @@ class InternalApiClient {
     // avatar_url — see WireUserProfile's comment for why this is a
     // separate call rather than reusing an existing live-join query.
     virtual std::optional<WireUserProfile> fetchUserProfile(const std::string& user_id) = 0;
+
+    // IDENTIFY hardening (B1): one round trip instead of the three above,
+    // for the one call site (IdentifyHandler) that always needs all three
+    // together. See WireSessionContext's comment.
+    virtual std::optional<WireSessionContext> fetchSessionContext(const std::string& user_id) = 0;
 };
 
 } // namespace http

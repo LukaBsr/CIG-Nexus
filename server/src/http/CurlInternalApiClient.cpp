@@ -1066,4 +1066,41 @@ std::optional<WireUserProfile> CurlInternalApiClient::fetchUserProfile(const std
     }
 }
 
+std::optional<WireSessionContext>
+CurlInternalApiClient::fetchSessionContext(const std::string& user_id) {
+    const auto response = request("GET", "/internal/users/" + user_id + "/session-context", "");
+    if (!response || response->status != 200) {
+        return std::nullopt;
+    }
+
+    try {
+        const auto json = nlohmann::json::parse(response->body);
+        if (!json.is_object() || !json.contains("user_id") || !json["user_id"].is_string() ||
+            !json.contains("username") || !json["username"].is_string() ||
+            !json.contains("blocks") || !json["blocks"].is_array() || !json.contains("friends") ||
+            !json["friends"].is_array()) {
+            return std::nullopt;
+        }
+
+        WireSessionContext context;
+        context.profile.user_id = json["user_id"].get<std::string>();
+        context.profile.username = json["username"].get<std::string>();
+        parseProfileFields(json, context.profile.display_name, context.profile.avatar_url);
+
+        for (const auto& b : json["blocks"]) {
+            if (auto block = parseWireBlock(b)) {
+                context.blocks.push_back(*block);
+            }
+        }
+        for (const auto& f : json["friends"]) {
+            if (auto friend_ = parseWireFriend(f)) {
+                context.friends.push_back(*friend_);
+            }
+        }
+        return context;
+    } catch (const nlohmann::json::exception&) {
+        return std::nullopt;
+    }
+}
+
 } // namespace http

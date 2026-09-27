@@ -118,6 +118,9 @@ class RecordingInternalApiClient : public http::InternalApiClient {
     std::optional<http::WireUserProfile> fetchUserProfile(const std::string&) override {
         return std::nullopt;
     }
+    std::optional<http::WireSessionContext> fetchSessionContext(const std::string&) override {
+        return std::nullopt;
+    }
 
     bool createMessage(const std::optional<std::string>& channel_id,
                        const std::optional<std::string>& dm_peer_id, const std::string& user_id,

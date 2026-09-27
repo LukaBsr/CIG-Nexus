@@ -52,7 +52,7 @@ Guild-wide notifications, `CHANNEL_MESSAGE`, friend events, and `DM_MESSAGE` use
 - **Framing**: 4-byte big-endian size prefix (max 1 MiB)
 - **Payload format**: JSON
 - **Connection model**: one socket per client; `SO_KEEPALIVE` is enabled, but there is no application-level heartbeat
-- **I/O approach**: single-threaded accept loop plus per-connection polling (100 ms tick); internal API calls are synchronous (5 s timeout each), so a slow web service delays the whole loop. Message persistence runs on a separate worker thread.
+- **I/O approach**: single-threaded accept loop plus per-connection polling (100 ms tick); internal API calls are synchronous (5 s timeout each), so a slow web service delays the whole loop. `IDENTIFY` makes one combined call (`fetchSessionContext`) instead of three separate ones for its blocks/friends/profile hydration. Message persistence runs on a separate worker thread.
 - **Routing model**: `Message.scope` drives response behavior:
 	- `Scope::DIRECT`: response sent only to sender
 	- `Scope::BROADCAST`: response sent to all identified connections (never to a connection that hasn't completed `IDENTIFY`)
