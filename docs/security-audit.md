@@ -7,10 +7,16 @@ upgrade, optional `/internal/*` network segmentation, the `secure`-cookie
 `NODE_ENV` dependency) remain open; the dependency findings in §2.5 were
 re-traced in 2026-09 and a weekly advisory watch now runs in CI. Found
 after this audit was written: the lobby `BROADCAST` reached unauthenticated
-sockets (fixed in #30), the web app's OAuth routes are the only
-rate-limited surface (invite, join-request, and friend routes are not), and
-the C++ JWT verifier does not check the `iss` claim. The body below is
-left as the original point-in-time audit.
+sockets (fixed in #30); the web app's OAuth routes and, as of a later
+follow-up, `PATCH /api/user/profile`, `PATCH /api/user/appearance`, and
+`POST`/`DELETE /api/user/profile/avatar` are rate limited (per-user,
+fail-open on a Redis error — a deliberate difference from the OAuth
+routes' fail-closed behavior, since these are already-authenticated,
+low-stakes mutations) — the protocol-level actions (invite creation/
+redemption, join requests, friend requests/codes, `CREATE_GUILD`,
+`CHAT_MESSAGE`/`CHANNEL_MESSAGE`/`DM_SEND`) remain unthrottled, a planned
+follow-up; and the C++ JWT verifier does not check the `iss` claim. The
+body below is left as the original point-in-time audit.
 
 **Scope**: everything merged into `main` as of this audit — Discord OAuth2
 (PKCE), session/JWT handling, Postgres persistence, the `/internal/*` API

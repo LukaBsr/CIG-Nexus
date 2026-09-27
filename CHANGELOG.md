@@ -6,6 +6,9 @@
 - `BROADCAST` (lobby chat and `PRESENCE_UPDATE`) now reaches identified connections only; previously a socket that never completed `IDENTIFY` still received them (#30)
 - `GUILD_LIST` entries carry `is_member`, so a returning user's guild rail and Join buttons are correct after a page load (#31)
 
+**Security**
+- Rate limiting on `PATCH /api/user/profile`, `PATCH /api/user/appearance`, and `POST`/`DELETE /api/user/profile/avatar` (shared bucket), per-user, fail-open on a Redis error (logged, not silent) unlike the OAuth routes' existing fail-closed limiter
+
 **Docs & CI**
 - Documented the OpenSSL/libcurl build prerequisites for non-Docker server builds (#28)
 - `docs/security-audit.md` §2.5 re-traced against real `npm audit` output; new weekly Dependency Advisory Watch workflow that files an issue only when a high/critical advisory ID appears or disappears (#29)

@@ -2,10 +2,12 @@
 
 **Status: implemented (v0.7.0).** This is kept as a design record. Where the
 shipped code differs: the settings registry now has three sections
-(Appearance, Profile, Blocked Users) rather than one; navigation is a
-`GuildRail` rather than the `TabGroup` this document mentions; and §4's
-rate limiting on `PATCH /api/user/appearance` was **not** built (only the
-OAuth routes are rate limited).
+(Appearance, Profile, Blocked Users) rather than one; and navigation is a
+`GuildRail` rather than the `TabGroup` this document mentions. §4's rate
+limiting on `PATCH /api/user/appearance` (and, on the same
+`checkRateLimitFailOpen` mechanism, `docs/social/friends-dms-design.md`
+§4's profile PATCH and avatar upload/delete routes) was added later — see
+the checklist item below.
 
 ## Scope
 
@@ -520,13 +522,15 @@ instead of assuming the value sent was the value that stuck.
   validity, authentication, or authorization even if read or forged by
   a third party — worst case of a tampered/garbage cookie value is
   handled by §2.3's fallback-to-default, not an error state.
-- **Rate limiting**: `PATCH /api/user/appearance`, like every other
-  authenticated mutation endpoint, should sit behind the existing
-  per-user rate-limiting mechanism (`docs/guilds/social-presence-design.md` §5
-  established this as standing guidance for authenticated internal-API-
-  adjacent mutations); a generous limit is appropriate here given the
-  low stakes, mainly to blunt accidental client bugs (a runaway retry
-  loop) rather than any realistic abuse scenario.
+- **Rate limiting**: **done.** `PATCH /api/user/appearance` sits behind a
+  30/minute per-user limit (`checkRateLimitFailOpen`, `web/lib/auth/
+  rateLimit.ts`) — generous, per this section's own reasoning, mainly to
+  blunt accidental client bugs rather than realistic abuse. Unlike the
+  OAuth routes' `checkRateLimit` (fail-closed), this and the profile/avatar
+  routes below use a fail-open variant: a Redis outage blocking a user
+  from editing their own profile is worse than briefly losing the
+  throttle on an already-authenticated, low-stakes mutation. The failure
+  is logged, not silent.
 
 ---
 

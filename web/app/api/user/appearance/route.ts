@@ -4,7 +4,13 @@ import { type NextRequest, NextResponse } from "next/server";
 import { db } from "@/db/client";
 import { users } from "@/db/schema";
 import { THEMES } from "@/lib/appearance/themes";
+import { checkRateLimitFailOpen } from "@/lib/auth/rateLimit";
 import { findActiveSessionByRefreshToken, REFRESH_COOKIE } from "@/lib/auth/session";
+
+// docs/settings/appearance-design.md §4's own "generous limit ... mainly to
+// blunt accidental client bugs" guidance. Keyed by user id (session-
+// authenticated already).
+const RATE_LIMIT = { windowMs: 60_000, limit: 30 };
 
 // docs/settings/appearance-design.md §3.5. Session-cookie authenticated
 // (same __session refresh cookie as GET /api/auth/session-token) — this
@@ -22,6 +28,10 @@ export async function PATCH(request: NextRequest): Promise<NextResponse> {
   const session = await findActiveSessionByRefreshToken(refreshToken);
   if (!session) {
     return NextResponse.json({ error: "not authenticated" }, { status: 401 });
+  }
+
+  if (!(await checkRateLimitFailOpen("user-appearance-patch", session.userId, RATE_LIMIT))) {
+    return NextResponse.json({ error: "rate_limited" }, { status: 429 });
   }
 
   const body = (await request.json().catch(() => null)) as {
