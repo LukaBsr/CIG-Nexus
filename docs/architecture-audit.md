@@ -1,14 +1,15 @@
 # Repository Structure Audit — Proposal
 
-**Status: partially executed.** Action list items **1, 2, 3, and 5** below
-have been carried out as written. **Item 4** was explicitly declined —
+**Status: executed.** Action list items **1, 2, 3, and 5** below were
+carried out as written. **Item 4** was explicitly declined —
 `shared/protocol/README.md` stays where it is. **Item 6**'s decision
 (wire-message casing conversion happens at the `useGatewayConnection` hook
 boundary, not per-component) is recorded in
-[`docs/frontend-rebuild-plan.md`](../frontend-rebuild-plan.md) rather than
-here. **Item 7** (the actual component extraction) has not been started —
-its specifics are captured in that same plan document for whoever picks it
-up. **Item 8** (CI workflow naming) remains undone, low priority. The rest
+[`docs/frontend-rebuild-plan.md`](frontend-rebuild-plan.md). **Item 7**
+(component extraction) was done as part of the frontend rebuild, and
+**item 8** (CI workflow naming plus a gateway workflow) was done too. The
+CLAUDE.md git-tracking question raised in §1 and §6 is resolved:
+`CLAUDE.md` is now tracked. The rest
 of this document is left as originally written — a point-in-time proposal,
 not a changelog — so paths mentioned in the body below (e.g.
 `docs/architecture.md`, `docs/rooms-spec.md`) reflect the *pre-move*
@@ -43,7 +44,7 @@ covered by the auth/persistence design work
 | `docker-compose.yml` | yes | Full-stack local dev orchestration | 123 lines |
 | `.env.example` | yes | Documents every required env var | — |
 | `.env` | **no** (gitignored) | Real local secrets | Expected to be untracked. |
-| `CLAUDE.md` | **no** (gitignored) | Claude Code project instructions | Must stay at root — Claude Code discovers it there by convention. Its untracked status was flagged twice in earlier sessions and left unresolved; noted here for completeness, not re-litigated. |
+| `CLAUDE.md` | **no** (gitignored) | Claude Code project instructions | Must stay at root — Claude Code discovers it there by convention. Its untracked status was flagged twice in earlier sessions and left unresolved; **resolved later — it is now tracked** (the `.gitignore` entry was removed). |
 | `ARCHITECTURE.md` | **no** (gitignored) | System architecture — **stale** | 98 lines. Predates guilds/channels and auth entirely (still lists "Authentication and authorization" under "Out of Scope"). Fully superseded by `docs/architecture.md`, which is tracked and current. Effectively an orphaned duplicate. |
 | `CURRENT_STATE.md` | **no** (untracked, not gitignored — just never added) | Point-in-time "resume after 4 months idle" snapshot dated 2026-07-13 | 146 lines. Documents bugs that are now fixed (e.g. `IDENTIFIED` missing `"type"` in its payload) and a commit history that predates the entire guilds/auth/persistence feature. No ongoing reference value — it was a one-time catch-up artifact, not a living doc. |
 
@@ -396,7 +397,7 @@ Things this audit deliberately does not touch or propose changing:
 
 Ordered by independence/risk — items later in the list either depend on
 earlier ones or carry more cross-reference fallout. Each needs your
-explicit go-ahead; none of this has been executed.
+explicit go-ahead. (Historical wording — see the status note at the top: this list has since been executed.)
 
 1. **Delete `ARCHITECTURE.md`** (root, untracked, superseded by
    `docs/architecture.md`). No cross-references to fix — it's untracked

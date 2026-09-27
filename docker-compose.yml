@@ -24,7 +24,7 @@ services:
     networks:
       - cig-nexus
 
-  # design doc: Discord OAuth2 + Postgres persistence (docs/auth-discord-design.md).
+  # design doc: Discord OAuth2 + Postgres persistence (docs/auth/discord-design.md).
   # web is where DATABASE_URL/REDIS_URL actually get used — its real runtime
   # dependencies are postgres/redis, not gateway (the browser talks to
   # gateway directly; the web container itself never needs it up first).

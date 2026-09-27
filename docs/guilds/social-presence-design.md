@@ -13,6 +13,18 @@ planning, not a changelog of the shipped code. The one genuine exception is
 discussed there was never built, per that section's own "ship without
 solving this fully" recommendation — still accurate as written.
 
+Two further deviations, found in a later consistency review: **§5's
+rate limits were not built** (invite creation/redemption, join-request
+creation — only the OAuth routes are rate limited today, and every §5
+checklist box is a design-time item, not a completion marker), and the
+join-request internal endpoints shipped as
+`/internal/guild-join-requests/[guildId]/[userId]/approve` and
+`.../[guildId]/[userId]` (DELETE) rather than the `/:id` shapes in §1.9;
+`web/app/internal/` is authoritative. `web/test/internalIsolation.test.ts`
+probes two sample `/internal/*` paths; the guarantee for every route comes
+from `server.mjs` rejecting the whole `/internal` prefix on the public
+port, not from per-route test coverage.
+
 ## Scope
 
 Four interrelated features for the next release cycle, covering the gap

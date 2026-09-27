@@ -46,7 +46,7 @@ CIG Nexus Server (C++)
 | Backend server | C++, CMake |
 | Auth | Discord OAuth2 (PKCE), signed RS256 session JWTs |
 | Persistence | PostgreSQL + Drizzle ORM, Redis |
-| Tests | Catch2 |
+| Tests | Catch2 (server), Vitest + testcontainers (web) |
 | Local orchestration | Docker Compose |
 
 ## Features
@@ -55,10 +55,10 @@ CIG Nexus Server (C++)
 
 - Next.js App Router client, Discord OAuth2 login
 - Session-token `IDENTIFY` — no client-chosen username
-- Global lobby chat, plus a Guilds tab: create/join guilds (open, application, or private visibility), invites, join requests, officer-gated channel creation, per-channel chat
+- Global lobby chat, plus a persistent Discord-style guild rail (Lobby, one icon per joined guild, Friends; guild browse/create behind a `+` popover): create/join guilds (open, application, or private visibility), invites, join requests, officer-gated channel creation, per-channel chat
 - Guild member roster with rank-based roles (Crew / Officer / Captain) and live online/offline presence
-- Friends tab: friend requests (direct or by code), blocking, and 1:1 direct messages with history
-- Settings modal: customizable profile (display name, avatar), Appearance theme switching, blocked-users list
+- Friends view: friend requests (direct or by code), blocking, and 1:1 direct messages with history
+- Settings modal: customizable profile (display name and avatar are shown in rosters and messages; bio, status message and accent color are stored and editable but not displayed anywhere yet), Appearance theme switching, blocked-users list
 
 ### Gateway
 
@@ -210,7 +210,7 @@ Successful chat responses currently include metadata such as:
 ├── web/                # Next.js web client
 ├── gateway/            # WebSocket <-> TCP gateway
 ├── server/             # C++ TCP server and protocol handlers
-├── desktop/            # Not the active development path (see CLAUDE.md)
+├── desktop/            # Not the active development path (see [CLAUDE.md](CLAUDE.md))
 ├── shared/             # Shared protocol documentation
 ├── docs/               # Architecture and design-record notes
 └── docker-compose.yml  # Local orchestration
@@ -230,6 +230,7 @@ Successful chat responses currently include metadata such as:
 - See [docs/social/friends-dms-design.md](docs/social/friends-dms-design.md) for friends, blocking, direct messages, and profiles.
 - See [docs/frontend-rebuild-plan.md](docs/frontend-rebuild-plan.md) for the web client's component/hook structure and its live wire-casing convention.
 - See [docs/known-issues.md](docs/known-issues.md) for a living list of found-but-not-reliably-reproduced bugs.
+- See [CHANGELOG.md](CHANGELOG.md) for release history and [CLAUDE.md](CLAUDE.md) for contributor/assistant conventions (Git workflow, protocol-spec-first rule).
 - See [docs/architecture-audit.md](docs/architecture-audit.md), [docs/ci-audit.md](docs/ci-audit.md), and [docs/security-audit.md](docs/security-audit.md) for the repository's standing audits.
 
 ## Status
@@ -237,7 +238,7 @@ Successful chat responses currently include metadata such as:
 Current project state:
 
 - Discord OAuth2 login; Postgres-backed users, sessions, guilds, channels, and memberships
-- Web client: global lobby, a Guilds tab (create/join, invites, visibility, join requests, roster/roles), a Friends tab (requests, blocking, DMs), and a Settings modal (profile, appearance, blocked users)
+- Web client: global lobby, a guild rail (create/join, invites, visibility, join requests, roster/roles), a Friends view (requests, blocking, DMs), and a Settings modal (profile, appearance, blocked users)
 - Server handles the full protocol: session-token `HELLO`/`IDENTIFY`, `CHAT_MESSAGE`/`CHANNEL_MESSAGE`, guild/channel lifecycle, invites/join requests, rank-based roles, presence, message persistence/history, friends/blocking/DMs
 - Broadcast flow implemented through `Message.scope` (`DIRECT`, `BROADCAST`, `TARGETED`)
 - Dockerized local stack (web, gateway, server, Postgres, Redis) is available

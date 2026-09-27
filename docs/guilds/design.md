@@ -15,6 +15,25 @@ future tense — it's a design record of what was decided and why, not a
 changelog, so it isn't rewritten to describe the shipped state after the
 fact.
 
+**Superseded since** (later work changed these decisions; the sections
+below still describe the original design):
+
+- Decision #1 / "Owner": channel creation is now officer-or-above, not
+  owner-only; channel/guild deletion stays owner-only
+  (`docs/guilds/social-presence-design.md` §2.2). `GuildManager`'s `can*`
+  predicates are the seam the "Future Permission Hook" section describes.
+- Decisions #8 and "Deferred: Guild Privacy": guild visibility
+  (`open`/`application`/`private`), invites, and join requests exist, and
+  `LIST_GUILDS` filters `private` guilds
+  (`docs/guilds/social-presence-design.md` §1).
+- Decision #11 (in-memory only): the catalog is durable in Postgres, with
+  `GuildManager` as a write-through cache (`docs/auth/discord-design.md`
+  §8.1); sessions remain in-memory.
+- `CHAT_MESSAGE`/`CHANNEL_MESSAGE` are now persisted, and the wire shapes
+  gained `display_name`/`avatar_url`; `GUILD_LIST` entries gained
+  `visibility` and `is_member`. See `shared/protocol/README.md` for the
+  current shapes.
+
 ## Terminology
 
 | Term | Meaning |

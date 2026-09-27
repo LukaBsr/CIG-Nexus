@@ -150,8 +150,10 @@ server has no direct dependency on it.
 
 ### Guilds and Channels
 
-1. An identified client can create/list/join/leave a guild, and (owner only)
-   create/delete its channels — independent of the chat flow above.
+1. An identified client can create/list/join/leave a guild. Channel
+   creation needs officer rank or above; channel/guild deletion, visibility
+   changes, and role assignment are owner-only (rank checks in
+   `GuildManager`) — all independent of the chat flow above.
 2. A connection joins at most one channel at a time; joining a new one
    implicitly leaves the previous one.
 3. `CHANNEL_MESSAGE` targets the sender's own active channel rather than a

@@ -1,9 +1,19 @@
 # Friends, Blocking, Direct Messages, and Profiles — Design Document
 
-**Status: design, not implemented.** This is a planning document only.
-Nothing described here has been built. Do not start implementation against
-it until it has been reviewed and the arbitration points flagged throughout
-(search for **`ARBITRATION`**) have been resolved.
+**Status: implemented (v0.7.0).** This is kept as a design record; the
+"Revised at implementation" notes inside record where building it corrected
+the plan. Not built, or built differently:
+
+- **§5's rate limits** (`ADD_FRIEND_BY_CODE`, `SEND_FRIEND_REQUEST`) were not
+  built, and every §5 checklist box is a design-time item, not a completion
+  marker.
+- **Profile fields**: `bio`, `status_message` and `accent_color` are stored
+  and editable (Settings → Profile), but no UI displays them — the "view
+  profile" action §4.3/§4.4 imply doesn't exist, even though
+  `GET /api/users/:id/profile` and `fetchProfile()` do. Only `display_name`
+  and `avatar_url` reach rosters and messages.
+- Internal API routes are shaped `[requesterId]/[recipientId]` where §1.6
+  writes `:requesterId` with a body; `web/app/internal/` is authoritative.
 
 ## Scope
 

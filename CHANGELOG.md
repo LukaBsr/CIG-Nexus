@@ -1,6 +1,17 @@
 # Changelog
 
-## v0.7.0
+## Unreleased
+
+**Fixes**
+- `BROADCAST` (lobby chat and `PRESENCE_UPDATE`) now reaches identified connections only; previously a socket that never completed `IDENTIFY` still received them (#30)
+- `GUILD_LIST` entries carry `is_member`, so a returning user's guild rail and Join buttons are correct after a page load (#31)
+
+**Docs & CI**
+- Documented the OpenSSL/libcurl build prerequisites for non-Docker server builds (#28)
+- `docs/security-audit.md` §2.5 re-traced against real `npm audit` output; new weekly Dependency Advisory Watch workflow that files an issue only when a high/critical advisory ID appears or disappears (#29)
+- Consistency sweep: stale READMEs, status banners, and audit notes updated to match the code; `CLAUDE.md` is now tracked in git
+
+## v0.7.0 — 2026-08-16
 
 **Guilds**
 - Guild invites: creation (optional `max_uses`/`expires_in_seconds`), redemption (race-safe against concurrent `max_uses`-limited use), listing, and revocation
@@ -8,6 +19,7 @@
 - Rank-based guild roles (`role_rank`, replacing the old binary owner/member column) with three tiers — Crew, Officer, Captain — and per-guild theme-resolved display labels; member roster exposed via `LIST_MEMBERS`
 - Dispatcher widened to return `std::vector<Message>`, so a single handler action (e.g. approving a join request) can notify two different recipients with two different payloads
 - Density/polish pass on the guild view UI, wiring up presence, roster, and join-requests end to end
+- Navigation reworked from horizontal tabs into a persistent Discord-style guild rail (Lobby, one icon per joined guild, Friends), with guild browse/join/create behind a `+` popover
 
 **Presence**
 - Online/offline presence tracking, derived from per-`user_id` connection counts (0→1/1→0 transitions), broadcast lobby-wide as `PRESENCE_UPDATE`
@@ -22,7 +34,8 @@
 - Friend requests (direct or by shareable code), accept/reject/cancel/remove, and a friends list
 - Blocking, which silently drops any existing friendship or pending request between the pair
 - 1:1 direct messages with history retrieval
-- Customizable profiles (`display_name`, `avatar_url`), wired into every roster/message/list response that already resolved `username`
+- Customizable profiles: `display_name` and `avatar_url` (custom avatar upload, magic-byte validated, 2 MiB cap) are wired into every roster/message/list response that already resolved `username`; `bio`, `status_message` and `accent_color` are stored and editable but not yet displayed anywhere
+- Friends, blocking, and direct-message UI in the web client
 
 **Settings & appearance**
 - Settings modal with a Profile section (display name, avatar) and a Blocked Users section
@@ -38,7 +51,7 @@
 - `docs/` design records reorganized into topic subfolders (`guilds/`, `social/`, `settings/`)
 - New design docs: guild invites/roster/presence/message-persistence, friends/blocking/DMs/profiles, settings/appearance
 
-## v0.6.0
+## v0.6.0 — 2026-07-31
 
 **Auth**
 - Discord OAuth2 login (PKCE), with RS256 session JWTs decoupled from the httpOnly refresh cookie

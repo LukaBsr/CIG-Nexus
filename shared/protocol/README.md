@@ -1162,15 +1162,16 @@ Current error codes used by the implementation:
 
 Current implementation limitations:
 
-- authorization is rank-based (`role_rank`, [Roles](#roles)) with exactly three reachable tiers today (crew/officer/owner) — no general, delegable permission system yet (see `docs/guilds/design.md`, "Future Permission Hook")
+- authorization is rank-based (`role_rank`, [Roles](#roles)) with exactly three reachable tiers today (crew/officer/owner) — no general, delegable permission system yet (see `docs/guilds/design.md`, "Future Permission Hook", and `docs/guilds/social-presence-design.md` §2)
 - guild privacy exists (`visibility`: `open`/`application`/`private` — see [Guild Visibility](#guild-visibility)) but only at the guild level, not per-channel or per-message; an `open` guild (the default) still has none
 - invite codes are the only access-control boundary for `application`/`private` guilds — a leaked/forwarded code grants whatever that guild's mode allows (direct membership for `private`, a join request for `application`); there is no per-invite audience restriction
 - a leaked/forwarded friend code (`ADD_FRIEND_BY_CODE`) lets anyone send its owner a friend request — unlike a guild invite this never grants anything unilaterally (friendship still requires the recipient to accept), so the exposure is a request, not membership
 - presence (`PRESENCE_UPDATE`) leaks online/offline status across guild boundaries — every identified client learns it for every other identified user, regardless of shared guild membership. Consistent with, not a regression from, the existing baseline above (guild existence and membership-by-id are already visible to every identified client with no privacy model)
 - `VOICE` channels are metadata-only: the type is modeled and validated, but there is no audio transport or voice presence
-- no TLS
-- no rate limiting
-- no persistent identity, guilds, or channels — all in-memory, wiped on restart
+- no TLS between gateway and server (plain TCP)
+- no rate limiting on protocol messages — only the web app's OAuth login routes are rate limited. Invite creation/redemption, join requests, friend requests, and friend-code redemption are unthrottled (designed in `docs/guilds/social-presence-design.md` §5 and `docs/social/friends-dms-design.md` §5, not built yet)
+- sessions and presence are in-memory and reset when the server restarts (clients must reconnect and re-`IDENTIFY`); identity, guilds, channels, memberships, messages, friends, blocks, and profiles are durable in Postgres via the web app's internal API
+- message persistence is asynchronous with bounded retry, so a message that was delivered live can be missing from history if the persistence path stays down past the retry budget
 
 Do not treat the current protocol as production-ready for untrusted environments.
 
@@ -1178,4 +1179,4 @@ Do not treat the current protocol as production-ready for untrusted environments
 
 - See [../../gateway/README.md](../../gateway/README.md) for gateway transport behavior.
 - See [../../server/README.md](../../server/README.md) for current server implementation details.
-- See [../../docs/guilds/design.md](../../docs/guilds/design.md) for the guild/channel feature's design rationale, data model, and deferred work (permissions, privacy).
+- See [../../docs/guilds/design.md](../../docs/guilds/design.md) for the guild/channel feature's original design rationale and data model (a design record — permissions, privacy, and persistence were later implemented; see `docs/guilds/social-presence-design.md`).

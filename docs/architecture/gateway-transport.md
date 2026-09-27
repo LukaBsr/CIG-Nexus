@@ -40,12 +40,12 @@ Handshake request:
 }
 ```
 
-Identify request:
+Identify request (the token is issued by Next.js after Discord OAuth2 login; the gateway forwards it without inspecting it):
 
 ```json
 {
   "type": "IDENTIFY",
-  "username": "web_user"
+  "session_token": "<JWT from GET /api/auth/session-token>"
 }
 ```
 

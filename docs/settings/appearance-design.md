@@ -1,9 +1,11 @@
 # Settings Menu and Appearance/Theme System — Design Document
 
-**Status: design, not implemented.** This is a planning document only.
-Nothing described here has been built. Do not start implementation
-against it until it has been reviewed and the arbitration point flagged
-below (search for **`ARBITRATION`**) has been resolved.
+**Status: implemented (v0.7.0).** This is kept as a design record. Where the
+shipped code differs: the settings registry now has three sections
+(Appearance, Profile, Blocked Users) rather than one; navigation is a
+`GuildRail` rather than the `TabGroup` this document mentions; and §4's
+rate limiting on `PATCH /api/user/appearance` was **not** built (only the
+OAuth routes are rate limited).
 
 ## Scope
 
