@@ -15,7 +15,7 @@ export class WsServer {
 		this.options = options;
 	}
 
-	start(): void {
+	start(): WebSocketServer {
 		const server = new WebSocketServer({ port: this.options.wsPort });
 		console.log(`WebSocket gateway listening on port ${this.options.wsPort}`);
         
@@ -76,5 +76,7 @@ export class WsServer {
 					closeBoth();
 				});
 		});
+
+		return server;
 	}
 }

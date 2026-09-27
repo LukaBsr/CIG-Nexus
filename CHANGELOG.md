@@ -10,6 +10,8 @@
 - Documented the OpenSSL/libcurl build prerequisites for non-Docker server builds (#28)
 - `docs/security-audit.md` §2.5 re-traced against real `npm audit` output; new weekly Dependency Advisory Watch workflow that files an issue only when a high/critical advisory ID appears or disappears (#29)
 - Consistency sweep: stale READMEs, status banners, and audit notes updated to match the code; `CLAUDE.md` is now tracked in git
+- Fixed a `.gitignore` regression from the `.vscode/` ignore change that had also silently un-ignored `data/` (uploaded avatars)
+- Gateway: Node 18 (end-of-life) -> Node 24 in the Dockerfile and CI; added its first test suite (frame codec unit tests, WebSocket<->TCP bridge integration tests, `npm ci --omit=dev` in the runtime image)
 
 ## v0.7.0 — 2026-08-16
 
