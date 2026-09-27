@@ -155,6 +155,28 @@ TEST_CASE("GuildHandler LIST_GUILDS excludes a private guild for a non-member, i
     REQUIRE(bobs_view.payload["guilds"][0]["guild_id"] == "g_open");
 }
 
+TEST_CASE("GuildHandler LIST_GUILDS flags is_member per caller, from session membership") {
+    Fixture f;
+    f.identify(1, "alice");
+    f.guilds.upsertGuild("g_mine", "Mine", "u_owner");
+    f.guilds.upsertGuild("g_other", "Other", "u_owner");
+    f.sessions.addGuildMembership(1, "g_mine");
+
+    const auto response = f.handler.handleListGuilds(make_message("LIST_GUILDS"), 1);
+
+    REQUIRE(response.payload["guilds"].size() == 2);
+    for (const auto& entry : response.payload["guilds"]) {
+        REQUIRE(entry["is_member"].is_boolean());
+        REQUIRE(entry["is_member"].get<bool>() == (entry["guild_id"] == "g_mine"));
+    }
+
+    f.identify(2, "bob");
+    const auto bobs_view = f.handler.handleListGuilds(make_message("LIST_GUILDS"), 2);
+    for (const auto& entry : bobs_view.payload["guilds"]) {
+        REQUIRE(entry["is_member"].get<bool>() == false);
+    }
+}
+
 TEST_CASE("GuildHandler LIST_GUILDS requires identification") {
     Fixture f;
 

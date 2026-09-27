@@ -141,16 +141,23 @@ Message GuildHandler::handleListGuilds(const Message& message, int fd) const {
     // means private, not private except to whichever error code you
     // trigger" applies here too, so this is a silent omission, not an
     // error.
+    //
+    // `is_member` comes from the same per-connection Session.guild_ids the
+    // private-guild filter above reads (hydrated from durable membership at
+    // IDENTIFY), so a returning client can rebuild "which guilds am I in"
+    // from this one response instead of only learning about memberships
+    // created during the current session.
     nlohmann::json guilds = nlohmann::json::array();
     for (const auto& g : guild_manager_->listGuilds()) {
-        if (g.visibility == guild::GuildVisibility::PRIVATE &&
-            !session_manager_->isMemberOfGuild(fd, g.id)) {
+        const bool is_member = session_manager_->isMemberOfGuild(fd, g.id);
+        if (g.visibility == guild::GuildVisibility::PRIVATE && !is_member) {
             continue;
         }
         guilds.push_back({{"guild_id", g.id},
                           {"name", g.name},
                           {"owner_id", g.owner_id},
-                          {"visibility", guild::toString(g.visibility)}});
+                          {"visibility", guild::toString(g.visibility)},
+                          {"is_member", is_member}});
     }
 
     Message response;
