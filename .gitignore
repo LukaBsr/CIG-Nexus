@@ -59,4 +59,7 @@ ARCHITECTURE.md
 secrets/
 
 # Locally bind-mounted user-uploaded content (docs/social/friends-dms-design.md §4.2)
-data/.vscode/
+data/
+
+# Local editor config
+.vscode/
