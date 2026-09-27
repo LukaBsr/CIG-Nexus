@@ -451,3 +451,43 @@ TEST_CASE("CurlInternalApiClient::rejectJoinRequest issues DELETE to the composi
     CHECK(request->method == "DELETE");
     CHECK(request->path == "/internal/guild-join-requests/g_1/u_2");
 }
+
+TEST_CASE("CurlInternalApiClient::fetchSessionContext parses profile, blocks, and friends from "
+          "one response and hits the session-context path",
+          "[CurlInternalApiClient]") {
+    TestHttpServer server(200, R"({
+        "user_id": "u_1",
+        "username": "alice",
+        "display_name": "Al",
+        "avatar_url": "/uploads/avatars/a.png",
+        "blocks": [
+            {"user_id": "u_2", "username": "bob", "blocked_at": "2026-01-01T00:00:00Z", "display_name": "Bob", "avatar_url": null}
+        ],
+        "friends": [
+            {"user_id": "u_3", "username": "carol", "display_name": "Carol", "avatar_url": null}
+        ]
+    })");
+    http::CurlInternalApiClient client(server.baseUrl(), "test-secret");
+
+    const auto context = client.fetchSessionContext("u_1");
+    REQUIRE(context.has_value());
+    CHECK(context->profile.user_id == "u_1");
+    CHECK(context->profile.display_name == "Al");
+    REQUIRE(context->blocks.size() == 1);
+    CHECK(context->blocks[0].user_id == "u_2");
+    REQUIRE(context->friends.size() == 1);
+    CHECK(context->friends[0].user_id == "u_3");
+
+    const auto request = server.waitForRequest();
+    REQUIRE(request.has_value());
+    CHECK(request->method == "GET");
+    CHECK(request->path == "/internal/users/u_1/session-context");
+}
+
+TEST_CASE("CurlInternalApiClient::fetchSessionContext returns nullopt on a 404",
+          "[CurlInternalApiClient]") {
+    TestHttpServer server(404, R"({"error": "not found"})");
+    http::CurlInternalApiClient client(server.baseUrl(), "test-secret");
+
+    CHECK_FALSE(client.fetchSessionContext("u_unknown").has_value());
+}

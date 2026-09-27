@@ -249,6 +249,24 @@ class FakeInternalApiClient : public http::InternalApiClient {
         return http::WireUserProfile{user_id, "fake-username", std::nullopt, std::nullopt};
     }
 
+    // B1: combines the three calls above into one, mirroring the same
+    // fail_*/*_to_return fields rather than introducing a fourth,
+    // parallel set of test knobs — a test configuring
+    // fail_fetch_user_profile/blocks_to_return/friends_to_return already
+    // controls this call's behavior too.
+    std::optional<http::WireSessionContext>
+    fetchSessionContext(const std::string& user_id) override {
+        ++fetch_session_context_call_count;
+        const auto profile = fetchUserProfile(user_id);
+        if (!profile) {
+            return std::nullopt;
+        }
+        if (fail_fetch_blocks || fail_fetch_friends) {
+            return std::nullopt;
+        }
+        return http::WireSessionContext{*profile, blocks_to_return, friends_to_return};
+    }
+
     // Test control: flip one of these to exercise a handler's "internal API
     // call failed" path (should become INTERNAL_ERROR without mutating any
     // local cache/session state).
@@ -326,6 +344,7 @@ class FakeInternalApiClient : public http::InternalApiClient {
     int send_friend_request_call_count = 0;
     int add_friend_by_code_call_count = 0;
     int regenerate_friend_code_call_count = 0;
+    int fetch_session_context_call_count = 0;
 
   private:
     int next_guild_id_ = 1;

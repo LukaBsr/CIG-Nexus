@@ -93,6 +93,33 @@ occasional container restarts) is run with the flag on:
   unexpectedly close in time to a `Client connected` log for the same `fd`
   number, per the fd-reuse-race idea below.
 
+**Plausible root cause candidate, not yet confirmed**: the second bullet
+above describes more than a log pattern to watch for — an uncaught
+exception thrown between `IdentifyHandler`'s `createSession()` call and its
+`return response` (e.g. from the internal-API hydration call,
+`fetchSessionContext`, or from JSON handling inside it — see the 2026-09
+update below: this used to be three separate calls, now one) would
+propagate out of the handler, through the dispatcher lambda, into
+`Server::start()`'s `catch (const std::exception&)` around
+`dispatcher_.dispatch()` — which logs "Dispatch error" and sends
+`PROTOCOL_VIOLATION`, but never runs the `if (response.type ==
+"IDENTIFIED")` check that triggers `incrementPresence()`. The `Session`
+this connection's `IdentifyHandler` already created is left behind in
+`SessionManager` with a real `user_id` but no matching presence count.
+That connection's *eventual* disconnect still goes through
+`removeSessionTrackingPresence()`, which calls `decrementPresence(user_id)`
+for a user who was never counted online for this connection — for a
+`user_id` with another live, correctly-counted connection, this decrements
+a real count that wasn't incremented for this socket, which is exactly the
+"stuck above the actual number of live connections" shape described at the
+top of this entry. This wasn't checkable before the instrumentation above
+existed (nothing surfaced whether `handle()` completed for a given fd);
+it's now a specific, falsifiable hypothesis rather than one item in a
+general list — the thing to look for is a `session created` line with no
+matching `identify success` line, immediately followed or preceded by a
+`decrementPresence`/`incrementPresence` count that doesn't add up for that
+`user_id`.
+
 **Not yet tried**:
 
 - Checking whether `docker compose up --build -d web` (rebuilding only
@@ -113,10 +140,14 @@ unchanged in the ways that matter — `incrementPresence` runs once per
 `removeSessionTrackingPresence()`, and both places that remove sessions
 (a failed read, and the revocation sweep) go through that wrapper. No new
 mechanism was found by inspection. What did change since this was logged:
-`IdentifyHandler` now makes three synchronous internal-API calls
+`IdentifyHandler` made three synchronous internal-API calls
 (`fetchBlocks`, `fetchFriends`, `fetchUserProfile`, 5 s timeout each)
-between creating the session and the presence increment, and presence
-broadcasts now go through `broadcastExcluding` (identified sessions only).
+between creating the session and the presence increment; as of a later
+IDENTIFY-hardening pass this is now a single combined call
+(`fetchSessionContext`, same 5 s timeout), which shrinks but doesn't
+eliminate the exception window the root-cause candidate above describes.
+Presence broadcasts also now go through `broadcastExcluding` (identified
+sessions only).
 The instrumentation plan below is still the right next step, and it should
 also log the IDENTIFY handler's entry/exit per fd so any dispatch that
 creates a session but never produces `IDENTIFIED` shows up.
