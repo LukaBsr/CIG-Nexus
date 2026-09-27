@@ -3,6 +3,7 @@ import { type NextRequest, NextResponse } from "next/server";
 
 import { db } from "@/db/client";
 import { users } from "@/db/schema";
+import { checkRateLimitFailOpen } from "@/lib/auth/rateLimit";
 import { findActiveSessionByRefreshToken, REFRESH_COOKIE } from "@/lib/auth/session";
 import {
   isValidAccentColor,
@@ -12,6 +13,12 @@ import {
   resolveAvatarUrl,
   resolveDisplayName
 } from "@/lib/user/profile";
+
+// Illustrative starting point (docs/security-audit.md §2.5's follow-up),
+// not a value from the design doc — profile edits are low-stakes but
+// still shouldn't be scriptable at unlimited speed. Keyed by the caller's
+// own user id, not IP, since this route is already session-authenticated.
+const RATE_LIMIT = { windowMs: 60_000, limit: 30 };
 
 // docs/social/friends-dms-design.md §4.4. Session-cookie authenticated,
 // same shape as PATCH /api/user/appearance — this lives under
@@ -29,6 +36,10 @@ export async function PATCH(request: NextRequest): Promise<NextResponse> {
   const session = await findActiveSessionByRefreshToken(refreshToken);
   if (!session) {
     return NextResponse.json({ error: "not authenticated" }, { status: 401 });
+  }
+
+  if (!(await checkRateLimitFailOpen("user-profile-patch", session.userId, RATE_LIMIT))) {
+    return NextResponse.json({ error: "rate_limited" }, { status: 429 });
   }
 
   const body = (await request.json().catch(() => null)) as {

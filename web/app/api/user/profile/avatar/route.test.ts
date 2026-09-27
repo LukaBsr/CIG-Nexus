@@ -131,6 +131,24 @@ describe("POST /api/user/profile/avatar", () => {
     const [victimRow] = await db.select().from(users).where(sql`${users.id} = ${victim.id}`);
     expect(victimRow.customAvatarPath).toBeNull();
   });
+
+  it("returns 429 once the per-user rate limit is exceeded", async () => {
+    const user = await insertUser("9");
+    const { refreshToken } = await createSession(user.id, {});
+    const cookie = `__session=${refreshToken}`;
+
+    for (let i = 0; i < 5; i += 1) {
+      const form = new FormData();
+      form.set("avatar", new Blob([PNG_BYTES]), `avatar-${i}.png`);
+      const response = await POST(requestWithForm(form, cookie));
+      expect(response.status).toBe(200);
+    }
+
+    const limitedForm = new FormData();
+    limitedForm.set("avatar", new Blob([PNG_BYTES]), "avatar-limited.png");
+    const limited = await POST(requestWithForm(limitedForm, cookie));
+    expect(limited.status).toBe(429);
+  });
 });
 
 describe("DELETE /api/user/profile/avatar", () => {
@@ -150,5 +168,31 @@ describe("DELETE /api/user/profile/avatar", () => {
 
     const [row] = await db.select().from(users).where(sql`${users.id} = ${user.id}`);
     expect(row.customAvatarPath).toBeNull();
+  });
+});
+
+describe("POST and DELETE /api/user/profile/avatar share one rate-limit bucket", () => {
+  it("counts POST and DELETE against the same limit, so alternating them doesn't double the rate", async () => {
+    const user = await insertUser("10", { customAvatarPath: "/uploads/avatars/old.png" });
+    const { refreshToken } = await createSession(user.id, {});
+    const cookie = `__session=${refreshToken}`;
+
+    const form = new FormData();
+    form.set("avatar", new Blob([PNG_BYTES]), "avatar.png");
+    expect((await POST(requestWithForm(form, cookie))).status).toBe(200);
+    expect((await DELETE(requestWithoutBody(cookie))).status).toBe(200);
+
+    const form2 = new FormData();
+    form2.set("avatar", new Blob([PNG_BYTES]), "avatar2.png");
+    expect((await POST(requestWithForm(form2, cookie))).status).toBe(200);
+    expect((await DELETE(requestWithoutBody(cookie))).status).toBe(200);
+
+    const form3 = new FormData();
+    form3.set("avatar", new Blob([PNG_BYTES]), "avatar3.png");
+    expect((await POST(requestWithForm(form3, cookie))).status).toBe(200);
+
+    // 5 calls made (3 POST + 2 DELETE); the 6th, regardless of which
+    // method, is the one that should be limited.
+    expect((await DELETE(requestWithoutBody(cookie))).status).toBe(429);
   });
 });

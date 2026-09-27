@@ -8,6 +8,7 @@
 
 **Security**
 - In-memory, per-user rate limiting in the C++ protocol layer (`util::RateLimiter`): `CREATE_INVITE` (20/hour), `JOIN_VIA_INVITE` (10/minute), `REQUEST_JOIN` (5/minute), `SEND_FRIEND_REQUEST`/`ADD_FRIEND_BY_CODE` (10/minute, shared bucket), `REGENERATE_FRIEND_CODE` (3/hour), `CREATE_GUILD` (10/hour), `CHAT_MESSAGE`/`CHANNEL_MESSAGE`/`DM_SEND` (20/10 seconds each) — new `RATE_LIMITED` error code, documented in `shared/protocol/README.md`'s new Rate Limits section
+- Rate limiting on `PATCH /api/user/profile`, `PATCH /api/user/appearance`, and `POST`/`DELETE /api/user/profile/avatar` (shared bucket), per-user, fail-open on a Redis error (logged, not silent) unlike the OAuth routes' existing fail-closed limiter
 
 **Docs & CI**
 - Documented the OpenSSL/libcurl build prerequisites for non-Docker server builds (#28)

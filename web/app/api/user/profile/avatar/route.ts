@@ -3,9 +3,17 @@ import { type NextRequest, NextResponse } from "next/server";
 
 import { db } from "@/db/client";
 import { users } from "@/db/schema";
+import { checkRateLimitFailOpen } from "@/lib/auth/rateLimit";
 import { findActiveSessionByRefreshToken, REFRESH_COOKIE } from "@/lib/auth/session";
 import { deleteAvatar, InvalidAvatarError, saveAvatar } from "@/lib/user/avatarStorage";
 import { resolveAvatarUrl } from "@/lib/user/profile";
+
+// Tighter than the profile/appearance PATCH routes' 30/min: this one
+// writes/deletes a file on disk (docs/social/friends-dms-design.md §4.2's
+// local-disk store has no cloud provider absorbing unbounded churn). One
+// shared bucket for POST and DELETE — both mutate custom_avatar_path, so a
+// caller alternating between them shouldn't get double the effective rate.
+const RATE_LIMIT = { windowMs: 60_000, limit: 5 };
 
 async function requireSession(request: NextRequest) {
   const refreshToken = request.cookies.get(REFRESH_COOKIE)?.value;
@@ -24,6 +32,10 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   const session = await requireSession(request);
   if (!session) {
     return NextResponse.json({ error: "not authenticated" }, { status: 401 });
+  }
+
+  if (!(await checkRateLimitFailOpen("user-avatar-mutate", session.userId, RATE_LIMIT))) {
+    return NextResponse.json({ error: "rate_limited" }, { status: 429 });
   }
 
   const formData = await request.formData().catch(() => null);
@@ -68,6 +80,10 @@ export async function DELETE(request: NextRequest): Promise<NextResponse> {
   const session = await requireSession(request);
   if (!session) {
     return NextResponse.json({ error: "not authenticated" }, { status: 401 });
+  }
+
+  if (!(await checkRateLimitFailOpen("user-avatar-mutate", session.userId, RATE_LIMIT))) {
+    return NextResponse.json({ error: "rate_limited" }, { status: 429 });
   }
 
   const [previous] = await db.select({ customAvatarPath: users.customAvatarPath }).from(users).where(eq(users.id, session.userId));
