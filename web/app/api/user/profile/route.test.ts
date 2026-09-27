@@ -153,4 +153,35 @@ describe("PATCH /api/user/profile", () => {
     expect(victimRow.displayName).toBeNull();
     expect(attackerRow.displayName).toBe("Nova");
   });
+
+  it("returns 429 once the per-user rate limit is exceeded", async () => {
+    const user = await insertUser("12");
+    const { refreshToken } = await createSession(user.id, {});
+    const cookie = `__session=${refreshToken}`;
+
+    for (let i = 0; i < 30; i += 1) {
+      const response = await PATCH(patchRequest({ display_name: "Nova" }, cookie));
+      expect(response.status).toBe(200);
+    }
+
+    const limited = await PATCH(patchRequest({ display_name: "Nova" }, cookie));
+    expect(limited.status).toBe(429);
+  });
+
+  it("keeps separate rate-limit counts per user", async () => {
+    const a = await insertUser("13");
+    const b = await insertUser("14");
+    const { refreshToken: aToken } = await createSession(a.id, {});
+    const { refreshToken: bToken } = await createSession(b.id, {});
+
+    for (let i = 0; i < 30; i += 1) {
+      await PATCH(patchRequest({ display_name: "Nova" }, `__session=${aToken}`));
+    }
+    const aLimited = await PATCH(patchRequest({ display_name: "Nova" }, `__session=${aToken}`));
+    expect(aLimited.status).toBe(429);
+
+    // b has made no requests, so it isn't affected by a's usage.
+    const bResponse = await PATCH(patchRequest({ display_name: "Nova" }, `__session=${bToken}`));
+    expect(bResponse.status).toBe(200);
+  });
 });

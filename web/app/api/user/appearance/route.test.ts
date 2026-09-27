@@ -120,4 +120,18 @@ describe("PATCH /api/user/appearance", () => {
     expect(victimRow.theme).toBeNull();
     expect(attackerRow.theme).toBe("ember");
   });
+
+  it("returns 429 once the per-user rate limit is exceeded", async () => {
+    const user = await insertUser("9");
+    const { refreshToken } = await createSession(user.id, {});
+    const cookie = `__session=${refreshToken}`;
+
+    for (let i = 0; i < 30; i += 1) {
+      const response = await PATCH(patchRequest({ theme: "ember" }, cookie));
+      expect(response.status).toBe(200);
+    }
+
+    const limited = await PATCH(patchRequest({ theme: "ember" }, cookie));
+    expect(limited.status).toBe(429);
+  });
 });

@@ -56,3 +56,25 @@ export async function checkRateLimit(
 
   return result === 1;
 }
+
+// Same check, but a Redis failure (connection error, timeout, ...) is
+// treated as "allowed" rather than propagating — used for authenticated
+// account-mutation routes (profile, avatar, appearance) where a Redis
+// outage blocking a user from editing their own profile is worse than
+// briefly losing the throttle, unlike the OAuth login/callback routes
+// (checkRateLimit, unwrapped), which stay fail-closed since they're the
+// unauthenticated, internet-facing surface the limiter primarily exists to
+// protect. Logs the failure so a persistently-broken Redis path is
+// observable rather than silently and invisibly turning the limiter off.
+export async function checkRateLimitFailOpen(
+  bucket: string,
+  identifier: string,
+  options: RateLimitOptions
+): Promise<boolean> {
+  try {
+    return await checkRateLimit(bucket, identifier, options);
+  } catch (error) {
+    console.error(`Rate limit check failed open for bucket "${bucket}":`, error);
+    return true;
+  }
+}

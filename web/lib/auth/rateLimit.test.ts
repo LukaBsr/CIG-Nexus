@@ -1,6 +1,6 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { checkRateLimit } from "./rateLimit";
+import { checkRateLimit, checkRateLimitFailOpen } from "./rateLimit";
 import { redis } from "./redis";
 
 describe("checkRateLimit", () => {
@@ -54,5 +54,33 @@ describe("checkRateLimit", () => {
     const ttl = await redis.pttl(`ratelimit:test-bucket:${identifier}`);
     expect(ttl).toBeGreaterThan(0);
     expect(ttl).toBeLessThanOrEqual(500);
+  });
+});
+
+describe("checkRateLimitFailOpen", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("behaves exactly like checkRateLimit when Redis is healthy", async () => {
+    const identifier = `test-${crypto.randomUUID()}`;
+    const options = { windowMs: 60_000, limit: 1 };
+
+    expect(await checkRateLimitFailOpen("test-bucket", identifier, options)).toBe(true);
+    expect(await checkRateLimitFailOpen("test-bucket", identifier, options)).toBe(false);
+  });
+
+  it("allows the request and logs when Redis errors, instead of throwing", async () => {
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    vi.spyOn(redis, "eval").mockRejectedValueOnce(new Error("simulated Redis outage"));
+
+    const allowed = await checkRateLimitFailOpen("test-bucket", `test-${crypto.randomUUID()}`, {
+      windowMs: 60_000,
+      limit: 1
+    });
+
+    expect(allowed).toBe(true);
+    expect(errorSpy).toHaveBeenCalledOnce();
+    expect(errorSpy.mock.calls[0][0]).toContain("test-bucket");
   });
 });
