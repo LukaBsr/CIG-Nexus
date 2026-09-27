@@ -567,6 +567,9 @@ bool Server::sendMessage(int fd, const protocol::Message& message) {
 void Server::broadcast(const protocol::Message& message) {
     for (const auto& [fd, conn] : connections_) {
         (void)conn;
+        if (!session_manager_.hasSession(fd)) {
+            continue;
+        }
         (void)sendMessage(fd, message);
     }
 }
@@ -580,6 +583,9 @@ void Server::broadcastExcluding(const protocol::Message& message,
 
     for (const auto& [fd, conn] : connections_) {
         (void)conn;
+        if (!session_manager_.hasSession(fd)) {
+            continue;
+        }
         if (std::find(excluded_fds.begin(), excluded_fds.end(), fd) != excluded_fds.end()) {
             continue;
         }

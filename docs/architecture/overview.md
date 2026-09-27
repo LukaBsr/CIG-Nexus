@@ -82,7 +82,7 @@ Responsible for:
 - creating in-memory identity sessions on `IDENTIFY`, authenticated via a
   signed (RS256) session token rather than a raw username
 - routing responses by semantic scope (`DIRECT`, `BROADCAST`, or `TARGETED`)
-- broadcasting valid chat messages to all connected clients, and persisting
+- broadcasting valid chat messages to all identified clients, and persisting
   chat/channel messages with history retrieval (`FETCH_HISTORY`)
 - managing the guild/channel catalog (`GuildManager`) and per-connection guild membership / active channel state (`SessionManager`)
 - guild invites, visibility (open/application/private), join requests, and
@@ -145,7 +145,7 @@ server has no direct dependency on it.
 3. The server validates payload and identity state.
 4. The server creates a normalized chat message with identity metadata.
 5. The message is marked `Scope::BROADCAST`.
-6. The server broadcasts that message to every active connection.
+6. The server broadcasts that message to every identified connection (a socket that never completed `IDENTIFY` receives nothing).
 7. The gateway forwards the resulting JSON message back to browsers.
 
 ### Guilds and Channels

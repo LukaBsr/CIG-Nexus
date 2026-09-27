@@ -664,3 +664,84 @@ TEST_CASE("Server broadcasts online on every reconnect, not just the first, acro
     server.stop();
     t.join();
 }
+
+// ----------------------------------------------------------------------------
+// BROADCAST must reach identified sessions only. Server::broadcast() used to
+// iterate every open socket, so a WebSocket that never completed IDENTIFY
+// (no login, no session token) still received every lobby CHAT_MESSAGE and
+// PRESENCE_UPDATE — including user ids and online status. Covers both an
+// utterly silent socket and one that only got as far as HELLO/WELCOME, then
+// confirms that identifying is what starts delivery (not some other state).
+// ----------------------------------------------------------------------------
+
+TEST_CASE("Server does not deliver BROADCAST messages to connections that haven't identified") {
+    test_helpers::TestRsaKeyPair keys;
+    Server server(0);
+    server.configureAuth(keys.publicKeyPem());
+
+    std::thread t([&server] { server.start(); });
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+
+    auto identify_raw = [&](int fd, const std::string& user_id, const std::string& username) {
+        send_framed(fd, R"({"type":"IDENTIFY","session_token":")" +
+                            make_session_token(keys.key, user_id, username) + R"("})");
+        REQUIRE(!recv_frame_raw(fd).empty()); // IDENTIFIED
+    };
+
+    int fd_silent = tcp_connect(server.bound_port());
+    REQUIRE(fd_silent >= 0);
+
+    int fd_greeted = tcp_connect(server.bound_port());
+    REQUIRE(fd_greeted >= 0);
+    send_framed(fd_greeted, R"({"type":"HELLO","version":"0.1","client":"web"})");
+    REQUIRE(!recv_frame_raw(fd_greeted).empty()); // WELCOME
+
+    int fd_alice = tcp_connect(server.bound_port());
+    REQUIRE(fd_alice >= 0);
+    send_framed(fd_alice, R"({"type":"HELLO","version":"0.1","client":"web"})");
+    REQUIRE(!recv_frame_raw(fd_alice).empty()); // WELCOME
+    identify_raw(fd_alice, "u_alice", "alice");
+    REQUIRE(!recv_frame_raw(fd_alice).empty()); // alice's own PRESENCE_UPDATE
+
+    send_framed(fd_alice, R"({"type":"CHAT_MESSAGE","content":"secret lobby chatter"})");
+    auto echoed = nlohmann::json::parse(recv_framed(fd_alice));
+    REQUIRE(echoed["type"] == "CHAT_MESSAGE");
+
+    set_recv_timeout(fd_silent, 0, 300000);
+    set_recv_timeout(fd_greeted, 0, 300000);
+    REQUIRE(recv_frame_raw(fd_silent).empty());
+    REQUIRE(recv_frame_raw(fd_greeted).empty());
+
+    // alice going offline is a BROADCAST too (PRESENCE_UPDATE) — same rule.
+    ::close(fd_alice);
+    std::this_thread::sleep_for(std::chrono::milliseconds(150));
+    REQUIRE(recv_frame_raw(fd_silent).empty());
+    REQUIRE(recv_frame_raw(fd_greeted).empty());
+
+    // Identifying is what starts delivery: once fd_greeted identifies as bob,
+    // he receives carol's lobby chat like any other identified client.
+    set_recv_timeout(fd_greeted, 2, 0);
+    identify_raw(fd_greeted, "u_bob", "bob");
+    REQUIRE(!recv_frame_raw(fd_greeted).empty()); // bob's own PRESENCE_UPDATE
+
+    int fd_carol = tcp_connect(server.bound_port());
+    REQUIRE(fd_carol >= 0);
+    send_framed(fd_carol, R"({"type":"HELLO","version":"0.1","client":"web"})");
+    REQUIRE(!recv_frame_raw(fd_carol).empty()); // WELCOME
+    identify_raw(fd_carol, "u_carol", "carol");
+    send_framed(fd_carol, R"({"type":"CHAT_MESSAGE","content":"hi bob"})");
+
+    auto bob_saw = nlohmann::json::parse(recv_framed(fd_greeted));
+    REQUIRE(bob_saw["type"] == "CHAT_MESSAGE");
+    REQUIRE(bob_saw["content"] == "hi bob");
+
+    // The socket that never identified is still shut out.
+    set_recv_timeout(fd_silent, 0, 300000);
+    REQUIRE(recv_frame_raw(fd_silent).empty());
+
+    ::close(fd_silent);
+    ::close(fd_greeted);
+    ::close(fd_carol);
+    server.stop();
+    t.join();
+}
