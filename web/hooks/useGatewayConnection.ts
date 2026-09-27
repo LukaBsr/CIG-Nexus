@@ -50,6 +50,7 @@ import {
   mapInvite,
   mapJoinRequest,
   mapMember,
+  memberGuildIdsFromList,
   type Block,
   type Channel,
   type ChannelMessage,
@@ -214,6 +215,7 @@ export function useGatewayConnection(): UseGatewayConnectionResult {
 
           case "GUILD_LIST":
             setGuilds(msg.guilds.map(mapGuild));
+            setMyGuildIds(memberGuildIdsFromList(msg.guilds));
             break;
 
           case "GUILD_CREATED": {

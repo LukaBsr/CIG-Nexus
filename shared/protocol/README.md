@@ -241,10 +241,12 @@ Response, listing every guild visible to the caller — every `open`/`applicatio
 {
   "type": "GUILD_LIST",
   "guilds": [
-    { "guild_id": "g_1", "name": "My Guild", "owner_id": "u_1", "visibility": "open" }
+    { "guild_id": "g_1", "name": "My Guild", "owner_id": "u_1", "visibility": "open", "is_member": true }
   ]
 }
 ```
+
+`is_member` (boolean) is `true` when the caller is currently a member of that guild — resolved server-side from the connection's membership, which is hydrated from durable membership at `IDENTIFY`, so a returning client sees its existing guilds flagged without having to join them again. It appears only on `GUILD_LIST` entries; `GUILD_CREATED` and `GUILD_JOINED` need no flag since they only ever describe a guild the caller is now a member of.
 
 #### JOIN_GUILD
 

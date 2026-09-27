@@ -42,9 +42,16 @@ export interface WireChannel {
   channel_type: "TEXT" | "VOICE";
 }
 
+// GUILD_LIST entries carry the caller's own membership; GUILD_CREATED /
+// GUILD_JOINED don't need it, since they only describe a guild the caller
+// is now in.
+export interface WireGuildListEntry extends WireGuild {
+  is_member: boolean;
+}
+
 export interface WireGuildList {
   type: "GUILD_LIST";
-  guilds: WireGuild[];
+  guilds: WireGuildListEntry[];
 }
 
 export interface WireGuildCreated extends WireGuild {
@@ -453,6 +460,13 @@ export interface ChannelMessage {
 
 export function mapGuild(wire: WireGuild): Guild {
   return { guildId: wire.guild_id, name: wire.name, ownerId: wire.owner_id, visibility: wire.visibility };
+}
+
+// The set of guild ids the caller already belongs to, straight from the
+// server's view — what lets a fresh page load show existing memberships
+// instead of only ones created/joined during the current session.
+export function memberGuildIdsFromList(guilds: WireGuildListEntry[]): Set<string> {
+  return new Set(guilds.filter((g) => g.is_member).map((g) => g.guild_id));
 }
 
 export function mapJoinRequest(wire: WireJoinRequestEntry): JoinRequest {
