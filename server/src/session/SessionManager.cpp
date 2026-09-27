@@ -1,4 +1,6 @@
 #include "session/SessionManager.hpp"
+#include "util/DebugFlags.hpp"
+
 #include <algorithm>
 #include <chrono>
 
@@ -224,19 +226,30 @@ void SessionManager::clearActiveChannelEverywhere(const std::string& channel_id)
 
 bool SessionManager::incrementPresence(const std::string& user_id) {
     const int count = ++presence_counts_[user_id];
+    util::logPresenceDebug("incrementPresence user_id=" + user_id +
+                           " count=" + std::to_string(count - 1) + "->" + std::to_string(count) +
+                           (count == 1 ? " transition=offline->online" : " transition=none"));
     return count == 1;
 }
 
 bool SessionManager::decrementPresence(const std::string& user_id) {
     const auto it = presence_counts_.find(user_id);
     if (it == presence_counts_.end()) {
+        util::logPresenceDebug("decrementPresence user_id=" + user_id +
+                               " count=(none) -- decrement without a matching increment");
         return false; // defensive: decrement without a matching increment
     }
 
+    const int before = it->second;
     if (--it->second <= 0) {
+        util::logPresenceDebug("decrementPresence user_id=" + user_id + " count=" +
+                               std::to_string(before) + "->0 transition=online->offline");
         presence_counts_.erase(it);
         return true;
     }
+    util::logPresenceDebug("decrementPresence user_id=" + user_id +
+                           " count=" + std::to_string(before) + "->" + std::to_string(it->second) +
+                           " transition=none");
     return false;
 }
 

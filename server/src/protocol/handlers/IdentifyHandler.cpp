@@ -6,6 +6,7 @@
 #include "http/InternalApiClient.hpp"
 #include "protocol/MessageBuilders.hpp"
 #include "session/SessionManager.hpp"
+#include "util/DebugFlags.hpp"
 
 #include <string>
 
@@ -43,6 +44,8 @@ void IdentifyHandler::setInternalApiClient(http::InternalApiClient* internal_api
 }
 
 Message IdentifyHandler::handle(const Message& message, int fd) {
+    util::logPresenceDebug("IdentifyHandler::handle entry fd=" + std::to_string(fd));
+
     if (message.type != "IDENTIFY") {
         return makeError("PROTOCOL_VIOLATION", "Expected IDENTIFY message");
     }
@@ -93,6 +96,15 @@ Message IdentifyHandler::handle(const Message& message, int fd) {
     session.username = claims.username;
     session.discord_id = claims.discord_id;
     session.app_session_id = claims.sid;
+
+    // docs/known-issues.md's presence connection-count leak: this log line
+    // marks the point where a Session now exists for this fd but IDENTIFIED
+    // has not been sent yet. If anything below throws, the "identify
+    // success" log in Server.cpp never appears for this fd/user_id pair —
+    // a visible gap between this line and that one is the signal to look
+    // for, not just each line in isolation.
+    util::logPresenceDebug("IdentifyHandler session created fd=" + std::to_string(fd) +
+                           " user_id=" + session.user_id);
 
     // docs/guilds/social-presence-design.md §3.4/§1.10: hydrate this connection's
     // guild_ids immediately from GuildManager's durable-membership index,

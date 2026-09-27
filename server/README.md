@@ -29,6 +29,8 @@ The server refuses to start without these environment variables:
 
 At startup it hydrates the guild catalog and message sequence counters from the internal API (once, without retry — start `web` first, as `docker-compose.yml` does), polls the revocation cache, and only then enters the accept loop.
 
+Optional: `CIG_NEXUS_DEBUG_PRESENCE=1` enables temporary stderr logging of every presence increment/decrement and `IDENTIFY` entry/session-creation, for diagnosing [`docs/known-issues.md`](../docs/known-issues.md)'s presence-count leak. Off by default, zero output otherwise.
+
 ## Protocol Lifecycle
 
 1. Client connects and sends `HELLO` (`version` must be `"0.1"`, `client` `"web"` or `"desktop"`); the server replies `WELCOME` (with `server_version`).
