@@ -22,6 +22,7 @@
 #include "http/InternalApiClient.hpp"
 #include "persistence/MessagePersistenceWorker.hpp"
 #include "session/SessionManager.hpp"
+#include "util/RateLimiter.hpp"
 
 #include <atomic>
 #include <chrono>
@@ -124,6 +125,11 @@ class Server {
     // In-memory connection/session/guild state
     session::SessionManager session_manager_;
     guild::GuildManager guild_manager_;
+    // shared/protocol/README.md's Rate Limits table — one process-wide
+    // limiter, injected into every handler that needs it; see the
+    // constructor. Same in-memory, reset-on-restart posture as
+    // SessionManager/GuildManager.
+    util::RateLimiter rate_limiter_;
     std::unordered_map<int, std::unique_ptr<Connection>> connections_;
 
     // Auth (design doc §6/§9) and the internal catalog API (§8.1) — both

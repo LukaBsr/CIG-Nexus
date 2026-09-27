@@ -1147,6 +1147,25 @@ Current error codes used by the implementation:
 | `FRIEND_NOT_FOUND` | `REMOVE_FRIEND` referenced a user the caller isn't currently friends with |
 | `FRIEND_CODE_NOT_FOUND` | `ADD_FRIEND_BY_CODE`'s `code` does not belong to any account |
 | `DM_NOT_PERMITTED` | `DM_SEND` sent to a user who isn't a friend and shares no guild with the caller, or where either party has blocked the other (deliberately indistinguishable — see [Blocking](#blocking)) |
+| `RATE_LIMITED` | caller exceeded the per-user, per-action rate limit for the message type just sent — see [Rate Limits](#rate-limits) for which types are limited and at what threshold. Retry after a pause; no `retry_after` field is included |
+
+## Rate Limits
+
+In-memory, per-process, per-`user_id`, reset on server restart (`util::RateLimiter`) — a separate mechanism from the web app's Redis-backed limiter on its own `/api/*` routes, since these actions never leave the C++ process. Not designed in a planning document ahead of time; illustrative starting points, easy to retune:
+
+| Message type | Limit | Notes |
+|---|---|---|
+| `CREATE_INVITE` | 20 / hour | |
+| `JOIN_VIA_INVITE` | 10 / minute | blunts brute-forcing invite codes, alongside code entropy (`docs/guilds/social-presence-design.md` §1.2) |
+| `REQUEST_JOIN` | 5 / minute | |
+| `SEND_FRIEND_REQUEST`, `ADD_FRIEND_BY_CODE` | 10 / minute, shared bucket | shared so alternating between the two doesn't double the effective rate |
+| `REGENERATE_FRIEND_CODE` | 3 / hour | |
+| `CREATE_GUILD` | 10 / hour | |
+| `CHAT_MESSAGE` | 20 / 10 seconds | |
+| `CHANNEL_MESSAGE` | 20 / 10 seconds | separate bucket per user, not per channel |
+| `DM_SEND` | 20 / 10 seconds | |
+
+Every other message type (`LIST_*`, `JOIN_GUILD`, `LEAVE_*`, `SET_MEMBER_ROLE`, `SET_GUILD_VISIBILITY`, `APPROVE_JOIN_REQUEST`/`REJECT_JOIN_REQUEST`, blocking, `FETCH_HISTORY`, ...) is currently unthrottled.
 
 ## Behavior Notes
 
@@ -1169,7 +1188,7 @@ Current implementation limitations:
 - presence (`PRESENCE_UPDATE`) leaks online/offline status across guild boundaries — every identified client learns it for every other identified user, regardless of shared guild membership. Consistent with, not a regression from, the existing baseline above (guild existence and membership-by-id are already visible to every identified client with no privacy model)
 - `VOICE` channels are metadata-only: the type is modeled and validated, but there is no audio transport or voice presence
 - no TLS between gateway and server (plain TCP)
-- no rate limiting on protocol messages — only the web app's OAuth login routes are rate limited. Invite creation/redemption, join requests, friend requests, and friend-code redemption are unthrottled (designed in `docs/guilds/social-presence-design.md` §5 and `docs/social/friends-dms-design.md` §5, not built yet)
+- rate limiting on protocol messages covers invite creation/redemption, join requests, friend requests/codes, guild creation, and the three message-send types — see [Rate Limits](#rate-limits) for exact thresholds; everything else is unthrottled. The web app's own `/api/*` routes (OAuth, profile, appearance, avatar) are separately rate limited (Redis-backed)
 - sessions and presence are in-memory and reset when the server restarts (clients must reconnect and re-`IDENTIFY`); identity, guilds, channels, memberships, messages, friends, blocks, and profiles are durable in Postgres via the web app's internal API
 - message persistence is asynchronous with bounded retry, so a message that was delivered live can be missing from history if the persistence path stays down past the retry budget
 

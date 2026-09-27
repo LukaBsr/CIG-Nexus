@@ -13,6 +13,7 @@ It never opens a database connection itself: durable state (users, guilds, chann
 - Dispatch every protocol message type (see [../shared/protocol/README.md](../shared/protocol/README.md) for the full list): `HELLO`, `IDENTIFY`, `CHAT_MESSAGE`, guild/channel, invite, join-request, role, friend, blocking, direct-message, and `FETCH_HISTORY` handlers
 - Verify RS256 session tokens (`JwtVerifier`) and reject revoked sessions (`RevocationCache`, polled from Next.js every 30 seconds and once synchronously at startup; live connections whose session is revoked are disconnected)
 - Manage in-memory sessions keyed by socket fd, including guild membership, active-channel, friend/block, and profile state hydrated at `IDENTIFY`
+- Rate limit a subset of protocol actions in-memory, per-user (`util::RateLimiter`) — see [../shared/protocol/README.md](../shared/protocol/README.md)'s Rate Limits section for which types and thresholds
 - Manage the guild/channel catalog (`GuildManager`) as a write-through cache over the internal API, hydrated at startup
 - Track online/offline presence per user (connection-count transitions) and broadcast `PRESENCE_UPDATE`
 - Persist chat, channel, and DM messages asynchronously with bounded retry (`MessagePersistenceWorker`), and serve paginated history

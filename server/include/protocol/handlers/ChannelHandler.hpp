@@ -23,6 +23,10 @@ namespace persistence {
 class MessagePersistenceWorker;
 }
 
+namespace util {
+class RateLimiter;
+}
+
 namespace protocol {
 
 // Channel lifecycle and messaging: LIST_CHANNELS, CREATE_CHANNEL,
@@ -40,6 +44,7 @@ class ChannelHandler {
     void setGuildManager(guild::GuildManager* guild_manager);
     void setInternalApiClient(http::InternalApiClient* internal_api_client);
     void setMessagePersistenceWorker(persistence::MessagePersistenceWorker* worker);
+    void setRateLimiter(util::RateLimiter* rate_limiter);
 
     // docs/guilds/social-presence-design.md §4.3: seeds the counter from the
     // durable high-water mark at startup, instead of always starting at 0.
@@ -64,6 +69,7 @@ class ChannelHandler {
     guild::GuildManager* guild_manager_ = nullptr;
     http::InternalApiClient* internal_api_client_ = nullptr;
     persistence::MessagePersistenceWorker* message_worker_ = nullptr;
+    util::RateLimiter* rate_limiter_ = nullptr;
 
     // Same reasoning as ChatHandler::message_counter_ and GuildManager's id
     // counters: single-threaded today, std::atomic removes a landmine for

@@ -4,6 +4,7 @@
 #include "guild/RoleRank.hpp"
 #include "protocol/handlers/InviteHandler.hpp"
 #include "session/SessionManager.hpp"
+#include "util/RateLimiter.hpp"
 
 #include "../http/FakeInternalApiClient.hpp"
 
@@ -21,12 +22,14 @@ struct Fixture {
     session::SessionManager sessions;
     guild::GuildManager guilds;
     test_helpers::FakeInternalApiClient api;
+    util::RateLimiter limiter;
     protocol::InviteHandler handler;
 
     Fixture() {
         handler.setSessionManager(&sessions);
         handler.setGuildManager(&guilds);
         handler.setInternalApiClient(&api);
+        handler.setRateLimiter(&limiter);
     }
 
     session::Session& identify(int fd, const std::string& username) {
@@ -239,4 +242,53 @@ TEST_CASE("InviteHandler JOIN_VIA_INVITE requires identification") {
 
     REQUIRE(responses.size() == 1);
     REQUIRE(responses[0].payload["code"] == "NOT_IDENTIFIED");
+}
+
+TEST_CASE("InviteHandler CREATE_INVITE returns RATE_LIMITED after the hourly cap, without "
+          "calling the internal API again") {
+    Fixture f;
+    session::Session& owner = f.identify(1, "owner");
+    f.guilds.upsertGuild("g_1", "First", owner.user_id);
+    f.guilds.setMemberRank("g_1", owner.user_id, guild::kOwnerRank);
+
+    for (int i = 0; i < 20; ++i) {
+        const auto response = f.handler.handleCreateInvite(
+            make_message(
+                "CREATE_INVITE",
+                {{"guild_id", "g_1"}, {"max_uses", nullptr}, {"expires_in_seconds", nullptr}}),
+            1);
+        REQUIRE(response.type == "INVITE_CREATED");
+    }
+    REQUIRE(f.api.create_invite_call_count == 20);
+
+    const auto limited = f.handler.handleCreateInvite(
+        make_message("CREATE_INVITE",
+                     {{"guild_id", "g_1"}, {"max_uses", nullptr}, {"expires_in_seconds", nullptr}}),
+        1);
+
+    REQUIRE(limited.type == "ERROR");
+    REQUIRE(limited.payload["code"] == "RATE_LIMITED");
+    REQUIRE(f.api.create_invite_call_count == 20); // not called an extra time
+}
+
+TEST_CASE("InviteHandler JOIN_VIA_INVITE returns RATE_LIMITED after the per-minute cap, without "
+          "calling the internal API again") {
+    Fixture f;
+    f.identify(1, "bob");
+    f.guilds.upsertGuild("g_1", "First", "u_owner");
+    f.api.redeem_invite_returns = {true, false, "g_1", 0, http::RedeemInviteError::NOT_FOUND};
+
+    for (int i = 0; i < 10; ++i) {
+        const auto responses =
+            f.handler.handleJoinViaInvite(make_message("JOIN_VIA_INVITE", {{"code", "abc123"}}), 1);
+        REQUIRE(responses[0].type == "GUILD_JOINED");
+    }
+    REQUIRE(f.api.redeem_invite_call_count == 10);
+
+    const auto limited =
+        f.handler.handleJoinViaInvite(make_message("JOIN_VIA_INVITE", {{"code", "abc123"}}), 1);
+
+    REQUIRE(limited.size() == 1);
+    REQUIRE(limited[0].payload["code"] == "RATE_LIMITED");
+    REQUIRE(f.api.redeem_invite_call_count == 10);
 }

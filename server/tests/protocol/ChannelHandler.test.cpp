@@ -5,6 +5,7 @@
 #include "persistence/MessagePersistenceWorker.hpp"
 #include "protocol/handlers/ChannelHandler.hpp"
 #include "session/SessionManager.hpp"
+#include "util/RateLimiter.hpp"
 
 #include "../http/FakeInternalApiClient.hpp"
 
@@ -24,12 +25,14 @@ struct Fixture {
     session::SessionManager sessions;
     guild::GuildManager guilds;
     test_helpers::FakeInternalApiClient api;
+    util::RateLimiter limiter;
     protocol::ChannelHandler handler;
 
     Fixture() {
         handler.setSessionManager(&sessions);
         handler.setGuildManager(&guilds);
         handler.setInternalApiClient(&api);
+        handler.setRateLimiter(&limiter);
     }
 
     session::Session& identify(int fd, const std::string& username) {
@@ -481,4 +484,24 @@ TEST_CASE("ChannelHandler FETCH_HISTORY returns INTERNAL_ERROR when the internal
     const auto response = f.handler.handleFetchHistory(make_message("FETCH_HISTORY"), 1);
 
     REQUIRE(response.payload["code"] == "INTERNAL_ERROR");
+}
+
+TEST_CASE("ChannelHandler CHANNEL_MESSAGE returns RATE_LIMITED after the per-10-second cap") {
+    Fixture f;
+    f.identify(1, "alice");
+    f.guilds.upsertGuild("g_1", "First", "u_owner");
+    f.guilds.upsertChannel("c_1", "g_1", "general", guild::ChannelType::TEXT);
+    f.sessions.setActiveChannel(1, "c_1");
+
+    for (int i = 0; i < 20; ++i) {
+        const auto response =
+            f.handler.handleChannelMessage(make_message("CHANNEL_MESSAGE", {{"content", "hi"}}), 1);
+        REQUIRE(response.type == "CHANNEL_MESSAGE");
+    }
+
+    const auto limited =
+        f.handler.handleChannelMessage(make_message("CHANNEL_MESSAGE", {{"content", "hi"}}), 1);
+
+    REQUIRE(limited.type == "ERROR");
+    REQUIRE(limited.payload["code"] == "RATE_LIMITED");
 }

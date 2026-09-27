@@ -6,6 +6,9 @@
 #include "http/InternalApiClient.hpp"
 #include "protocol/MessageBuilders.hpp"
 #include "session/SessionManager.hpp"
+#include "util/RateLimiter.hpp"
+
+#include <chrono>
 
 namespace protocol {
 
@@ -19,6 +22,10 @@ void GuildHandler::setGuildManager(guild::GuildManager* guild_manager) {
 
 void GuildHandler::setInternalApiClient(http::InternalApiClient* internal_api_client) {
     internal_api_client_ = internal_api_client;
+}
+
+void GuildHandler::setRateLimiter(util::RateLimiter* rate_limiter) {
+    rate_limiter_ = rate_limiter;
 }
 
 Message GuildHandler::makeError(const std::string& code, const std::string& msg) {
@@ -89,6 +96,12 @@ Message GuildHandler::handleCreateGuild(const Message& message, int fd) const {
 
     if (!guild_manager_ || !internal_api_client_) {
         return makeError("INTERNAL_ERROR", "Guild context unavailable");
+    }
+
+    // shared/protocol/README.md's Rate Limits table: 10 / hour.
+    if (rate_limiter_ &&
+        !rate_limiter_->allow("create-guild", session->user_id, std::chrono::hours(1), 10)) {
+        return makeError("RATE_LIMITED", "Too many guilds created, please try again later");
     }
 
     // Write-through: persist first (design doc §8.1), only touch the local

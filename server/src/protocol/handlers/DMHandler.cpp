@@ -4,8 +4,10 @@
 #include "persistence/MessagePersistenceWorker.hpp"
 #include "protocol/MessageBuilders.hpp"
 #include "session/SessionManager.hpp"
+#include "util/RateLimiter.hpp"
 
 #include <algorithm>
+#include <chrono>
 #include <ctime>
 
 namespace protocol {
@@ -40,6 +42,10 @@ void DMHandler::setInternalApiClient(http::InternalApiClient* internal_api_clien
 
 void DMHandler::setMessagePersistenceWorker(persistence::MessagePersistenceWorker* worker) {
     message_worker_ = worker;
+}
+
+void DMHandler::setRateLimiter(util::RateLimiter* rate_limiter) {
+    rate_limiter_ = rate_limiter;
 }
 
 void DMHandler::seedMessageCounter(std::optional<int> last_seq) {
@@ -141,6 +147,12 @@ Message DMHandler::handleDmSend(const Message& message, int fd) const {
     }
     if (content.length() > 500) {
         return makeError("MALFORMED_MESSAGE", "DM_SEND content must be <= 500 characters");
+    }
+
+    // shared/protocol/README.md's Rate Limits table: 20 / 10 seconds.
+    if (rate_limiter_ &&
+        !rate_limiter_->allow("dm-send", session->user_id, std::chrono::seconds(10), 20)) {
+        return makeError("RATE_LIMITED", "Too many direct messages, please slow down");
     }
 
     if (!session_manager_) {

@@ -3,7 +3,9 @@
 #include "persistence/MessagePersistenceWorker.hpp"
 #include "protocol/MessageBuilders.hpp"
 #include "session/SessionManager.hpp"
+#include "util/RateLimiter.hpp"
 
+#include <chrono>
 #include <ctime>
 #include <string>
 
@@ -15,6 +17,10 @@ void ChatHandler::setSessionManager(session::SessionManager* session_manager) {
 
 void ChatHandler::setMessagePersistenceWorker(persistence::MessagePersistenceWorker* worker) {
     message_worker_ = worker;
+}
+
+void ChatHandler::setRateLimiter(util::RateLimiter* rate_limiter) {
+    rate_limiter_ = rate_limiter;
 }
 
 void ChatHandler::seedMessageCounter(std::optional<int> last_seq) {
@@ -91,6 +97,12 @@ Message ChatHandler::handle(const Message& message, int fd) const {
 
     if (session->username.empty()) {
         return makeError("NOT_IDENTIFIED", "Client must IDENTIFY before sending chat messages");
+    }
+
+    // shared/protocol/README.md's Rate Limits table: 20 / 10 seconds.
+    if (rate_limiter_ &&
+        !rate_limiter_->allow("chat-message", session->user_id, std::chrono::seconds(10), 20)) {
+        return makeError("RATE_LIMITED", "Too many chat messages, please slow down");
     }
 
     Message response;

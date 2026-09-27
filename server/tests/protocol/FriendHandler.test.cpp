@@ -2,6 +2,7 @@
 
 #include "protocol/handlers/FriendHandler.hpp"
 #include "session/SessionManager.hpp"
+#include "util/RateLimiter.hpp"
 
 #include "../http/FakeInternalApiClient.hpp"
 
@@ -18,11 +19,13 @@ protocol::Message make_message(const std::string& type, nlohmann::json extra = {
 struct Fixture {
     session::SessionManager sessions;
     test_helpers::FakeInternalApiClient api;
+    util::RateLimiter limiter;
     protocol::FriendHandler handler;
 
     Fixture() {
         handler.setSessionManager(&sessions);
         handler.setInternalApiClient(&api);
+        handler.setRateLimiter(&limiter);
     }
 
     session::Session& identify(int fd, const std::string& username) {
@@ -320,4 +323,61 @@ TEST_CASE("FriendHandler REGENERATE_FRIEND_CODE returns a new FRIEND_CODE") {
 
     REQUIRE(response.type == "FRIEND_CODE");
     REQUIRE(response.payload["code"] == "new-code");
+}
+
+// --- Rate limiting -------------------------------------------------------
+
+TEST_CASE("FriendHandler SEND_FRIEND_REQUEST and ADD_FRIEND_BY_CODE share one per-minute rate "
+          "limit bucket, without calling the internal API again once exhausted") {
+    Fixture f;
+    f.identify(1, "alice");
+    f.api.send_friend_request_returns = http::SendFriendRequestResult{
+        http::SendFriendRequestOutcome::REQUEST_CREATED, "u_2", "bob"};
+    f.api.add_friend_by_code_returns = http::SendFriendRequestResult{
+        http::SendFriendRequestOutcome::REQUEST_CREATED, "u_2", "bob"};
+
+    // 6 SEND_FRIEND_REQUEST + 4 ADD_FRIEND_BY_CODE = 10, the shared limit.
+    for (int i = 0; i < 6; ++i) {
+        const auto responses = f.handler.handleSendFriendRequest(
+            make_message("SEND_FRIEND_REQUEST", {{"user_id", "u_2"}}), 1);
+        REQUIRE(responses[0].type == "FRIEND_REQUEST_SENT");
+    }
+    for (int i = 0; i < 4; ++i) {
+        const auto responses = f.handler.handleAddFriendByCode(
+            make_message("ADD_FRIEND_BY_CODE", {{"code", "abc123"}}), 1);
+        REQUIRE(responses[0].type == "FRIEND_REQUEST_SENT");
+    }
+    REQUIRE(f.api.send_friend_request_call_count == 6);
+    REQUIRE(f.api.add_friend_by_code_call_count == 4);
+
+    const auto limitedByCode = f.handler.handleAddFriendByCode(
+        make_message("ADD_FRIEND_BY_CODE", {{"code", "abc123"}}), 1);
+    REQUIRE(limitedByCode[0].payload["code"] == "RATE_LIMITED");
+    REQUIRE(f.api.add_friend_by_code_call_count == 4);
+
+    const auto limitedDirect = f.handler.handleSendFriendRequest(
+        make_message("SEND_FRIEND_REQUEST", {{"user_id", "u_2"}}), 1);
+    REQUIRE(limitedDirect[0].payload["code"] == "RATE_LIMITED");
+    REQUIRE(f.api.send_friend_request_call_count == 6);
+}
+
+TEST_CASE("FriendHandler REGENERATE_FRIEND_CODE returns RATE_LIMITED after the hourly cap, "
+          "without calling the internal API again") {
+    Fixture f;
+    f.identify(1, "alice");
+    f.api.friend_code_to_return = "new-code";
+
+    for (int i = 0; i < 3; ++i) {
+        const auto response =
+            f.handler.handleRegenerateFriendCode(make_message("REGENERATE_FRIEND_CODE"), 1);
+        REQUIRE(response.type == "FRIEND_CODE");
+    }
+    REQUIRE(f.api.regenerate_friend_code_call_count == 3);
+
+    const auto limited =
+        f.handler.handleRegenerateFriendCode(make_message("REGENERATE_FRIEND_CODE"), 1);
+
+    REQUIRE(limited.type == "ERROR");
+    REQUIRE(limited.payload["code"] == "RATE_LIMITED");
+    REQUIRE(f.api.regenerate_friend_code_call_count == 3);
 }

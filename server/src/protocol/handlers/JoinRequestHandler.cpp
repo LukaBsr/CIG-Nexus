@@ -5,6 +5,9 @@
 #include "http/InternalApiClient.hpp"
 #include "protocol/MessageBuilders.hpp"
 #include "session/SessionManager.hpp"
+#include "util/RateLimiter.hpp"
+
+#include <chrono>
 
 namespace protocol {
 
@@ -18,6 +21,10 @@ void JoinRequestHandler::setGuildManager(guild::GuildManager* guild_manager) {
 
 void JoinRequestHandler::setInternalApiClient(http::InternalApiClient* internal_api_client) {
     internal_api_client_ = internal_api_client;
+}
+
+void JoinRequestHandler::setRateLimiter(util::RateLimiter* rate_limiter) {
+    rate_limiter_ = rate_limiter;
 }
 
 Message JoinRequestHandler::makeError(const std::string& code, const std::string& msg) {
@@ -92,6 +99,13 @@ std::vector<Message> JoinRequestHandler::handleRequestJoin(const Message& messag
     }
     if (target_guild->visibility == guild::GuildVisibility::OPEN) {
         return {makeError("PROTOCOL_VIOLATION", "Guild is open — use JOIN_GUILD instead")};
+    }
+
+    // shared/protocol/README.md's Rate Limits table: 5 / minute, across all
+    // guilds (identifier is the caller's user_id alone, not guild-scoped).
+    if (rate_limiter_ &&
+        !rate_limiter_->allow("request-join", session->user_id, std::chrono::minutes(1), 5)) {
+        return {makeError("RATE_LIMITED", "Too many join requests, please try again later")};
     }
 
     const http::CreateJoinRequestResult result =

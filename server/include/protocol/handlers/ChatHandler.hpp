@@ -14,12 +14,20 @@ namespace persistence {
 class MessagePersistenceWorker;
 }
 
+namespace util {
+class RateLimiter;
+}
+
 namespace protocol {
 
 class ChatHandler {
   public:
     void setSessionManager(session::SessionManager* session_manager);
     void setMessagePersistenceWorker(persistence::MessagePersistenceWorker* worker);
+    // Optional, same as the other setters — unset means unthrottled, not an
+    // error (mirrors how an unset session_manager_/message_worker_ already
+    // degrade rather than fail closed).
+    void setRateLimiter(util::RateLimiter* rate_limiter);
 
     // docs/guilds/social-presence-design.md §4.3: seeds the counter from the
     // durable high-water mark at startup, instead of always starting at 0.
@@ -31,6 +39,7 @@ class ChatHandler {
   private:
     session::SessionManager* session_manager_ = nullptr;
     persistence::MessagePersistenceWorker* message_worker_ = nullptr;
+    util::RateLimiter* rate_limiter_ = nullptr;
     mutable std::atomic<int> message_counter_{0};
 };
 

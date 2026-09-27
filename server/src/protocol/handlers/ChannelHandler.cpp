@@ -6,7 +6,9 @@
 #include "persistence/MessagePersistenceWorker.hpp"
 #include "protocol/MessageBuilders.hpp"
 #include "session/SessionManager.hpp"
+#include "util/RateLimiter.hpp"
 
+#include <chrono>
 #include <ctime>
 
 namespace protocol {
@@ -31,6 +33,10 @@ void ChannelHandler::setInternalApiClient(http::InternalApiClient* internal_api_
 
 void ChannelHandler::setMessagePersistenceWorker(persistence::MessagePersistenceWorker* worker) {
     message_worker_ = worker;
+}
+
+void ChannelHandler::setRateLimiter(util::RateLimiter* rate_limiter) {
+    rate_limiter_ = rate_limiter;
 }
 
 void ChannelHandler::seedMessageCounter(std::optional<int> last_seq) {
@@ -342,6 +348,13 @@ Message ChannelHandler::handleChannelMessage(const Message& message, int fd) con
 
     if (content.length() > 500) {
         return makeError("MALFORMED_MESSAGE", "CHANNEL_MESSAGE content must be <= 500 characters");
+    }
+
+    // shared/protocol/README.md's Rate Limits table: 20 / 10 seconds, per
+    // user (not per channel).
+    if (rate_limiter_ &&
+        !rate_limiter_->allow("channel-message", session->user_id, std::chrono::seconds(10), 20)) {
+        return makeError("RATE_LIMITED", "Too many channel messages, please slow down");
     }
 
     if (!guild_manager_) {

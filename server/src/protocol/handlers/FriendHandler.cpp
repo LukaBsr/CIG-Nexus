@@ -3,6 +3,9 @@
 #include "http/InternalApiClient.hpp"
 #include "protocol/MessageBuilders.hpp"
 #include "session/SessionManager.hpp"
+#include "util/RateLimiter.hpp"
+
+#include <chrono>
 
 namespace protocol {
 
@@ -12,6 +15,10 @@ void FriendHandler::setSessionManager(session::SessionManager* session_manager) 
 
 void FriendHandler::setInternalApiClient(http::InternalApiClient* internal_api_client) {
     internal_api_client_ = internal_api_client;
+}
+
+void FriendHandler::setRateLimiter(util::RateLimiter* rate_limiter) {
+    rate_limiter_ = rate_limiter;
 }
 
 Message FriendHandler::makeError(const std::string& code, const std::string& msg) {
@@ -124,6 +131,13 @@ std::vector<Message> FriendHandler::handleSendFriendRequest(const Message& messa
         return {makeError("INTERNAL_ERROR", "Friend context unavailable")};
     }
 
+    // shared/protocol/README.md's Rate Limits table: 10 / minute, shared
+    // with ADD_FRIEND_BY_CODE (same bucket name) — see that handler.
+    if (rate_limiter_ &&
+        !rate_limiter_->allow("friend-request", session->user_id, std::chrono::minutes(1), 10)) {
+        return {makeError("RATE_LIMITED", "Too many friend requests, please try again later")};
+    }
+
     const std::string target_user_id = message.payload["user_id"].get<std::string>();
     const http::SendFriendRequestResult result =
         internal_api_client_->sendFriendRequest(session->user_id, target_user_id);
@@ -148,6 +162,14 @@ std::vector<Message> FriendHandler::handleAddFriendByCode(const Message& message
     }
     if (!internal_api_client_) {
         return {makeError("INTERNAL_ERROR", "Friend context unavailable")};
+    }
+
+    // shared/protocol/README.md's Rate Limits table: same "friend-request"
+    // bucket as SEND_FRIEND_REQUEST — shared so alternating between the two
+    // doesn't double the effective rate.
+    if (rate_limiter_ &&
+        !rate_limiter_->allow("friend-request", session->user_id, std::chrono::minutes(1), 10)) {
+        return {makeError("RATE_LIMITED", "Too many friend requests, please try again later")};
     }
 
     const std::string code = message.payload["code"].get<std::string>();
@@ -471,6 +493,13 @@ Message FriendHandler::handleRegenerateFriendCode(const Message& message, int fd
     }
     if (!internal_api_client_) {
         return makeError("INTERNAL_ERROR", "Friend context unavailable");
+    }
+
+    // shared/protocol/README.md's Rate Limits table: 3 / hour.
+    if (rate_limiter_ && !rate_limiter_->allow("regenerate-friend-code", session->user_id,
+                                               std::chrono::hours(1), 3)) {
+        return makeError("RATE_LIMITED",
+                         "Too many friend code regenerations, please try again later");
     }
 
     const std::optional<std::string> code =

@@ -18,6 +18,10 @@ namespace http {
 class InternalApiClient;
 }
 
+namespace util {
+class RateLimiter;
+}
+
 namespace protocol {
 
 // Guild invites: CREATE_INVITE, JOIN_VIA_INVITE, LIST_INVITES, REVOKE_INVITE.
@@ -27,6 +31,7 @@ class InviteHandler {
     void setSessionManager(session::SessionManager* session_manager);
     void setGuildManager(guild::GuildManager* guild_manager);
     void setInternalApiClient(http::InternalApiClient* internal_api_client);
+    void setRateLimiter(util::RateLimiter* rate_limiter);
 
     Message handleCreateInvite(const Message& message, int fd) const;
     Message handleListInvites(const Message& message, int fd) const;
@@ -50,6 +55,7 @@ class InviteHandler {
     session::SessionManager* session_manager_ = nullptr;
     guild::GuildManager* guild_manager_ = nullptr;
     http::InternalApiClient* internal_api_client_ = nullptr;
+    util::RateLimiter* rate_limiter_ = nullptr;
 };
 
 } // namespace protocol
