@@ -1,26 +1,24 @@
 # CIG Nexus Web Client
 
-The web client is a Next.js App Router application that connects to the CIG Nexus gateway through a browser WebSocket connection.
+The web app is a Next.js (App Router) application. It serves the chat UI, hosts the Discord OAuth2 login and session-token issuance, and owns all Postgres/Redis access — the C++ server reaches durable state only through this app's internal-only API.
 
 ## Current Features
 
-- client-side WebSocket connection to the gateway
-- automatic `HELLO` message on connect
-- automatic `IDENTIFY` after `WELCOME` (default username: `web_user`)
-- live connection status display
-- simple chat input with send button
-- readable chat message list (username, content, formatted timestamp)
-- Guilds/Channels tab: create/join guilds, owner-gated channel creation, and per-channel chat, alongside the existing global chat
+- Discord OAuth2 (PKCE) login, a public landing page, and a `/login-error` page
+- Browser WebSocket connection to the gateway with automatic `HELLO`, then `IDENTIFY` with a signed session token fetched from `GET /api/auth/session-token` (no client-chosen username)
+- Live connection status display
+- Global lobby chat
+- A persistent, Discord-style guild rail: Lobby, one icon per joined guild, and Friends, with guild browse/join/create behind a `+` popover
+- Guilds: open/application/private visibility, invites (with optional max uses and expiry), join requests and their approval inbox, officer-gated channel creation, per-channel chat with history, and a member roster with rank-based roles and live presence
+- Friends: friend requests (direct or by shareable code), blocking, and 1:1 direct messages with history
+- Settings modal: Profile (display name, avatar, bio, status message, accent color), Appearance (themes `abyss` and `ember`, optionally synced to the account), and Blocked Users
 
 ## How It Works
 
 The browser cannot connect directly to the TCP server, so it talks to the gateway instead.
 
-Flow:
-
-1. The page mounts.
-2. The client opens a WebSocket connection to the gateway.
-3. On open, the client automatically sends:
+1. The user logs in with Discord; Next.js sets an httpOnly session cookie.
+2. The page opens a WebSocket to the gateway (`NEXT_PUBLIC_GATEWAY_URL`) and sends:
 
 ```json
 {
@@ -30,33 +28,18 @@ Flow:
 }
 ```
 
-4. The user can then send chat messages such as:
-
-```json
-{
-	"type": "CHAT_MESSAGE",
-	"content": "hello"
-}
-```
-
-Before chat, the client also sends:
+3. After `WELCOME`, the client fetches a short-lived session token and sends:
 
 ```json
 {
 	"type": "IDENTIFY",
-	"username": "web_user"
+	"session_token": "<JWT>"
 }
 ```
 
-5. Incoming server responses are parsed as JSON and routed by `type` into the
-   relevant piece of UI state (chat messages, guild list, active channel
-   messages, etc.) rather than a single flat list.
+4. Incoming server messages are parsed as JSON in `hooks/useGatewayConnection.ts` and routed by `type` into UI state. Wire messages stay snake_case; this hook is the only place they are mapped to camelCase (see [../docs/frontend-rebuild-plan.md](../docs/frontend-rebuild-plan.md#wire-message-casing-convention)).
 
-The same connection also supports the guild/channel flow (create/join
-guilds, create/join channels, channel messages) once identified — see the
-"Guilds/Channels tab" feature above and
-[../shared/protocol/README.md](../shared/protocol/README.md) for the full
-message set.
+See [../shared/protocol/README.md](../shared/protocol/README.md) for the full message set.
 
 ## Local Development
 
@@ -72,11 +55,15 @@ Run the app:
 npm run dev
 ```
 
-Open `http://localhost:3000` in the browser.
+Open `http://localhost:3000` in the browser. Login and the internal API need Postgres, Redis, and the auth environment variables — the simplest way to run everything is `docker compose up --build` from the repository root (see the root README).
+
+Other scripts: `npm run lint`, `npm run build`, and `npm test` (Vitest; needs a running Docker daemon, since the suite starts Postgres and Redis containers with testcontainers and builds the web image).
 
 ## Environment
 
-The web client reads the gateway URL from:
+Required auth/persistence variables (the process fails fast at startup if any are missing) are documented in [../.env.example](../.env.example).
+
+The gateway URL comes from:
 
 - `NEXT_PUBLIC_GATEWAY_URL`
 
@@ -88,31 +75,31 @@ Default fallback:
 
 ```text
 app/
-└── page.tsx        # main chat UI: global chat + guilds/channels tab
+├── page.tsx        # the chat UI (lobby, guilds, friends)
+├── api/            # browser-facing routes: OAuth, session token, user profile/appearance
+├── internal/       # internal-only API called by the C++ server (unreachable on the public port)
+└── uploads/        # dynamic route serving uploaded avatars
 
-lib/
-└── gateway.ts      # browser WebSocket client helpers (chat + guild/channel actions)
+components/         # extracted UI components (MessageList, GuildRail, FriendsView, SettingsModal, ...)
+hooks/              # useGatewayConnection: the WebSocket connection + protocol switch
+lib/                # gateway client, wire types, auth, internal-API logic, settings, appearance
+db/                 # Drizzle schema and migrations
+server.mjs          # production server: public port + a second, unpublished internal port
 ```
 
 ## UI Notes
 
-The current UI is intentionally minimal:
-
-- single page
-- simple inline styles
-- no external UI library
-- no state management library
-- no routing beyond the default page
+- Tailwind CSS only; theme colors are CSS custom properties switched by a `data-theme` attribute
+- No external UI or state-management library
+- Server-authoritative: the UI reflects what the server confirms rather than inventing optimistic state
 
 ## Current Limitations
 
-- no authentication
-- no custom username selection yet (hardcoded `web_user`)
-- no message history persistence
-- no reconnection logic
-- no optimistic UI state
-- no guild privacy or channel-creation permission delegation (server doesn't support them yet — see [../docs/guilds/design.md](../docs/guilds/design.md))
-- no leave/delete controls in the UI for guilds or channels (the underlying `gateway.ts` calls exist, just not wired into the UI yet)
+- No reconnection logic
+- No leave/delete controls in the UI for guilds or channels (the `lib/gateway.ts` helpers exist, just aren't wired into the UI yet)
+- Profile bio, status message, and accent color are editable but not displayed anywhere
+- No custom guild icons (a deterministic initials icon is used)
+- Voice channels are metadata only
 
 ## Docker
 
@@ -130,3 +117,4 @@ The app will be available at `http://localhost:3000`.
 
 - See [../gateway/README.md](../gateway/README.md) for gateway details.
 - See [../shared/protocol/README.md](../shared/protocol/README.md) for protocol payloads.
+- See [../docs/auth/discord-design.md](../docs/auth/discord-design.md) for the OAuth2 and internal-API design.

@@ -29,7 +29,7 @@ Typical browser flow through the gateway:
 
 1. Browser sends `HELLO`.
 2. Server replies `WELCOME`.
-3. Browser sends `IDENTIFY`.
+3. Browser sends `IDENTIFY` with a signed `session_token` (the gateway doesn't inspect or verify it).
 4. Server replies `IDENTIFIED`.
 5. Browser sends `CHAT_MESSAGE` messages.
 6. Server broadcasts normalized chat payloads.
@@ -60,7 +60,7 @@ Common forwarded browser payloads include:
 ```json
 {
     "type": "IDENTIFY",
-    "username": "web_user"
+    "session_token": "<JWT from GET /api/auth/session-token>"
 }
 ```
 

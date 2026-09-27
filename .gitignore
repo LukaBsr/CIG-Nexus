@@ -49,8 +49,7 @@ dist/
 # TypeScript incremental build info
 *.tsbuildinfo
 
-# Local AI assistant files
-CLAUDE.md
+# Local-only files (CLAUDE.md is tracked — project instructions shared with every contributor)
 ARCHITECTURE.md
 
 # Environment variables (see .env.example)

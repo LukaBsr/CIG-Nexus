@@ -90,6 +90,20 @@ state, being the location of the stuck count.
   interleave unexpectedly, that's a plausible (if low-probability)
   mechanism; not confirmed or ruled out.
 
+**Re-checked 2026-09 (code read, not reproduced)**: the suspect path is
+unchanged in the ways that matter — `incrementPresence` runs once per
+`IDENTIFIED` response in `Server::start()`, `decrementPresence` runs from
+`removeSessionTrackingPresence()`, and both places that remove sessions
+(a failed read, and the revocation sweep) go through that wrapper. No new
+mechanism was found by inspection. What did change since this was logged:
+`IdentifyHandler` now makes three synchronous internal-API calls
+(`fetchBlocks`, `fetchFriends`, `fetchUserProfile`, 5 s timeout each)
+between creating the session and the presence increment, and presence
+broadcasts now go through `broadcastExcluding` (identified sessions only).
+The instrumentation plan below is still the right next step, and it should
+also log the IDENTIFY handler's entry/exit per fd so any dispatch that
+creates a session but never produces `IDENTIFIED` shows up.
+
 **If picked up again**: start from the instrumentation approach above
 rather than re-running clean stress tests — this issue has now survived
 four different deliberate reproduction attempts, so further "try to

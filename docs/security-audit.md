@@ -1,8 +1,16 @@
 # Security Audit — Findings and Proposed Action List
 
-**Status: findings only. Nothing has been fixed.** Every item below is for
-review — see [Proposed Action List](#proposed-action-list) at the end for
-the concrete, ordered list to confirm before anything changes.
+**Status: partially resolved.** Action list items 1–3 (the
+`X-Forwarded-For` rate-limit bypass, the revocation-cache restart gap, and
+private-key permission checks) have been fixed. Items 4–6 (a stable `next`
+upgrade, optional `/internal/*` network segmentation, the `secure`-cookie
+`NODE_ENV` dependency) remain open; the dependency findings in §2.5 were
+re-traced in 2026-09 and a weekly advisory watch now runs in CI. Found
+after this audit was written: the lobby `BROADCAST` reached unauthenticated
+sockets (fixed in #30), the web app's OAuth routes are the only
+rate-limited surface (invite, join-request, and friend routes are not), and
+the C++ JWT verifier does not check the `iss` claim. The body below is
+left as the original point-in-time audit.
 
 **Scope**: everything merged into `main` as of this audit — Discord OAuth2
 (PKCE), session/JWT handling, Postgres persistence, the `/internal/*` API
@@ -481,7 +489,7 @@ record:
 
 Ordered by severity/independence, same convention as
 [`docs/architecture-audit.md`](architecture-audit.md) and
-[`docs/ci-audit.md`](ci-audit.md). Nothing has been executed.
+[`docs/ci-audit.md`](ci-audit.md). (Historical wording — see the status note at the top for what has since been fixed.)
 
 1. **Fix the rate-limit `X-Forwarded-For` bypass (§2.1).** Highest
    severity, currently exploitable given the actual deployed topology.

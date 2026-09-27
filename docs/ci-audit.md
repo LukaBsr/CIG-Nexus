@@ -1,9 +1,16 @@
 # CI Workflow Audit — Proposal
 
-**Status: proposal only. Nothing in `.github/workflows/` has been
-modified.** Every recommendation below is for review — see
-[Proposed Action List](#proposed-action-list) at the end for the concrete,
-ordered list to confirm before anything changes.
+**Status: mostly executed.** Action list items 1–8 were carried out
+(`libssl-dev`/`libcurl4-openssl-dev` in the server workflow, `npm test` and
+a Drizzle drift check in `web-ci.yml`, `gateway-ci.yml`, the
+`server-ci.yml` rename and path filter, `clang-format` enforcement).
+Still open: item 9 (a real gateway+server+web contract test); `web-ci.yml`'s
+lint step is still `continue-on-error` even though its stated reason (a
+`lib/gateway.ts` `any`) no longer exists; and `gateway-ci.yml`/the gateway
+Dockerfile pin Node 18 rather than the Node 20 this audit proposed. The
+body below is left as the original point-in-time proposal, so it
+describes `ci-server.yml` and "nothing has been modified" as of when it was
+written.
 
 Scope: `.github/workflows/` as it exists today (`ci-server.yml`,
 `web-ci.yml` — there are no others), audited against the repo's current

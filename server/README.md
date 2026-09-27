@@ -1,118 +1,55 @@
 # CIG Nexus Server
 
-The CIG Nexus Server is the authoritative TCP backend for the platform. It accepts framed JSON messages over TCP, dispatches protocol handlers, and broadcasts chat messages to connected clients.
+The CIG Nexus Server is the authoritative TCP backend for the platform. It accepts framed JSON messages over TCP, authenticates connections with signed session tokens, dispatches protocol handlers, and delivers responses by scope (direct, broadcast, or targeted).
+
+It never opens a database connection itself: durable state (users, guilds, channels, memberships, messages, friends, blocks) lives in Postgres behind Next.js's internal-only HTTP API, and the server reaches it through `CurlInternalApiClient` (see [../docs/architecture/overview.md](../docs/architecture/overview.md)).
 
 ## Current Responsibilities
 
-- Accept TCP connections on port `4242`
+- Accept TCP connections on port `4242` (`--port` overrides)
 - Track active client connections
 - Decode 4-byte big-endian framed messages
 - Parse JSON protocol messages
-- Dispatch `HELLO`, `IDENTIFY`, `CHAT_MESSAGE`, and the guild/channel handlers
-- Manage in-memory sessions keyed by socket fd, including guild membership and active-channel state
-- Manage the in-memory guild/channel catalog (`GuildManager`)
+- Dispatch every protocol message type (see [../shared/protocol/README.md](../shared/protocol/README.md) for the full list): `HELLO`, `IDENTIFY`, `CHAT_MESSAGE`, guild/channel, invite, join-request, role, friend, blocking, direct-message, and `FETCH_HISTORY` handlers
+- Verify RS256 session tokens (`JwtVerifier`) and reject revoked sessions (`RevocationCache`, polled from Next.js every 30 seconds and once synchronously at startup; live connections whose session is revoked are disconnected)
+- Manage in-memory sessions keyed by socket fd, including guild membership, active-channel, friend/block, and profile state hydrated at `IDENTIFY`
+- Manage the guild/channel catalog (`GuildManager`) as a write-through cache over the internal API, hydrated at startup
+- Track online/offline presence per user (connection-count transitions) and broadcast `PRESENCE_UPDATE`
+- Persist chat, channel, and DM messages asynchronously with bounded retry (`MessagePersistenceWorker`), and serve paginated history
 - Return direct responses for handshake and validation errors
-- Broadcast valid chat messages to all identified clients using `Message.scope`
-- Deliver guild/channel responses to a targeted subset of connections (e.g. "current guild members") using `Scope::TARGETED`
+- Deliver by `Message.scope`: `DIRECT` (sender only), `BROADCAST` (all identified connections), `TARGETED` (an explicit fd list the handler computes)
 
-## Implemented Protocol Features
+## Startup Configuration
 
-### HELLO
+The server refuses to start without these environment variables:
 
-Clients send a `HELLO` message after connecting.
+- `AUTH_JWT_PUBLIC_KEY_PATH` — file path of the RS256 public key used to verify session tokens (the private key never reaches this service)
+- `INTERNAL_API_BASE_URL` — base URL of Next.js's internal-only API
+- `INTERNAL_API_SHARED_SECRET` — shared secret sent with every internal API call
 
-The server validates:
+At startup it hydrates the guild catalog and message sequence counters from the internal API (once, without retry — start `web` first, as `docker-compose.yml` does), polls the revocation cache, and only then enters the accept loop.
 
-- `type` is `"HELLO"`
-- `version` is `"0.1"`
-- `client` is either `"web"` or `"desktop"`
+## Protocol Lifecycle
 
-On success, the server returns a `WELCOME` message.
+1. Client connects and sends `HELLO` (`version` must be `"0.1"`, `client` `"web"` or `"desktop"`); the server replies `WELCOME` (with `server_version`).
+2. Client sends `IDENTIFY` with a `session_token` (an RS256 JWT issued by Next.js after Discord OAuth2 login). The server checks the signature, algorithm (pinned to `RS256`), expiry, and audience, and that the session isn't revoked; on success it creates the in-memory session, hydrates guild/friend/block/profile state, and replies `IDENTIFIED`.
+3. An identified client may send any other message type. Before `IDENTIFY`, they return `NOT_IDENTIFIED`.
 
-`WELCOME` currently includes:
+Errors reuse the codes documented in the protocol spec (`AUTH_REQUIRED`, `INVALID_SESSION`, `SESSION_EXPIRED`, `SESSION_REVOKED`, `NOT_IDENTIFIED`, `PROTOCOL_VIOLATION`, `MALFORMED_MESSAGE`, `INTERNAL_ERROR`, and the guild/friend/DM codes).
 
-- `type`
-- `server_version`
+## Guilds, Roles, and Delivery
 
-`WELCOME` no longer includes `session_id` because sessions are created on `IDENTIFY`.
+Guild membership is durable; a connection can belong to several guilds but has at most one active channel at a time. Authorization is rank-based (`role_rank`, named constants in `include/guild/RoleRank.hpp`): officer-or-above can create channels, create invites, and approve join requests; only the owner can delete channels or guilds, change visibility, and assign roles. Visibility (`open` / `application` / `private`) controls listing and how a guild can be joined.
 
-### IDENTIFY
-
-Clients identify after receiving `WELCOME`.
-
-The server validates:
-
-- payload is a JSON object
-- `username` exists
-- `username` is a string
-- `username` is not empty
-- `username` length is at most `32` characters
-- connection is not already identified
-
-On success:
-
-- the server creates a new in-memory session for the socket
-- the session is assigned `session_id` and `user_id`
-- the server returns `IDENTIFIED` with `user_id` and `username`
-
-### CHAT_MESSAGE
-
-Clients can send chat messages after successful `IDENTIFY`.
-
-The server validates:
-
-- payload is a JSON object
-- payload `type` is `"CHAT_MESSAGE"`
-- `content` exists
-- `content` is a string
-- `content` is not empty
-- `content` length is at most `500` characters
-
-On success, the server returns a normalized chat message and broadcasts it to every identified connection.
-
-Current chat payloads include:
-
-- `type`
-- `message_id`
-- `timestamp`
-- `user_id`
-- `username`
-- `content`
-
-If a client sends `CHAT_MESSAGE` before identify, the server returns:
-
-- `type = "ERROR"`
-- `code = "NOT_IDENTIFIED"`
-
-### Guilds and Channels
-
-Identified clients can create, list, join, leave, and (owner only) delete
-guilds, and — owner only — create/delete channels within a guild. A
-connection can be a member of multiple guilds but has at most one active
-channel at a time; `JOIN_CHANNEL` implicitly leaves whichever channel was
-previously active.
-
-Message types: `CREATE_GUILD`, `LIST_GUILDS`, `JOIN_GUILD`, `LEAVE_GUILD`,
-`DELETE_GUILD`, `LIST_CHANNELS`, `CREATE_CHANNEL`, `DELETE_CHANNEL`,
-`JOIN_CHANNEL`, `LEAVE_CHANNEL`, `CHANNEL_MESSAGE`. `CHANNEL_MESSAGE` targets
-the sender's own active channel rather than a client-supplied id.
-
-Guild-wide notifications (channel created/deleted, a member leaving, a guild
-being deleted) and `CHANNEL_MESSAGE` are delivered via `Scope::TARGETED` to
-the relevant subset of connections, not a full broadcast.
-
-See [../shared/protocol/README.md](../shared/protocol/README.md) for the
-full request/response shapes and validation rules, and
-[../docs/guilds/design.md](../docs/guilds/design.md) for the feature's design
-rationale.
+Guild-wide notifications, `CHANNEL_MESSAGE`, friend events, and `DM_MESSAGE` use `Scope::TARGETED`. A single request can produce several messages for different recipients (the dispatcher returns a `std::vector<Message>`).
 
 ## Architecture Notes
 
 - **Transport**: raw TCP
-- **Framing**: 4-byte big-endian size prefix
+- **Framing**: 4-byte big-endian size prefix (max 1 MiB)
 - **Payload format**: JSON
-- **Connection model**: one socket per client
-- **I/O approach**: accept loop plus per-connection polling in the main loop
+- **Connection model**: one socket per client; `SO_KEEPALIVE` is enabled, but there is no application-level heartbeat
+- **I/O approach**: single-threaded accept loop plus per-connection polling (100 ms tick); internal API calls are synchronous (5 s timeout each), so a slow web service delays the whole loop. Message persistence runs on a separate worker thread.
 - **Routing model**: `Message.scope` drives response behavior:
 	- `Scope::DIRECT`: response sent only to sender
 	- `Scope::BROADCAST`: response sent to all identified connections (never to a connection that hasn't completed `IDENTIFY`)
@@ -120,9 +57,9 @@ rationale.
 
 ## Directory Layout
 
-- `include/` - public headers, server types, protocol handler headers
-- `src/` - server implementation and protocol handlers
-- `tests/` - Catch2 unit tests for framing and handlers
+- `include/` - public headers: server types, `auth/`, `guild/`, `http/`, `persistence/`, `protocol/` (handlers, dispatcher, parser), `session/`, `util/`
+- `src/` - server implementation, mirroring `include/`
+- `tests/` - Catch2 tests mirroring `src/` (`auth/`, `guild/`, `http/`, `integration/`, `persistence/`, `protocol/`, `util/`)
 
 ## Build
 
@@ -144,6 +81,8 @@ cmake --build .
 
 ## Run
 
+The environment variables above must be set; the easiest way to run the full stack is `docker compose up --build` from the repository root.
+
 ```bash
 ./cig-nexus-server
 ```
@@ -163,32 +102,28 @@ ctest
 
 Implemented now:
 
-- TCP listener
-- framed message decoding
-- JSON message parsing
-- dispatcher-based protocol handling
-- `HELLO` / `WELCOME`
-- `IDENTIFY` / `IDENTIFIED`
-- `CHAT_MESSAGE` validation
-- server-side broadcast for valid chat messages
-- deferred session creation on `IDENTIFY`
-- guild/channel lifecycle and channel messaging, with `Scope::TARGETED` delivery
-- Catch2 coverage for framing, dispatcher, handlers, session manager, guild manager, and connection I/O (including a peer-reset regression test)
+- TCP listener, framed message decoding, JSON parsing, dispatcher-based protocol handling
+- `HELLO` / `WELCOME` and session-token `IDENTIFY` / `IDENTIFIED` (RS256 verification, revocation cache)
+- Lobby chat, channel messaging, and direct messages, with durable history (`FETCH_HISTORY`, keyset pagination) and startup-seeded message ids
+- Guild/channel lifecycle, invites, visibility, join requests, and rank-based roles
+- Presence tracking and broadcast
+- Friends, friend codes, blocking (including presence exclusion), and profile display fields on rosters/messages
+- Catch2 coverage across auth, guild manager, internal API client, message persistence, every protocol handler, session manager, connection I/O, and end-to-end integration tests
 
 Not implemented yet:
 
-- authentication and authorization
-- persistent sessions, guilds, channels, and named users across restarts
-- database or message history persistence
-- production-grade event loop and backpressure handling
-- TLS or encryption
-- reconnection or delivery guarantees above TCP
-- guild privacy and channel-creation permission delegation (see [../docs/guilds/design.md](../docs/guilds/design.md))
+- TLS or encryption (the gateway and server speak plain TCP)
+- Application-level heartbeat for half-open connections
+- Production-grade event loop, backpressure handling, and horizontal scaling (the guild cache assumes a single server instance)
+- Retry on startup hydration if the internal API is unreachable
+- Functional voice channels (metadata only)
+- A general, configurable permission system beyond the three fixed guild ranks
 
 ## Related Documentation
 
 - See [../shared/protocol/README.md](../shared/protocol/README.md) for wire protocol details.
 - See [../docs/architecture/overview.md](../docs/architecture/overview.md) for system-level architecture.
+- See [../docs/known-issues.md](../docs/known-issues.md) for open server-side issues (presence count).
 
 ## Notes
 

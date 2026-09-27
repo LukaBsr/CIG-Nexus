@@ -1,9 +1,24 @@
 # Discord OAuth2 Authentication — Design Document
 
-**Status: design, not implemented.** This is a planning document only. Nothing
-described here has been built. Do not start implementation against it until
-it has been reviewed and the open questions flagged throughout (search for
-**`OPEN QUESTION`**) have been resolved.
+**Status: implemented (v0.6.0).** This is kept as a design record — the
+reasoning and arbitration below reflect planning-time decisions, not a
+changelog. Where the shipped code differs from what's written here:
+
+- `guild_memberships.role` (owner/member, §5) was replaced by an integer
+  `role_rank` (`docs/guilds/social-presence-design.md` §2.2); `guilds` also
+  gained `visibility` and `role_theme`.
+- §10's "message history persistence" was built afterwards (v0.7.0,
+  `docs/guilds/social-presence-design.md` §4).
+- The access JWT is issued with `iss: "cig-nexus-web"`, but the C++ verifier
+  enforces only signature, pinned `RS256`, `exp`, and `aud` — it does not
+  check `iss` (§8's `INVALID_SESSION` wording implies it would).
+- No `/.well-known/jwks.json` route exists; the C++ server reads the public
+  key from the file at `AUTH_JWT_PUBLIC_KEY_PATH` (the "static
+  env-provided public key" option in §8.2).
+- Internal API route shapes evolved (e.g. join requests live under
+  `/internal/guild-join-requests/[guildId]/[userId]/...`);
+  `web/app/internal/` is authoritative, and `docs/security-audit.md`
+  tracks open hardening items.
 
 ## 1. Scope and a Key Interpretation
 
@@ -611,34 +626,34 @@ outage.
 
 ## 9.1 Security Checklist
 
-- [ ] **Cookies**: `oauth_txn`, refresh cookie (`__session`) both
-  `httpOnly`, `secure`, `SameSite=Lax`. `SameSite=Strict` was considered and
+- [x] **Cookies**: `oauth_txn`, refresh cookie (`__session`) both
+  `httpOnly`, `secure`, `SameSite=Lax` (`secure` is set only when `NODE_ENV=production`; see `docs/security-audit.md` §2.2). `SameSite=Strict` was considered and
   rejected for the refresh cookie specifically — it would break the OAuth
   redirect-back-from-Discord flow, which is a cross-site top-level
   navigation.
-- [ ] **Rate limiting on OAuth routes** — `/api/auth/discord/login` and
+- [x] **Rate limiting on OAuth routes** — `/api/auth/discord/login` and
   `/callback`, per-IP sliding window, backed by Redis (§8.2, §10) — chosen
   over a Postgres-backed counter table to keep the hot rate-limit check off
   the primary database and out of contention with Drizzle's connection
   pool.
-- [ ] **Systematic server-side revalidation before channel access** —
+- [x] **Systematic server-side revalidation before channel access** —
   covered structurally: every guild/channel action already re-checks live
   membership against the write-through cache (§8.1) on every request, not
   just at `IDENTIFY` time; combined with the revocation-cache sweep (§9) for
   already-connected sessions.
-- [ ] **Session revocation** — `sessions.revoked_at`, checked via the
+- [x] **Session revocation** — `sessions.revoked_at`, checked via the
   poll-based cache (§9). Logout (`POST /api/auth/logout`) sets
   `revoked_at = now()` immediately in Postgres; propagation to the C++
   server is bounded by the poll interval, not instantaneous.
-- [ ] **JWT signing key isolation** — RS256 private key never leaves
+- [x] **JWT signing key isolation** — RS256 private key never leaves
   Next.js; C++ server holds only the public key.
-- [ ] **JWT algorithm pinned server-side** — the C++ verifier accepts only
+- [x] **JWT algorithm pinned server-side** — the C++ verifier accepts only
   `RS256`, configured explicitly, and never derives the algorithm from the
   token's own header (§6, §9) — closes algorithm-confusion attacks,
   including `alg: none`.
-- [ ] **Generic OAuth failure responses** — callback errors don't leak which
+- [x] **Generic OAuth failure responses** — callback errors don't leak which
   specific validation step failed (§4, step 8).
-- [ ] **Internal API isolation** — `/internal/*` routes authenticated by a
+- [x] **Internal API isolation** — `/internal/*` routes authenticated by a
   shared secret, **and** verified unreachable from outside the
   Docker-internal network by both explicit reverse-proxy/ingress exclusion
   and a dedicated integration test (§8.1) — the shared secret alone is not
