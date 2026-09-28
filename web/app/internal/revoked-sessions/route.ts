@@ -1,6 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server";
 
-import { getRevokedSessionIds } from "@/lib/internal/catalog";
+import { getRevokedSessionIds } from "@/lib/internal/revokedSessions";
 import { isAuthorizedInternalRequest } from "@/lib/internal/auth";
 
 // design doc §9: backs the C++ server's poll-based revocation cache.

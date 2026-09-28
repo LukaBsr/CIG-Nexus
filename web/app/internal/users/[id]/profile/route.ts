@@ -1,6 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server";
 
-import { getUserProfileSummary } from "@/lib/internal/catalog";
+import { getUserProfileSummary } from "@/lib/internal/userProfile";
 import { isAuthorizedInternalRequest } from "@/lib/internal/auth";
 
 // docs/social/friends-dms-design.md §4.5, revised at implementation: backs

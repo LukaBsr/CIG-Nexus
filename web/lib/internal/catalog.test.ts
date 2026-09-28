@@ -13,7 +13,6 @@ import {
   deleteMembership,
   getCatalog,
   getGuildMembers,
-  getRevokedSessionIds,
   InvalidReferenceError,
   setGuildVisibility,
   setMemberRole
@@ -265,39 +264,5 @@ describe("getCatalog", () => {
     expect(catalog.guilds).toHaveLength(1);
     expect(catalog.channels).toHaveLength(1);
     expect(catalog.memberships).toHaveLength(1);
-  });
-});
-
-describe("getRevokedSessionIds", () => {
-  it("returns only sessions revoked after the given timestamp", async () => {
-    const user = await insertUser("7");
-    const [oldRevoked] = await db
-      .insert(sessions)
-      .values({
-        userId: user.id,
-        expiresAt: new Date(Date.now() + 60_000),
-        refreshTokenHash: "hash-old",
-        revokedAt: new Date(Date.now() - 60_000)
-      })
-      .returning();
-    const cutoff = new Date();
-    const [newRevoked] = await db
-      .insert(sessions)
-      .values({
-        userId: user.id,
-        expiresAt: new Date(Date.now() + 60_000),
-        refreshTokenHash: "hash-new",
-        revokedAt: new Date(Date.now() + 1000)
-      })
-      .returning();
-    await db.insert(sessions).values({
-      userId: user.id,
-      expiresAt: new Date(Date.now() + 60_000),
-      refreshTokenHash: "hash-active"
-    });
-
-    const revoked = await getRevokedSessionIds(cutoff);
-    expect(revoked).toEqual([newRevoked.id]);
-    expect(revoked).not.toContain(oldRevoked.id);
   });
 });

@@ -2,7 +2,7 @@ import { type NextRequest, NextResponse } from "next/server";
 
 import { isAuthorizedInternalRequest } from "@/lib/internal/auth";
 import { listBlocks } from "@/lib/internal/blocks";
-import { getUserProfileSummary } from "@/lib/internal/catalog";
+import { getUserProfileSummary } from "@/lib/internal/userProfile";
 import { listFriends } from "@/lib/internal/friends";
 
 // Combines three of IdentifyHandler's IDENTIFY-time hydration calls
