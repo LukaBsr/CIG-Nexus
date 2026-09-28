@@ -49,6 +49,17 @@ Run a single test (Catch2):
 ./cig-nexus-tests "[HelloHandler]"
 ```
 
+Check formatting the way CI does. CI pins `clang-format==18.1.8`
+(`.github/workflows/server-ci.yml`); a different local version can disagree
+with it on existing lines, so install the pinned one in a venv rather than
+using a system `clang-format` or running `clang-format -i` with it:
+
+```bash
+python3 -m venv .venv-clang-format && .venv-clang-format/bin/pip install clang-format==18.1.8
+find server/include server/src server/tests -type f \( -name '*.hpp' -o -name '*.cpp' \) -print0 \
+  | xargs -0 .venv-clang-format/bin/clang-format --dry-run --Werror
+```
+
 ### Gateway (TypeScript)
 
 ```bash

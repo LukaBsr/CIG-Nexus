@@ -25,7 +25,17 @@ jobs:
       # server/Dockerfile's build-stage package list exactly, rather than
       # relying on whatever happens to be preinstalled on the runner image.
       - name: Install build tools
-        run: sudo apt-get update && sudo apt-get install -y cmake g++ clang-format libssl-dev libcurl4-openssl-dev
+        run: sudo apt-get update && sudo apt-get install -y cmake g++ libssl-dev libcurl4-openssl-dev
+
+      # Pinned (not apt's clang-format) so formatting results don't shift when
+      # the runner image's package version does. Keep this version in sync
+      # with the "Formatting" notes in CLAUDE.md and server/README.md.
+      - name: Install clang-format (pinned)
+        run: |
+          python3 -m venv "$RUNNER_TEMP/clang-format-venv"
+          "$RUNNER_TEMP/clang-format-venv/bin/pip" install clang-format==18.1.8
+          echo "$RUNNER_TEMP/clang-format-venv/bin" >> "$GITHUB_PATH"
+          "$RUNNER_TEMP/clang-format-venv/bin/clang-format" --version
 
       - name: Configure
         run: cmake -S server -B server/build
