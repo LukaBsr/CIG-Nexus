@@ -64,3 +64,6 @@ data/
 
 # Local editor config
 .vscode/
+
+# Local pinned clang-format venv (see CLAUDE.md "Formatting")
+.venv-clang-format/

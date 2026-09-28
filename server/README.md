@@ -101,6 +101,19 @@ cmake --build .
 ctest
 ```
 
+### Formatting
+
+CI checks formatting with a pinned `clang-format==18.1.8`
+(`.github/workflows/server-ci.yml`). A different local version can disagree with it on
+existing lines, so use the pinned one in a venv (from the repo root) instead of a system
+`clang-format`:
+
+```bash
+python3 -m venv .venv-clang-format && .venv-clang-format/bin/pip install clang-format==18.1.8
+find server/include server/src server/tests -type f \( -name '*.hpp' -o -name '*.cpp' \) -print0 \
+  | xargs -0 .venv-clang-format/bin/clang-format --dry-run --Werror
+```
+
 ## Current Status
 
 Implemented now:
