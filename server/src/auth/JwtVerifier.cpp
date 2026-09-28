@@ -81,6 +81,10 @@ struct JwtVerifier::Impl {
 
     Impl(const std::string& public_key_pem, std::string issuer, Clock clock)
         : expected_issuer(std::move(issuer)), now(std::move(clock)) {
+        if (expected_issuer.empty()) {
+            throw std::invalid_argument("JwtVerifier: expected issuer must not be empty");
+        }
+
         BIO* bio = BIO_new_mem_buf(public_key_pem.data(), static_cast<int>(public_key_pem.size()));
         if (!bio) {
             throw std::runtime_error("JwtVerifier: failed to allocate BIO for public key");
@@ -214,6 +218,13 @@ JwtVerification JwtVerifier::verify(const std::string& token) const {
     if (!payload.contains("aud") || !payload["aud"].is_string() ||
         payload["aud"].get<std::string>() != kExpectedAudience) {
         return {JwtVerifyResult::WrongAudience, std::nullopt};
+    }
+
+    // Exact string match against the configured issuer. A missing or
+    // non-string iss is rejected the same way as a wrong one (mirrors aud).
+    if (!payload.contains("iss") || !payload["iss"].is_string() ||
+        payload["iss"].get<std::string>() != impl_->expected_issuer) {
+        return {JwtVerifyResult::WrongIssuer, std::nullopt};
     }
 
     AccessJwtClaims claims;
