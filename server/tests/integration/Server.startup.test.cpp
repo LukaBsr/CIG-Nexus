@@ -32,7 +32,7 @@ TEST_CASE("Server hydrates the guild catalog from InternalApiClient at startup")
         {"g_preexisting", "Pre-existing Guild", "u_owner", "open"});
 
     Server server(0);
-    server.configureAuth(keys.publicKeyPem());
+    server.configureAuth(keys.publicKeyPem(), test_helpers::kTestIssuer);
     server.setInternalApiClient(std::move(api));
 
     std::thread t([&server] { server.start(); });
@@ -78,7 +78,7 @@ TEST_CASE("Server rejects an already-revoked session immediately at startup, wit
     api->revoked_ids_to_return.push_back("u_alice-sid");
 
     Server server(0);
-    server.configureAuth(keys.publicKeyPem());
+    server.configureAuth(keys.publicKeyPem(), test_helpers::kTestIssuer);
     server.setInternalApiClient(std::move(api));
 
     std::thread t([&server] { server.start(); });

@@ -30,7 +30,7 @@ TEST_CASE("Server keeps other connections responsive during one connection's slo
           "hydration") {
     test_helpers::TestRsaKeyPair keys;
     Server server(0);
-    server.configureAuth(keys.publicKeyPem());
+    server.configureAuth(keys.publicKeyPem(), test_helpers::kTestIssuer);
     auto api = std::make_unique<test_helpers::FakeInternalApiClient>();
     api->session_context_delay = std::chrono::milliseconds(400);
     server.setInternalApiClient(std::move(api));
@@ -91,7 +91,7 @@ TEST_CASE("Server drops a hydration result for a connection that already closed,
           "crashing or affecting other connections") {
     test_helpers::TestRsaKeyPair keys;
     Server server(0);
-    server.configureAuth(keys.publicKeyPem());
+    server.configureAuth(keys.publicKeyPem(), test_helpers::kTestIssuer);
     auto api = std::make_unique<test_helpers::FakeInternalApiClient>();
     api->session_context_delay = std::chrono::milliseconds(200);
     server.setInternalApiClient(std::move(api));
@@ -149,7 +149,7 @@ TEST_CASE("A second tab's hydration never completing, then disconnecting, does n
           "first tab's presence go offline") {
     test_helpers::TestRsaKeyPair keys;
     Server server(0);
-    server.configureAuth(keys.publicKeyPem());
+    server.configureAuth(keys.publicKeyPem(), test_helpers::kTestIssuer);
     auto api = std::make_unique<test_helpers::FakeInternalApiClient>();
     test_helpers::FakeInternalApiClient* api_ptr = api.get();
     server.setInternalApiClient(std::move(api));
@@ -228,7 +228,7 @@ TEST_CASE("Server sends SESSION_CONTEXT_UNAVAILABLE and disconnects once hydrati
           "exhausted") {
     test_helpers::TestRsaKeyPair keys;
     Server server(0);
-    server.configureAuth(keys.publicKeyPem());
+    server.configureAuth(keys.publicKeyPem(), test_helpers::kTestIssuer);
     // Fast schedule — the real ~60s default would make this test unusable.
     server.setHydrationRetryDelaysForTesting(
         {std::chrono::milliseconds(5), std::chrono::milliseconds(5)});

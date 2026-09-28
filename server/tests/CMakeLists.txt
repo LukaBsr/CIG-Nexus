@@ -33,6 +33,13 @@ target_include_directories(cig-nexus-tests
         ${CMAKE_CURRENT_SOURCE_DIR}/../include
 )
 
+# Frozen artifacts produced by other components (e.g. tests/fixtures/jwt: a
+# token from the real web signer) — read at runtime by absolute path.
+target_compile_definitions(cig-nexus-tests
+    PRIVATE
+        CIG_NEXUS_TEST_FIXTURES_DIR="${CMAKE_CURRENT_SOURCE_DIR}/fixtures"
+)
+
 target_link_libraries(cig-nexus-tests
     PRIVATE
         Catch2::Catch2WithMain
