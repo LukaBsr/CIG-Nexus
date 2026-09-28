@@ -79,7 +79,9 @@ std::string recv_framed(int fd) {
 }
 
 void set_recv_timeout(int fd, long seconds, long microseconds) {
-    struct timeval tv{seconds, microseconds};
+    struct timeval tv {
+        seconds, microseconds
+    };
     ::setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
 }
 
@@ -258,7 +260,9 @@ TEST_CASE("Server delivers CHANNEL_MESSAGE only to connections with that channel
     // Shorten carol's timeout for the negative check so this test doesn't
     // eat the full 2s default SO_RCVTIMEO waiting for something that should
     // never arrive.
-    struct timeval short_tv{0, 300000};
+    struct timeval short_tv {
+        0, 300000
+    };
     ::setsockopt(fd_c, SOL_SOCKET, SO_RCVTIMEO, &short_tv, sizeof(short_tv));
     std::string c_response = recv_framed(fd_c);
 
@@ -324,7 +328,9 @@ TEST_CASE("Server survives broadcasting to a connection reset by its peer") {
     // normally self-heals within a tick or two regardless of ordering —
     // the bucket ordering above is what gets fd_b's broadcast to race
     // ahead of that self-heal within the same tick, at least once.
-    struct linger sl{1, 0};
+    struct linger sl {
+        1, 0
+    };
     ::setsockopt(fd_a, SOL_SOCKET, SO_LINGER, &sl, sizeof(sl));
     ::close(fd_a);
     std::this_thread::sleep_for(std::chrono::milliseconds(50));
