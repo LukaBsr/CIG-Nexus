@@ -45,9 +45,6 @@ class InviteHandler {
     std::vector<Message> handleJoinViaInvite(const Message& message, int fd) const;
 
   private:
-    static Message makeError(const std::string& code, const std::string& msg);
-    const session::Session* requireIdentified(int fd) const;
-
     // fds of every currently-connected officer-or-above member of guild_id
     // — the JOIN_REQUEST_RECEIVED audience (§1.9).
     std::vector<int> getOfficerFds(const std::string& guild_id) const;

@@ -46,9 +46,6 @@ class DMHandler {
     Message handleListDmConversations(const Message& message, int fd) const;
 
   private:
-    static Message makeError(const std::string& code, const std::string& msg);
-    const session::Session* requireIdentified(int fd) const;
-
     // §3.2/§3.3: friends OR shared guild, AND NOT blocked (either
     // direction) — re-checked fresh on every call, never cached beyond
     // the in-memory Session state already hydrated at IDENTIFY and kept

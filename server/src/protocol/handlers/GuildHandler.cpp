@@ -5,6 +5,7 @@
 #include "guild/RoleRank.hpp"
 #include "http/InternalApiClient.hpp"
 #include "protocol/MessageBuilders.hpp"
+#include "protocol/handlers/HandlerSupport.hpp"
 #include "session/SessionManager.hpp"
 #include "util/RateLimiter.hpp"
 
@@ -28,26 +29,6 @@ void GuildHandler::setRateLimiter(util::RateLimiter* rate_limiter) {
     rate_limiter_ = rate_limiter;
 }
 
-Message GuildHandler::makeError(const std::string& code, const std::string& msg) {
-    Message response;
-    response.type = "ERROR";
-    response.payload = make_error(code, msg);
-    return response;
-}
-
-const session::Session* GuildHandler::requireIdentified(int fd) const {
-    if (!session_manager_) {
-        return nullptr;
-    }
-
-    const session::Session* session = session_manager_->getSession(fd);
-    if (!session || session->username.empty()) {
-        return nullptr;
-    }
-
-    return session;
-}
-
 Message GuildHandler::handleCreateGuild(const Message& message, int fd) const {
     if (message.type != "CREATE_GUILD") {
         return makeError("PROTOCOL_VIOLATION", "Expected CREATE_GUILD message");
@@ -57,7 +38,7 @@ Message GuildHandler::handleCreateGuild(const Message& message, int fd) const {
         return makeError("MALFORMED_MESSAGE", "CREATE_GUILD payload must be an object");
     }
 
-    const session::Session* session = requireIdentified(fd);
+    const session::Session* session = requireIdentified(session_manager_, fd);
     if (!session) {
         return makeError("NOT_IDENTIFIED", "Client must IDENTIFY before creating a guild");
     }
@@ -139,7 +120,7 @@ Message GuildHandler::handleListGuilds(const Message& message, int fd) const {
         return makeError("PROTOCOL_VIOLATION", "Expected LIST_GUILDS message");
     }
 
-    if (!requireIdentified(fd)) {
+    if (!requireIdentified(session_manager_, fd)) {
         return makeError("NOT_IDENTIFIED", "Client must IDENTIFY before listing guilds");
     }
 
@@ -188,7 +169,7 @@ Message GuildHandler::handleJoinGuild(const Message& message, int fd) const {
         return makeError("MALFORMED_MESSAGE", "JOIN_GUILD payload must be an object");
     }
 
-    if (!requireIdentified(fd)) {
+    if (!requireIdentified(session_manager_, fd)) {
         return makeError("NOT_IDENTIFIED", "Client must IDENTIFY before joining a guild");
     }
 
@@ -230,7 +211,7 @@ Message GuildHandler::handleJoinGuild(const Message& message, int fd) const {
     // returned rank is the row's *actual* current rank, not necessarily
     // kMemberRank: an idempotent rejoin must not clobber a previously-
     // promoted officer's cached rank down to kMemberRank.
-    const session::Session* session = requireIdentified(fd);
+    const session::Session* session = requireIdentified(session_manager_, fd);
     const std::optional<int> resulting_rank =
         internal_api_client_->createMembership(guild_id, session->user_id, guild::kMemberRank);
     if (!resulting_rank) {
@@ -266,7 +247,7 @@ Message GuildHandler::handleLeaveGuild(const Message& message, int fd) const {
         return makeError("MALFORMED_MESSAGE", "LEAVE_GUILD payload must be an object");
     }
 
-    const session::Session* session = requireIdentified(fd);
+    const session::Session* session = requireIdentified(session_manager_, fd);
     if (!session) {
         return makeError("NOT_IDENTIFIED", "Client must IDENTIFY before leaving a guild");
     }
@@ -331,7 +312,7 @@ Message GuildHandler::handleDeleteGuild(const Message& message, int fd) const {
         return makeError("MALFORMED_MESSAGE", "DELETE_GUILD payload must be an object");
     }
 
-    const session::Session* session = requireIdentified(fd);
+    const session::Session* session = requireIdentified(session_manager_, fd);
     if (!session) {
         return makeError("NOT_IDENTIFIED", "Client must IDENTIFY before deleting a guild");
     }
@@ -387,7 +368,7 @@ Message GuildHandler::handleListMembers(const Message& message, int fd) const {
         return makeError("MALFORMED_MESSAGE", "LIST_MEMBERS payload must be an object");
     }
 
-    if (!requireIdentified(fd)) {
+    if (!requireIdentified(session_manager_, fd)) {
         return makeError("NOT_IDENTIFIED", "Client must IDENTIFY before listing members");
     }
 
@@ -446,7 +427,7 @@ Message GuildHandler::handleSetMemberRole(const Message& message, int fd) const 
         return makeError("MALFORMED_MESSAGE", "SET_MEMBER_ROLE payload must be an object");
     }
 
-    const session::Session* session = requireIdentified(fd);
+    const session::Session* session = requireIdentified(session_manager_, fd);
     if (!session) {
         return makeError("NOT_IDENTIFIED", "Client must IDENTIFY before setting a member's role");
     }
@@ -527,7 +508,7 @@ Message GuildHandler::handleSetGuildVisibility(const Message& message, int fd) c
         return makeError("MALFORMED_MESSAGE", "SET_GUILD_VISIBILITY payload must be an object");
     }
 
-    const session::Session* session = requireIdentified(fd);
+    const session::Session* session = requireIdentified(session_manager_, fd);
     if (!session) {
         return makeError("NOT_IDENTIFIED", "Client must IDENTIFY before changing guild visibility");
     }

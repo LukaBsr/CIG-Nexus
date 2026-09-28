@@ -114,13 +114,9 @@ void Server::processHydrationResults() {
             util::logPresenceDebug("hydration failed fd=" + std::to_string(result.fd) +
                                    " user_id=" + session->user_id + " -- disconnecting");
 
-            protocol::Message error;
-            error.type = "ERROR";
-            error.scope = protocol::Scope::DIRECT;
-            error.payload =
-                protocol::make_error("SESSION_CONTEXT_UNAVAILABLE",
-                                     "Could not load account context in time; please reconnect");
-            sendMessage(result.fd, error);
+            sendMessage(result.fd, protocol::make_error_message(
+                                       "SESSION_CONTEXT_UNAVAILABLE",
+                                       "Could not load account context in time; please reconnect"));
 
             removeSessionTrackingPresence(result.fd); // invalidates `session` above
             connections_.erase(conn_it);

@@ -3,6 +3,7 @@
 #include "http/InternalApiClient.hpp"
 #include "persistence/MessagePersistenceWorker.hpp"
 #include "protocol/MessageBuilders.hpp"
+#include "protocol/handlers/HandlerSupport.hpp"
 #include "session/SessionManager.hpp"
 #include "util/RateLimiter.hpp"
 
@@ -52,26 +53,6 @@ void DMHandler::seedMessageCounter(std::optional<int> last_seq) {
     if (last_seq.has_value()) {
         message_counter_.store(*last_seq);
     }
-}
-
-Message DMHandler::makeError(const std::string& code, const std::string& msg) {
-    Message response;
-    response.type = "ERROR";
-    response.payload = make_error(code, msg);
-    return response;
-}
-
-const session::Session* DMHandler::requireIdentified(int fd) const {
-    if (!session_manager_) {
-        return nullptr;
-    }
-
-    const session::Session* session = session_manager_->getSession(fd);
-    if (!session || session->username.empty()) {
-        return nullptr;
-    }
-
-    return session;
 }
 
 // docs/social/friends-dms-design.md §3.2/§3.3. Every check here is
@@ -124,7 +105,7 @@ Message DMHandler::handleDmSend(const Message& message, int fd) const {
         return makeError("MALFORMED_MESSAGE", "DM_SEND payload must be an object");
     }
 
-    const session::Session* session = requireIdentified(fd);
+    const session::Session* session = requireIdentified(session_manager_, fd);
     if (!session) {
         return makeError("NOT_IDENTIFIED", "Client must IDENTIFY before sending a DM");
     }
@@ -226,7 +207,7 @@ Message DMHandler::handleFetchHistory(const Message& message, int fd) const {
         return makeError("MALFORMED_MESSAGE", "FETCH_HISTORY payload must be an object");
     }
 
-    const session::Session* session = requireIdentified(fd);
+    const session::Session* session = requireIdentified(session_manager_, fd);
     if (!session) {
         return makeError("NOT_IDENTIFIED", "Client must IDENTIFY before fetching history");
     }
@@ -295,7 +276,7 @@ Message DMHandler::handleListDmConversations(const Message& message, int fd) con
         return makeError("MALFORMED_MESSAGE", "LIST_DM_CONVERSATIONS payload must be an object");
     }
 
-    const session::Session* session = requireIdentified(fd);
+    const session::Session* session = requireIdentified(session_manager_, fd);
     if (!session) {
         return makeError("NOT_IDENTIFIED", "Client must IDENTIFY before listing DM conversations");
     }

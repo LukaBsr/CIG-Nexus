@@ -2,6 +2,7 @@
 #define CIG_NEXUS_PROTOCOL_MESSAGE_BUILDERS_HPP
 
 #include "http/InternalApiClient.hpp"
+#include "protocol/Message.hpp"
 
 #include <optional>
 #include <string>
@@ -16,6 +17,15 @@ inline nlohmann::json make_welcome(const std::string& server_version) {
 
 inline nlohmann::json make_error(const std::string& code, const std::string& message) {
     return nlohmann::json{{"type", "ERROR"}, {"code", code}, {"message", message}};
+}
+
+// A DIRECT-scope ERROR Message — what every handler's error path and
+// Server's own protocol-level errors return.
+inline Message make_error_message(const std::string& code, const std::string& message) {
+    Message response;
+    response.type = "ERROR";
+    response.payload = make_error(code, message);
+    return response;
 }
 
 // docs/social/friends-dms-design.md §4.5: display_name/avatar_url are

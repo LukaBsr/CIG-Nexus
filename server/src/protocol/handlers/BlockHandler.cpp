@@ -2,6 +2,7 @@
 
 #include "http/InternalApiClient.hpp"
 #include "protocol/MessageBuilders.hpp"
+#include "protocol/handlers/HandlerSupport.hpp"
 #include "session/SessionManager.hpp"
 
 namespace protocol {
@@ -14,26 +15,6 @@ void BlockHandler::setInternalApiClient(http::InternalApiClient* internal_api_cl
     internal_api_client_ = internal_api_client;
 }
 
-Message BlockHandler::makeError(const std::string& code, const std::string& msg) {
-    Message response;
-    response.type = "ERROR";
-    response.payload = make_error(code, msg);
-    return response;
-}
-
-const session::Session* BlockHandler::requireIdentified(int fd) const {
-    if (!session_manager_) {
-        return nullptr;
-    }
-
-    const session::Session* session = session_manager_->getSession(fd);
-    if (!session || session->username.empty()) {
-        return nullptr;
-    }
-
-    return session;
-}
-
 Message BlockHandler::handleBlockUser(const Message& message, int fd) const {
     if (message.type != "BLOCK_USER") {
         return makeError("PROTOCOL_VIOLATION", "Expected BLOCK_USER message");
@@ -42,7 +23,7 @@ Message BlockHandler::handleBlockUser(const Message& message, int fd) const {
         return makeError("MALFORMED_MESSAGE", "BLOCK_USER payload must be an object");
     }
 
-    const session::Session* session = requireIdentified(fd);
+    const session::Session* session = requireIdentified(session_manager_, fd);
     if (!session) {
         return makeError("NOT_IDENTIFIED", "Client must IDENTIFY before blocking a user");
     }
@@ -85,7 +66,7 @@ Message BlockHandler::handleUnblockUser(const Message& message, int fd) const {
         return makeError("MALFORMED_MESSAGE", "UNBLOCK_USER payload must be an object");
     }
 
-    const session::Session* session = requireIdentified(fd);
+    const session::Session* session = requireIdentified(session_manager_, fd);
     if (!session) {
         return makeError("NOT_IDENTIFIED", "Client must IDENTIFY before unblocking a user");
     }
@@ -120,7 +101,7 @@ Message BlockHandler::handleListBlocks(const Message& message, int fd) const {
         return makeError("MALFORMED_MESSAGE", "LIST_BLOCKS payload must be an object");
     }
 
-    const session::Session* session = requireIdentified(fd);
+    const session::Session* session = requireIdentified(session_manager_, fd);
     if (!session) {
         return makeError("NOT_IDENTIFIED", "Client must IDENTIFY before listing blocks");
     }

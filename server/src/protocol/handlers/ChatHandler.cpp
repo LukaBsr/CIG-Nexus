@@ -2,6 +2,7 @@
 
 #include "persistence/MessagePersistenceWorker.hpp"
 #include "protocol/MessageBuilders.hpp"
+#include "protocol/handlers/HandlerSupport.hpp"
 #include "session/SessionManager.hpp"
 #include "util/RateLimiter.hpp"
 
@@ -30,13 +31,6 @@ void ChatHandler::seedMessageCounter(std::optional<int> last_seq) {
 }
 
 Message ChatHandler::handle(const Message& message, int fd) const {
-    auto makeError = [](const std::string& code, const std::string& msg) {
-        Message response;
-        response.type = "ERROR";
-        response.payload = make_error(code, msg);
-        return response;
-    };
-
     if (message.type != "CHAT_MESSAGE") {
         return makeError("PROTOCOL_VIOLATION", "Expected CHAT_MESSAGE message");
     }

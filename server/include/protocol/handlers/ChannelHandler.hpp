@@ -59,12 +59,6 @@ class ChannelHandler {
     Message handleFetchHistory(const Message& message, int fd) const;
 
   private:
-    static Message makeError(const std::string& code, const std::string& msg);
-
-    // Returns nullptr (caller returns NOT_IDENTIFIED) if fd has no session
-    // or hasn't completed IDENTIFY yet.
-    const session::Session* requireIdentified(int fd) const;
-
     session::SessionManager* session_manager_ = nullptr;
     guild::GuildManager* guild_manager_ = nullptr;
     http::InternalApiClient* internal_api_client_ = nullptr;

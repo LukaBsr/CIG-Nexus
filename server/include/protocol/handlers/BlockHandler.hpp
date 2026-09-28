@@ -27,9 +27,6 @@ class BlockHandler {
     Message handleListBlocks(const Message& message, int fd) const;
 
   private:
-    static Message makeError(const std::string& code, const std::string& msg);
-    const session::Session* requireIdentified(int fd) const;
-
     session::SessionManager* session_manager_ = nullptr;
     http::InternalApiClient* internal_api_client_ = nullptr;
 };

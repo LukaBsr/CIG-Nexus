@@ -5,6 +5,7 @@
 #include "http/InternalApiClient.hpp"
 #include "persistence/MessagePersistenceWorker.hpp"
 #include "protocol/MessageBuilders.hpp"
+#include "protocol/handlers/HandlerSupport.hpp"
 #include "session/SessionManager.hpp"
 #include "util/RateLimiter.hpp"
 
@@ -45,26 +46,6 @@ void ChannelHandler::seedMessageCounter(std::optional<int> last_seq) {
     }
 }
 
-Message ChannelHandler::makeError(const std::string& code, const std::string& msg) {
-    Message response;
-    response.type = "ERROR";
-    response.payload = make_error(code, msg);
-    return response;
-}
-
-const session::Session* ChannelHandler::requireIdentified(int fd) const {
-    if (!session_manager_) {
-        return nullptr;
-    }
-
-    const session::Session* session = session_manager_->getSession(fd);
-    if (!session || session->username.empty()) {
-        return nullptr;
-    }
-
-    return session;
-}
-
 Message ChannelHandler::handleListChannels(const Message& message, int fd) const {
     if (message.type != "LIST_CHANNELS") {
         return makeError("PROTOCOL_VIOLATION", "Expected LIST_CHANNELS message");
@@ -74,7 +55,7 @@ Message ChannelHandler::handleListChannels(const Message& message, int fd) const
         return makeError("MALFORMED_MESSAGE", "LIST_CHANNELS payload must be an object");
     }
 
-    if (!requireIdentified(fd)) {
+    if (!requireIdentified(session_manager_, fd)) {
         return makeError("NOT_IDENTIFIED", "Client must IDENTIFY before listing channels");
     }
 
@@ -117,7 +98,7 @@ Message ChannelHandler::handleCreateChannel(const Message& message, int fd) cons
         return makeError("MALFORMED_MESSAGE", "CREATE_CHANNEL payload must be an object");
     }
 
-    const session::Session* session = requireIdentified(fd);
+    const session::Session* session = requireIdentified(session_manager_, fd);
     if (!session) {
         return makeError("NOT_IDENTIFIED", "Client must IDENTIFY before creating a channel");
     }
@@ -200,7 +181,7 @@ Message ChannelHandler::handleDeleteChannel(const Message& message, int fd) cons
         return makeError("MALFORMED_MESSAGE", "DELETE_CHANNEL payload must be an object");
     }
 
-    const session::Session* session = requireIdentified(fd);
+    const session::Session* session = requireIdentified(session_manager_, fd);
     if (!session) {
         return makeError("NOT_IDENTIFIED", "Client must IDENTIFY before deleting a channel");
     }
@@ -259,7 +240,7 @@ Message ChannelHandler::handleJoinChannel(const Message& message, int fd) const 
         return makeError("MALFORMED_MESSAGE", "JOIN_CHANNEL payload must be an object");
     }
 
-    if (!requireIdentified(fd)) {
+    if (!requireIdentified(session_manager_, fd)) {
         return makeError("NOT_IDENTIFIED", "Client must IDENTIFY before joining a channel");
     }
 
@@ -301,7 +282,7 @@ Message ChannelHandler::handleLeaveChannel(const Message& message, int fd) const
         return makeError("PROTOCOL_VIOLATION", "Expected LEAVE_CHANNEL message");
     }
 
-    const session::Session* session = requireIdentified(fd);
+    const session::Session* session = requireIdentified(session_manager_, fd);
     if (!session) {
         return makeError("NOT_IDENTIFIED", "Client must IDENTIFY before leaving a channel");
     }
@@ -328,7 +309,7 @@ Message ChannelHandler::handleChannelMessage(const Message& message, int fd) con
         return makeError("MALFORMED_MESSAGE", "CHANNEL_MESSAGE payload must be an object");
     }
 
-    const session::Session* session = requireIdentified(fd);
+    const session::Session* session = requireIdentified(session_manager_, fd);
     if (!session) {
         return makeError("NOT_IDENTIFIED", "Client must IDENTIFY before sending channel messages");
     }
@@ -403,7 +384,7 @@ Message ChannelHandler::handleFetchHistory(const Message& message, int fd) const
         return makeError("MALFORMED_MESSAGE", "FETCH_HISTORY payload must be an object");
     }
 
-    const session::Session* session = requireIdentified(fd);
+    const session::Session* session = requireIdentified(session_manager_, fd);
     if (!session) {
         return makeError("NOT_IDENTIFIED", "Client must IDENTIFY before fetching history");
     }
