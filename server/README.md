@@ -25,6 +25,7 @@ It never opens a database connection itself: durable state (users, guilds, chann
 The server refuses to start without these environment variables:
 
 - `AUTH_JWT_PUBLIC_KEY_PATH` — file path of the RS256 public key used to verify session tokens (the private key never reaches this service)
+- `AUTH_JWT_EXPECTED_ISSUER` — the `iss` claim a session token must carry (`cig-nexus-web`, what the web signer emits); a token with a missing or different `iss` is rejected with `INVALID_SESSION`
 - `INTERNAL_API_BASE_URL` — base URL of Next.js's internal-only API
 - `INTERNAL_API_SHARED_SECRET` — shared secret sent with every internal API call
 

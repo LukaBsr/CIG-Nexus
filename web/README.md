@@ -105,7 +105,7 @@ server.mjs          # production server: public port + a second, unpublished int
 
 The web client is included in the root Docker Compose stack.
 
-From the repository root:
+From the repository root, after creating `.env` and `secrets/` as described in the root [README](../README.md) (`docker compose` refuses to run with required variables missing from `.env`):
 
 ```bash
 docker compose up --build

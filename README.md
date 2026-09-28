@@ -131,6 +131,12 @@ host — only reachable from within the Compose network.
 
 ### First-run troubleshooting
 
+**`docker compose` says `required variable AUTH_JWT_EXPECTED_ISSUER is missing`.**
+Your `.env` predates that setting. Copy the `AUTH_JWT_EXPECTED_ISSUER=...` line from
+`.env.example` into `.env`. Compose validates the whole file on every command
+(`up`, `build`, `down`, `config`), including for services you didn't ask for, so
+this applies even to `docker compose up gateway` or `docker compose down`.
+
 **`secrets/private.pem` / `secrets/public.pem` are directories, or you can't
 write to `secrets/`.** `docker-compose.yml` bind-mounts `./secrets/private.pem`
 and `./secrets/public.pem`. If they don't exist when you run

@@ -15,8 +15,10 @@ routes' fail-closed behavior, since these are already-authenticated,
 low-stakes mutations) — the protocol-level actions (invite creation/
 redemption, join requests, friend requests/codes, `CREATE_GUILD`,
 `CHAT_MESSAGE`/`CHANNEL_MESSAGE`/`DM_SEND`) remain unthrottled, a planned
-follow-up; and the C++ JWT verifier does not check the `iss` claim. The
-body below is left as the original point-in-time audit.
+follow-up. (The C++ JWT verifier's missing `iss` check and its
+negative-`exp` wraparound were found afterwards and fixed; the verifier now
+enforces `iss` against `AUTH_JWT_EXPECTED_ISSUER`.) The body below is left as
+the original point-in-time audit.
 
 **Scope**: everything merged into `main` as of this audit — Discord OAuth2
 (PKCE), session/JWT handling, Postgres persistence, the `/internal/*` API
