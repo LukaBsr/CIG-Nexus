@@ -118,6 +118,8 @@ The server's `Message` type carries a `Scope` field:
 server/
 ├── include/            # Headers: Server, TcpListener, Connection, auth/, guild/, http/, persistence/, protocol/, session/, util/
 ├── src/
+│   ├── Server.cpp      # Server class core: construction/wiring, start() main loop, stop()
+│   ├── ServerRoutes.cpp  # Server::registerRoutes() — the message-type -> handler dispatch table
 │   ├── auth/           # JwtVerifier, RevocationCache — RS256 session-token verification
 │   ├── guild/           # GuildManager — guild/channel catalog write-through cache, role-rank predicates
 │   ├── http/            # CurlInternalApiClient — calls to Next.js's /internal/* API (server never touches Postgres directly)
@@ -127,10 +129,9 @@ server/
 │   │   │               # GuildHandler, HelloHandler, IdentifyHandler, InviteHandler, JoinRequestHandler
 │   │   ├── MessageDispatcher.cpp
 │   │   └── MessageParser.cpp
-│   ├── session/
-│   │   └── SessionManager.cpp
-│   └── util/            # FilePermissions — startup checks (e.g. private-key file mode)
-└── tests/               # Catch2 tests mirroring src/: auth/, guild/, http/, integration/, persistence/, protocol/, util/
+│   ├── session/         # SessionManager (per-fd sessions, presence counts), SessionHydrationWorker (async post-IDENTIFY load)
+│   └── util/            # FilePermissions (startup checks, e.g. private-key file mode), RateLimiter, DebugFlags
+└── tests/               # Catch2 tests mirroring src/: auth/, guild/, http/, integration/, persistence/, protocol/, session/, util/
 ```
 
 ### Web Layout
