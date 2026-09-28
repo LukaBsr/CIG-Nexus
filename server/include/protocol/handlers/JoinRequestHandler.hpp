@@ -49,8 +49,6 @@ class JoinRequestHandler {
     std::vector<Message> handleRejectJoinRequest(const Message& message, int fd) const;
 
   private:
-    static Message makeError(const std::string& code, const std::string& msg);
-    const session::Session* requireIdentified(int fd) const;
     std::vector<int> getOfficerFds(const std::string& guild_id) const;
 
     session::SessionManager* session_manager_ = nullptr;

@@ -91,12 +91,9 @@ void Server::registerRoutes() {
         const bool has_channel_id = msg.payload.is_object() && msg.payload.contains("channel_id") &&
                                     !msg.payload["channel_id"].is_null();
         if (has_peer_id && has_channel_id) {
-            protocol::Message error;
-            error.type = "ERROR";
-            error.payload = protocol::make_error(
+            return std::vector<protocol::Message>{protocol::make_error_message(
                 "MALFORMED_MESSAGE",
-                "FETCH_HISTORY: channel_id and peer_id are mutually exclusive");
-            return std::vector<protocol::Message>{error};
+                "FETCH_HISTORY: channel_id and peer_id are mutually exclusive")};
         }
         if (has_peer_id) {
             return std::vector<protocol::Message>{dm_handler_.handleFetchHistory(msg, fd)};

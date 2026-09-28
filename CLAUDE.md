@@ -130,6 +130,7 @@ server/
 │   ├── protocol/
 │   │   ├── handlers/   # BlockHandler, ChannelHandler, ChatHandler, DMHandler, FriendHandler,
 │   │   │               # GuildHandler, HelloHandler, IdentifyHandler, InviteHandler, JoinRequestHandler
+│   │               # (shared makeError/requireIdentified live in include/protocol/handlers/HandlerSupport.hpp)
 │   │   ├── MessageDispatcher.cpp
 │   │   └── MessageParser.cpp
 │   ├── session/         # SessionManager (per-fd sessions, presence counts), SessionHydrationWorker (async post-IDENTIFY load)

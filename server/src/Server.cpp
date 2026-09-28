@@ -150,12 +150,9 @@ void Server::start() {
                     responses = dispatcher_.dispatch(message, fd);
                 } catch (const std::exception& e) {
                     std::cerr << "Dispatch error (fd=" << fd << "): " << e.what() << std::endl;
-                    protocol::Message error;
-                    error.type = "ERROR";
-                    error.scope = protocol::Scope::DIRECT;
-                    error.payload = protocol::make_error("PROTOCOL_VIOLATION",
-                                                         "Unknown message type: " + message.type);
-                    sendMessage(fd, error);
+                    sendMessage(
+                        fd, protocol::make_error_message("PROTOCOL_VIOLATION",
+                                                         "Unknown message type: " + message.type));
                     continue;
                 }
 

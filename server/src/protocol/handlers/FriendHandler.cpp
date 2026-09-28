@@ -2,6 +2,7 @@
 
 #include "http/InternalApiClient.hpp"
 #include "protocol/MessageBuilders.hpp"
+#include "protocol/handlers/HandlerSupport.hpp"
 #include "session/SessionManager.hpp"
 #include "util/RateLimiter.hpp"
 
@@ -19,26 +20,6 @@ void FriendHandler::setInternalApiClient(http::InternalApiClient* internal_api_c
 
 void FriendHandler::setRateLimiter(util::RateLimiter* rate_limiter) {
     rate_limiter_ = rate_limiter;
-}
-
-Message FriendHandler::makeError(const std::string& code, const std::string& msg) {
-    Message response;
-    response.type = "ERROR";
-    response.payload = make_error(code, msg);
-    return response;
-}
-
-const session::Session* FriendHandler::requireIdentified(int fd) const {
-    if (!session_manager_) {
-        return nullptr;
-    }
-
-    const session::Session* session = session_manager_->getSession(fd);
-    if (!session || session->username.empty()) {
-        return nullptr;
-    }
-
-    return session;
 }
 
 void FriendHandler::updateFriendIdsForBothParties(const std::string& user_id_a,
@@ -117,7 +98,7 @@ std::vector<Message> FriendHandler::handleSendFriendRequest(const Message& messa
         return {makeError("MALFORMED_MESSAGE", "SEND_FRIEND_REQUEST payload must be an object")};
     }
 
-    const session::Session* session = requireIdentified(fd);
+    const session::Session* session = requireIdentified(session_manager_, fd);
     if (!session) {
         return {
             makeError("NOT_IDENTIFIED", "Client must IDENTIFY before sending a friend request")};
@@ -152,7 +133,7 @@ std::vector<Message> FriendHandler::handleAddFriendByCode(const Message& message
         return {makeError("MALFORMED_MESSAGE", "ADD_FRIEND_BY_CODE payload must be an object")};
     }
 
-    const session::Session* session = requireIdentified(fd);
+    const session::Session* session = requireIdentified(session_manager_, fd);
     if (!session) {
         return {makeError("NOT_IDENTIFIED", "Client must IDENTIFY before adding a friend by code")};
     }
@@ -187,7 +168,7 @@ std::vector<Message> FriendHandler::handleAcceptFriendRequest(const Message& mes
         return {makeError("MALFORMED_MESSAGE", "ACCEPT_FRIEND_REQUEST payload must be an object")};
     }
 
-    const session::Session* session = requireIdentified(fd);
+    const session::Session* session = requireIdentified(session_manager_, fd);
     if (!session) {
         return {
             makeError("NOT_IDENTIFIED", "Client must IDENTIFY before accepting a friend request")};
@@ -274,7 +255,7 @@ std::vector<Message> FriendHandler::handleRejectFriendRequest(const Message& mes
         return {makeError("MALFORMED_MESSAGE", "REJECT_FRIEND_REQUEST payload must be an object")};
     }
 
-    const session::Session* session = requireIdentified(fd);
+    const session::Session* session = requireIdentified(session_manager_, fd);
     if (!session) {
         return {
             makeError("NOT_IDENTIFIED", "Client must IDENTIFY before rejecting a friend request")};
@@ -305,7 +286,7 @@ std::vector<Message> FriendHandler::handleCancelFriendRequest(const Message& mes
         return {makeError("MALFORMED_MESSAGE", "CANCEL_FRIEND_REQUEST payload must be an object")};
     }
 
-    const session::Session* session = requireIdentified(fd);
+    const session::Session* session = requireIdentified(session_manager_, fd);
     if (!session) {
         return {
             makeError("NOT_IDENTIFIED", "Client must IDENTIFY before canceling a friend request")};
@@ -335,7 +316,7 @@ std::vector<Message> FriendHandler::handleRemoveFriend(const Message& message, i
         return {makeError("MALFORMED_MESSAGE", "REMOVE_FRIEND payload must be an object")};
     }
 
-    const session::Session* session = requireIdentified(fd);
+    const session::Session* session = requireIdentified(session_manager_, fd);
     if (!session) {
         return {makeError("NOT_IDENTIFIED", "Client must IDENTIFY before removing a friend")};
     }
@@ -380,7 +361,7 @@ Message FriendHandler::handleListFriends(const Message& message, int fd) const {
         return makeError("MALFORMED_MESSAGE", "LIST_FRIENDS payload must be an object");
     }
 
-    const session::Session* session = requireIdentified(fd);
+    const session::Session* session = requireIdentified(session_manager_, fd);
     if (!session) {
         return makeError("NOT_IDENTIFIED", "Client must IDENTIFY before listing friends");
     }
@@ -417,7 +398,7 @@ Message FriendHandler::handleListFriendRequests(const Message& message, int fd) 
         return makeError("MALFORMED_MESSAGE", "LIST_FRIEND_REQUESTS payload must be an object");
     }
 
-    const session::Session* session = requireIdentified(fd);
+    const session::Session* session = requireIdentified(session_manager_, fd);
     if (!session) {
         return makeError("NOT_IDENTIFIED", "Client must IDENTIFY before listing friend requests");
     }
@@ -459,7 +440,7 @@ Message FriendHandler::handleFetchFriendCode(const Message& message, int fd) con
         return makeError("MALFORMED_MESSAGE", "FETCH_FRIEND_CODE payload must be an object");
     }
 
-    const session::Session* session = requireIdentified(fd);
+    const session::Session* session = requireIdentified(session_manager_, fd);
     if (!session) {
         return makeError("NOT_IDENTIFIED", "Client must IDENTIFY before fetching a friend code");
     }
@@ -486,7 +467,7 @@ Message FriendHandler::handleRegenerateFriendCode(const Message& message, int fd
         return makeError("MALFORMED_MESSAGE", "REGENERATE_FRIEND_CODE payload must be an object");
     }
 
-    const session::Session* session = requireIdentified(fd);
+    const session::Session* session = requireIdentified(session_manager_, fd);
     if (!session) {
         return makeError("NOT_IDENTIFIED",
                          "Client must IDENTIFY before regenerating a friend code");

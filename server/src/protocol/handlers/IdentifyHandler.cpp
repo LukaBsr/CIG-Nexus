@@ -4,23 +4,13 @@
 #include "auth/RevocationCache.hpp"
 #include "guild/GuildManager.hpp"
 #include "protocol/MessageBuilders.hpp"
+#include "protocol/handlers/HandlerSupport.hpp"
 #include "session/SessionManager.hpp"
 #include "util/DebugFlags.hpp"
 
 #include <string>
 
 namespace protocol {
-
-namespace {
-
-Message makeError(const std::string& code, const std::string& msg) {
-    Message response;
-    response.type = "ERROR";
-    response.payload = make_error(code, msg);
-    return response;
-}
-
-} // namespace
 
 void IdentifyHandler::setSessionManager(session::SessionManager* session_manager) {
     session_manager_ = session_manager;

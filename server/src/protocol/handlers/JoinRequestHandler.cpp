@@ -4,6 +4,7 @@
 #include "guild/GuildManager.hpp"
 #include "http/InternalApiClient.hpp"
 #include "protocol/MessageBuilders.hpp"
+#include "protocol/handlers/HandlerSupport.hpp"
 #include "session/SessionManager.hpp"
 #include "util/RateLimiter.hpp"
 
@@ -27,26 +28,6 @@ void JoinRequestHandler::setRateLimiter(util::RateLimiter* rate_limiter) {
     rate_limiter_ = rate_limiter;
 }
 
-Message JoinRequestHandler::makeError(const std::string& code, const std::string& msg) {
-    Message response;
-    response.type = "ERROR";
-    response.payload = make_error(code, msg);
-    return response;
-}
-
-const session::Session* JoinRequestHandler::requireIdentified(int fd) const {
-    if (!session_manager_) {
-        return nullptr;
-    }
-
-    const session::Session* session = session_manager_->getSession(fd);
-    if (!session || session->username.empty()) {
-        return nullptr;
-    }
-
-    return session;
-}
-
 std::vector<int> JoinRequestHandler::getOfficerFds(const std::string& guild_id) const {
     std::vector<int> officer_fds;
     for (int candidate_fd : session_manager_->getFdsInGuild(guild_id)) {
@@ -67,7 +48,7 @@ std::vector<Message> JoinRequestHandler::handleRequestJoin(const Message& messag
         return {makeError("MALFORMED_MESSAGE", "REQUEST_JOIN payload must be an object")};
     }
 
-    const session::Session* session = requireIdentified(fd);
+    const session::Session* session = requireIdentified(session_manager_, fd);
     if (!session) {
         return {
             makeError("NOT_IDENTIFIED", "Client must IDENTIFY before requesting to join a guild")};
@@ -147,7 +128,7 @@ Message JoinRequestHandler::handleListJoinRequests(const Message& message, int f
         return makeError("MALFORMED_MESSAGE", "LIST_JOIN_REQUESTS payload must be an object");
     }
 
-    const session::Session* session = requireIdentified(fd);
+    const session::Session* session = requireIdentified(session_manager_, fd);
     if (!session) {
         return makeError("NOT_IDENTIFIED", "Client must IDENTIFY before listing join requests");
     }
@@ -203,7 +184,7 @@ std::vector<Message> JoinRequestHandler::handleApproveJoinRequest(const Message&
         return {makeError("MALFORMED_MESSAGE", "APPROVE_JOIN_REQUEST payload must be an object")};
     }
 
-    const session::Session* session = requireIdentified(fd);
+    const session::Session* session = requireIdentified(session_manager_, fd);
     if (!session) {
         return {
             makeError("NOT_IDENTIFIED", "Client must IDENTIFY before approving a join request")};
@@ -285,7 +266,7 @@ std::vector<Message> JoinRequestHandler::handleRejectJoinRequest(const Message& 
         return {makeError("MALFORMED_MESSAGE", "REJECT_JOIN_REQUEST payload must be an object")};
     }
 
-    const session::Session* session = requireIdentified(fd);
+    const session::Session* session = requireIdentified(session_manager_, fd);
     if (!session) {
         return {
             makeError("NOT_IDENTIFIED", "Client must IDENTIFY before rejecting a join request")};

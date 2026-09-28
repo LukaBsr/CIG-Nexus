@@ -50,9 +50,6 @@ class FriendHandler {
     Message handleRegenerateFriendCode(const Message& message, int fd) const;
 
   private:
-    static Message makeError(const std::string& code, const std::string& msg);
-    const session::Session* requireIdentified(int fd) const;
-
     // Shared by handleSendFriendRequest/handleAddFriendByCode — maps a
     // SendFriendRequestResult to the appropriate error, or to the
     // FRIEND_REQUEST_SENT+RECEIVED / FRIEND_ADDED+FRIEND_ADDED response

@@ -4,6 +4,7 @@
 #include "guild/GuildManager.hpp"
 #include "http/InternalApiClient.hpp"
 #include "protocol/MessageBuilders.hpp"
+#include "protocol/handlers/HandlerSupport.hpp"
 #include "session/SessionManager.hpp"
 #include "util/RateLimiter.hpp"
 
@@ -25,26 +26,6 @@ void InviteHandler::setInternalApiClient(http::InternalApiClient* internal_api_c
 
 void InviteHandler::setRateLimiter(util::RateLimiter* rate_limiter) {
     rate_limiter_ = rate_limiter;
-}
-
-Message InviteHandler::makeError(const std::string& code, const std::string& msg) {
-    Message response;
-    response.type = "ERROR";
-    response.payload = make_error(code, msg);
-    return response;
-}
-
-const session::Session* InviteHandler::requireIdentified(int fd) const {
-    if (!session_manager_) {
-        return nullptr;
-    }
-
-    const session::Session* session = session_manager_->getSession(fd);
-    if (!session || session->username.empty()) {
-        return nullptr;
-    }
-
-    return session;
 }
 
 std::vector<int> InviteHandler::getOfficerFds(const std::string& guild_id) const {
@@ -83,7 +64,7 @@ Message InviteHandler::handleCreateInvite(const Message& message, int fd) const 
         return makeError("MALFORMED_MESSAGE", "CREATE_INVITE payload must be an object");
     }
 
-    const session::Session* session = requireIdentified(fd);
+    const session::Session* session = requireIdentified(session_manager_, fd);
     if (!session) {
         return makeError("NOT_IDENTIFIED", "Client must IDENTIFY before creating an invite");
     }
@@ -161,7 +142,7 @@ Message InviteHandler::handleListInvites(const Message& message, int fd) const {
         return makeError("MALFORMED_MESSAGE", "LIST_INVITES payload must be an object");
     }
 
-    const session::Session* session = requireIdentified(fd);
+    const session::Session* session = requireIdentified(session_manager_, fd);
     if (!session) {
         return makeError("NOT_IDENTIFIED", "Client must IDENTIFY before listing invites");
     }
@@ -210,7 +191,7 @@ Message InviteHandler::handleRevokeInvite(const Message& message, int fd) const 
         return makeError("MALFORMED_MESSAGE", "REVOKE_INVITE payload must be an object");
     }
 
-    const session::Session* session = requireIdentified(fd);
+    const session::Session* session = requireIdentified(session_manager_, fd);
     if (!session) {
         return makeError("NOT_IDENTIFIED", "Client must IDENTIFY before revoking an invite");
     }
@@ -256,7 +237,7 @@ std::vector<Message> InviteHandler::handleJoinViaInvite(const Message& message, 
         return {makeError("MALFORMED_MESSAGE", "JOIN_VIA_INVITE payload must be an object")};
     }
 
-    const session::Session* session = requireIdentified(fd);
+    const session::Session* session = requireIdentified(session_manager_, fd);
     if (!session) {
         return {makeError("NOT_IDENTIFIED", "Client must IDENTIFY before joining via invite")};
     }
