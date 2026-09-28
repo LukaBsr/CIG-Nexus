@@ -65,6 +65,11 @@ class Server {
     uint16_t bound_port() const;
 
   private:
+    // Registers every message-type handler with dispatcher_ (defined in
+    // ServerRoutes.cpp). Called once from the constructor, after the
+    // handlers have been wired to their dependencies.
+    void registerRoutes();
+
     // Network send helpers
     bool sendMessage(int fd, const protocol::Message& message);
     // Delivers to every *identified* connection only. A socket that hasn't
