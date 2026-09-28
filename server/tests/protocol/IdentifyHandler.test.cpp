@@ -6,10 +6,8 @@
 #include "auth/JwtVerifier.hpp"
 #include "auth/RevocationCache.hpp"
 #include "guild/GuildManager.hpp"
-#include "http/InternalApiClient.hpp"
 
 #include "../auth/TestJwtHelper.hpp"
-#include "../http/FakeInternalApiClient.hpp"
 
 #include <chrono>
 
@@ -273,23 +271,23 @@ TEST_CASE("IdentifyHandler does not crash without a GuildManager set, and leaves
     REQUIRE(session->guild_ids.empty());
 }
 
-TEST_CASE("IdentifyHandler hydrates blocked_user_ids, friend_ids, and display_name/avatar_url "
-          "from a single fetchSessionContext call (IDENTIFY hardening B1)") {
+// docs/known-issues.md / IDENTIFY hardening B2: hydration of
+// blocked_user_ids/friend_ids/display_name/avatar_url moved out of this
+// handler entirely (Server enqueues a session::SessionHydrationJob after
+// seeing IDENTIFIED, applied later by Server::processHydrationResults) —
+// see tests/session/SessionHydrationWorker.test.cpp and
+// tests/integration/Server.test.cpp for coverage of that path instead.
+// This handler's own contract now is simply: never sets those fields, and
+// never sets session_context_ready.
+TEST_CASE("IdentifyHandler never sets session_context_ready or the "
+          "hydration-dependent fields — that's Server's job now (IDENTIFY hardening B2)") {
     test_helpers::TestRsaKeyPair keys;
     auth::JwtVerifier verifier(keys.publicKeyPem());
-    test_helpers::FakeInternalApiClient api;
-    api.blocks_to_return = {
-        {"u_blocked", "blocked_user", "2026-01-01T00:00:00Z", std::nullopt, std::nullopt}};
-    api.friends_to_return = {{"u_friend", "friend_user", std::nullopt, std::nullopt}};
-    api.user_profile_to_return =
-        http::WireUserProfile{"u_11111111-1111-1111-1111-111111111111", "web_user",
-                              std::string("Nova"), std::string("/uploads/avatars/a.png")};
 
     protocol::IdentifyHandler handler;
     session::SessionManager sessions;
     handler.setSessionManager(&sessions);
     handler.setJwtVerifier(&verifier);
-    handler.setInternalApiClient(&api);
 
     const std::string token = test_helpers::signTestJwt(keys.key, rs256Header(), validClaims());
     const auto response = handler.handle(make_identify(token), 20);
@@ -297,34 +295,7 @@ TEST_CASE("IdentifyHandler hydrates blocked_user_ids, friend_ids, and display_na
     REQUIRE(response.type == "IDENTIFIED");
     const auto* session = sessions.getSession(20);
     REQUIRE(session != nullptr);
-    REQUIRE(session->blocked_user_ids == std::vector<std::string>{"u_blocked"});
-    REQUIRE(session->friend_ids == std::vector<std::string>{"u_friend"});
-    REQUIRE(session->display_name == "Nova");
-    REQUIRE(session->avatar_url == "/uploads/avatars/a.png");
-
-    // The point of B1: one combined call, not three separate ones.
-    REQUIRE(api.fetch_session_context_call_count == 1);
-}
-
-TEST_CASE("IdentifyHandler leaves blocked_user_ids/friend_ids/display_name unset when "
-          "fetchSessionContext fails, without failing IDENTIFY") {
-    test_helpers::TestRsaKeyPair keys;
-    auth::JwtVerifier verifier(keys.publicKeyPem());
-    test_helpers::FakeInternalApiClient api;
-    api.fail_fetch_user_profile = true;
-
-    protocol::IdentifyHandler handler;
-    session::SessionManager sessions;
-    handler.setSessionManager(&sessions);
-    handler.setJwtVerifier(&verifier);
-    handler.setInternalApiClient(&api);
-
-    const std::string token = test_helpers::signTestJwt(keys.key, rs256Header(), validClaims());
-    const auto response = handler.handle(make_identify(token), 21);
-
-    REQUIRE(response.type == "IDENTIFIED");
-    const auto* session = sessions.getSession(21);
-    REQUIRE(session != nullptr);
+    REQUIRE_FALSE(session->session_context_ready);
     REQUIRE(session->blocked_user_ids.empty());
     REQUIRE(session->friend_ids.empty());
     REQUIRE_FALSE(session->display_name.has_value());

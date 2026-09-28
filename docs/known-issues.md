@@ -120,6 +120,50 @@ matching `identify success` line, immediately followed or preceded by a
 `decrementPresence`/`incrementPresence` count that doesn't add up for that
 `user_id`.
 
+**Update (IDENTIFY hardening B2): the specific mechanism above is now
+structurally closed, though not because anyone confirmed it was the actual
+cause.** `IdentifyHandler::handle()` no longer makes any internal-API call
+at all — the post-IDENTIFY blocks/friends/profile load
+(`fetchSessionContext`) moved to `session::SessionHydrationWorker`, run on
+its own thread and applied later by `Server::processHydrationResults()`.
+The window this candidate described (an exception between
+`createSession()` and `return response`, inside `IdentifyHandler`) is now
+just a few no-throw field assignments and an in-memory `GuildManager`
+lookup — there's essentially nothing left in that path that plausibly
+throws. If the leak recurs after this change, this specific candidate is
+likely ruled out; if it doesn't recur, that's circumstantial support for
+it having been the cause, not proof.
+
+**A related but distinct risk this change introduces, found by inspection,
+not observed**: `SessionHydrationWorker::run()` (`server/src/session/
+SessionHydrationWorker.cpp`) calls `InternalApiClient::fetchSessionContext`
+with no `try`/`catch` around it. An uncaught exception escaping a
+`std::thread`'s entry function calls `std::terminate()` — i.e., a bug that
+used to be a silent presence-count leak would instead crash the whole
+process. In practice `CurlInternalApiClient`'s methods already catch
+`nlohmann::json::exception` internally and return `nullopt` rather than
+throwing, so this is a latent gap, not a live one — but it's worth naming
+because `persistence::MessagePersistenceWorker::run()` has the exact same
+gap around its own `InternalApiClient::createMessage()` call, predating
+this change. Not fixed here (scope discipline: matching the existing,
+established pattern rather than hardening only the new copy of it, per the
+session's own reasoning at the time) — a real candidate for both workers to
+get a `try`/`catch` together, later, as its own change.
+
+**Also fixed here, confirmed by a failing-then-passing test, not just
+reasoned about**: a second tab for the same user whose hydration never
+completes must not, on disconnecting, decrement the *first* tab's real,
+already-online presence count —
+`Server::removeSessionTrackingPresence()` now gates the decrement on
+`Session::session_context_ready`, not merely "did this fd ever get a
+`user_id`." Reverting that check back to the old condition during this
+work reproduced exactly this symptom (a spurious `offline` broadcast for a
+user with another connection still fully online) in
+`tests/integration/Server.test.cpp`'s "A second tab's hydration never
+completing..." test — this is a different bug from the one this document
+otherwise tracks, but the same *family*: a presence decrement not matched
+by a real increment, for the same user_id, corrupting a shared counter.
+
 **Not yet tried**:
 
 - Checking whether `docker compose up --build -d web` (rebuilding only
@@ -142,12 +186,14 @@ unchanged in the ways that matter — `incrementPresence` runs once per
 mechanism was found by inspection. What did change since this was logged:
 `IdentifyHandler` made three synchronous internal-API calls
 (`fetchBlocks`, `fetchFriends`, `fetchUserProfile`, 5 s timeout each)
-between creating the session and the presence increment; as of a later
-IDENTIFY-hardening pass this is now a single combined call
-(`fetchSessionContext`, same 5 s timeout), which shrinks but doesn't
-eliminate the exception window the root-cause candidate above describes.
-Presence broadcasts also now go through `broadcastExcluding` (identified
-sessions only).
+between creating the session and the presence increment; a later pass
+combined these into one call (`fetchSessionContext`), and a further pass
+after that (IDENTIFY hardening B2, see the update above) moved the call
+off `IdentifyHandler` and this main loop entirely, onto
+`session::SessionHydrationWorker`'s own thread — closing the specific
+exception window the root-cause candidate above described, though not
+confirmed as the actual cause. Presence broadcasts also now go through
+`broadcastExcluding` (identified sessions only).
 The instrumentation plan below is still the right next step, and it should
 also log the IDENTIFY handler's entry/exit per fd so any dispatch that
 creates a session but never produces `IDENTIFIED` shows up.
@@ -161,6 +207,34 @@ issue has now survived four different deliberate reproduction attempts, so
 further "try to reproduce it cleanly" effort has a low expected return
 relative to "catch it happening organically with logging in place," which
 is what the instrumentation above is for.
+
+---
+
+## IDENTIFY hydration's ~60s retry bound is only that short because the web client can't reconnect on its own
+
+**Context**: IDENTIFY hardening B2 made the post-`IDENTIFY` blocks/friends/
+profile load (`session::SessionHydrationWorker`) asynchronous with bounded
+retry (`shared/protocol/README.md`'s [Asynchronous IDENTIFY
+Hydration](../shared/protocol/README.md#asynchronous-identify-hydration)
+section) instead of retrying forever. If the internal API stays down past
+that budget, the server sends `SESSION_CONTEXT_UNAVAILABLE` and disconnects
+rather than leaving an unenforced block list in place indefinitely.
+
+**Why the bound is ~60s and not tighter**: the web client
+(`web/hooks/useGatewayConnection.ts`) has no automatic reconnect logic
+today — a dropped connection just stays dropped until the user manually
+refreshes the page. Given that, disconnecting is a real, user-visible cost
+(not "the client silently retries a moment later"), so the retry budget was
+deliberately set generous enough to ride out a brief internal-API blip
+rather than the tightest bound that would still be technically correct.
+
+**Prerequisite for tightening this later**: shortening the retry window
+(or reintroducing anything closer to "fail fast") only becomes a good
+tradeoff once the web client can transparently reconnect and re-`IDENTIFY`
+after a `SESSION_CONTEXT_UNAVAILABLE`-triggered disconnect, without the
+user noticing or losing their place. Until `useGatewayConnection` gains
+that reconnect flow, treat ~60s as close to a floor, not a starting point
+to shrink opportunistically.
 
 ---
 

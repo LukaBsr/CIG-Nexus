@@ -12,7 +12,7 @@ It never opens a database connection itself: durable state (users, guilds, chann
 - Parse JSON protocol messages
 - Dispatch every protocol message type (see [../shared/protocol/README.md](../shared/protocol/README.md) for the full list): `HELLO`, `IDENTIFY`, `CHAT_MESSAGE`, guild/channel, invite, join-request, role, friend, blocking, direct-message, and `FETCH_HISTORY` handlers
 - Verify RS256 session tokens (`JwtVerifier`) and reject revoked sessions (`RevocationCache`, polled from Next.js every 30 seconds and once synchronously at startup; live connections whose session is revoked are disconnected)
-- Manage in-memory sessions keyed by socket fd, including guild membership, active-channel, friend/block, and profile state hydrated at `IDENTIFY`
+- Manage in-memory sessions keyed by socket fd, including guild membership and active-channel (hydrated synchronously at `IDENTIFY`), plus friend/block/profile state (hydrated asynchronously after `IDENTIFY` — see [shared/protocol/README.md](../shared/protocol/README.md)'s Asynchronous IDENTIFY Hydration section)
 - Rate limit a subset of protocol actions in-memory, per-user (`util::RateLimiter`) — see [../shared/protocol/README.md](../shared/protocol/README.md)'s Rate Limits section for which types and thresholds
 - Manage the guild/channel catalog (`GuildManager`) as a write-through cache over the internal API, hydrated at startup
 - Track online/offline presence per user (connection-count transitions) and broadcast `PRESENCE_UPDATE`
@@ -35,7 +35,7 @@ Optional: `CIG_NEXUS_DEBUG_PRESENCE=1` enables temporary stderr logging of every
 ## Protocol Lifecycle
 
 1. Client connects and sends `HELLO` (`version` must be `"0.1"`, `client` `"web"` or `"desktop"`); the server replies `WELCOME` (with `server_version`).
-2. Client sends `IDENTIFY` with a `session_token` (an RS256 JWT issued by Next.js after Discord OAuth2 login). The server checks the signature, algorithm (pinned to `RS256`), expiry, and audience, and that the session isn't revoked; on success it creates the in-memory session, hydrates guild/friend/block/profile state, and replies `IDENTIFIED`.
+2. Client sends `IDENTIFY` with a `session_token` (an RS256 JWT issued by Next.js after Discord OAuth2 login). The server checks the signature, algorithm (pinned to `RS256`), expiry, and audience, and that the session isn't revoked; on success it creates the in-memory session, hydrates guild membership (in-memory, immediate), and replies `IDENTIFIED` right away. Blocks/friends/profile load asynchronously afterward — see [shared/protocol/README.md](../shared/protocol/README.md)'s Asynchronous IDENTIFY Hydration section for what that means for `DM_SEND` and presence in the meantime.
 3. An identified client may send any other message type. Before `IDENTIFY`, they return `NOT_IDENTIFIED`.
 
 Errors reuse the codes documented in the protocol spec (`AUTH_REQUIRED`, `INVALID_SESSION`, `SESSION_EXPIRED`, `SESSION_REVOKED`, `NOT_IDENTIFIED`, `PROTOCOL_VIOLATION`, `MALFORMED_MESSAGE`, `INTERNAL_ERROR`, and the guild/friend/DM codes).
@@ -52,7 +52,7 @@ Guild-wide notifications, `CHANNEL_MESSAGE`, friend events, and `DM_MESSAGE` use
 - **Framing**: 4-byte big-endian size prefix (max 1 MiB)
 - **Payload format**: JSON
 - **Connection model**: one socket per client; `SO_KEEPALIVE` is enabled, but there is no application-level heartbeat
-- **I/O approach**: single-threaded accept loop plus per-connection polling (100 ms tick); internal API calls are synchronous (5 s timeout each), so a slow web service delays the whole loop. `IDENTIFY` makes one combined call (`fetchSessionContext`) instead of three separate ones for its blocks/friends/profile hydration. Message persistence runs on a separate worker thread.
+- **I/O approach**: single-threaded accept loop plus per-connection polling (100 ms tick); most internal API calls are synchronous (5 s timeout each) on this loop, so a slow web service delays every connection's traffic. Two exceptions run on their own worker thread instead: message persistence, and `IDENTIFY`'s post-`IDENTIFY` blocks/friends/profile load (`fetchSessionContext`, combined into one call and moved off this loop — see [shared/protocol/README.md](../shared/protocol/README.md)'s Asynchronous IDENTIFY Hydration section), applied back to the session once complete.
 - **Routing model**: `Message.scope` drives response behavior:
 	- `Scope::DIRECT`: response sent only to sender
 	- `Scope::BROADCAST`: response sent to all identified connections (never to a connection that hasn't completed `IDENTIFY`)

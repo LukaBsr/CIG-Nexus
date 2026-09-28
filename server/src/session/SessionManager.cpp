@@ -26,7 +26,8 @@ Session& SessionManager::createSession(int socket_fd) {
                     {},
                     {},
                     std::nullopt,
-                    std::nullopt};
+                    std::nullopt,
+                    false};
 
     auto [it, inserted] = sessions_.insert_or_assign(socket_fd, session);
 

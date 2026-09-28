@@ -43,6 +43,20 @@ struct Session {
     // need every field shifted.
     std::optional<std::string> display_name;
     std::optional<std::string> avatar_url;
+    // IDENTIFY hardening (B2): true once the async post-IDENTIFY load
+    // (blocks/friends/profile — see shared/protocol/README.md's
+    // Asynchronous IDENTIFY Hydration section) has completed
+    // successfully. Gates two things until then: DM_SEND (DMHandler
+    // returns SESSION_HYDRATING rather than evaluating canSendDm() against
+    // still-empty blocked_user_ids/friend_ids), and — just as
+    // important — whether this connection's disconnect is allowed to call
+    // decrementPresence() at all (Server::removeSessionTrackingPresence):
+    // a connection that never got this far never incremented presence
+    // either, so decrementing on its disconnect would wrongly erode a
+    // different, already-online connection's real count for the same
+    // user_id. Appended at the end for the same positional-aggregate-init
+    // reason display_name/avatar_url were.
+    bool session_context_ready = false;
 };
 
 } // namespace session

@@ -129,6 +129,18 @@ Message DMHandler::handleDmSend(const Message& message, int fd) const {
         return makeError("NOT_IDENTIFIED", "Client must IDENTIFY before sending a DM");
     }
 
+    // IDENTIFY hardening (B2): canSendDm() reads blocked_user_ids/
+    // friend_ids, both empty until this connection's async post-IDENTIFY
+    // load finishes — evaluating it against those still-empty defaults
+    // would wrongly permit a DM a completed load might have blocked, or
+    // wrongly deny one a completed load would have allowed. Retryable, not
+    // a permanent failure — shared/protocol/README.md's Asynchronous
+    // IDENTIFY Hydration section.
+    if (!session->session_context_ready) {
+        return makeError("SESSION_HYDRATING",
+                         "Still loading account context, please retry shortly");
+    }
+
     if (!message.payload.contains("user_id") || !message.payload["user_id"].is_string()) {
         return makeError("MALFORMED_MESSAGE", "DM_SEND missing required field: user_id");
     }

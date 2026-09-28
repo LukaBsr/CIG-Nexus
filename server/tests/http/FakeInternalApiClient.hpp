@@ -3,6 +3,9 @@
 
 #include "http/InternalApiClient.hpp"
 
+#include <chrono>
+#include <thread>
+
 namespace test_helpers {
 
 // In-memory stand-in for the internal catalog API (design doc §8.1), used
@@ -257,6 +260,14 @@ class FakeInternalApiClient : public http::InternalApiClient {
     std::optional<http::WireSessionContext>
     fetchSessionContext(const std::string& user_id) override {
         ++fetch_session_context_call_count;
+        // IDENTIFY hardening (B2) integration tests: simulates a slow/
+        // hanging internal API without a real network. Runs on
+        // session::SessionHydrationWorker's own thread, never the main
+        // loop thread, so this sleep is exactly what proves other
+        // connections' traffic isn't blocked behind it.
+        if (session_context_delay.count() > 0) {
+            std::this_thread::sleep_for(session_context_delay);
+        }
         const auto profile = fetchUserProfile(user_id);
         if (!profile) {
             return std::nullopt;
@@ -266,6 +277,8 @@ class FakeInternalApiClient : public http::InternalApiClient {
         }
         return http::WireSessionContext{*profile, blocks_to_return, friends_to_return};
     }
+
+    std::chrono::milliseconds session_context_delay{0};
 
     // Test control: flip one of these to exercise a handler's "internal API
     // call failed" path (should become INTERNAL_ERROR without mutating any

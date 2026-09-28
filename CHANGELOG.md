@@ -12,6 +12,7 @@
 
 **Reliability**
 - `IDENTIFY` now hydrates blocks/friends/profile from one combined internal-API call (`fetchSessionContext`, new `GET /internal/users/:id/session-context` route) instead of three sequential ones — halves the worst-case stall other connections could see behind a slow web service during IDENTIFY (three 5s-timeout calls -> one)
+- `IDENTIFY`'s blocks/friends/profile load is now fully asynchronous (`session::SessionHydrationWorker`, bounded retry summing to ~60s) instead of blocking the single-threaded server's handling of every other connection while it runs; `IDENTIFIED` is sent immediately, guild membership hydrates in-memory as before, and `DM_SEND`/the connection's own `PRESENCE_UPDATE` wait for the load to finish (new `SESSION_HYDRATING` retryable error code, new `SESSION_CONTEXT_UNAVAILABLE` + disconnect if the retry budget is exhausted — see `shared/protocol/README.md`'s new Asynchronous IDENTIFY Hydration section). Also fixes a related presence-corruption bug found while building this: a second tab whose hydration never completes could, on disconnect, wrongly decrement a different, already-online tab's real presence count
 
 **Docs & CI**
 - Documented the OpenSSL/libcurl build prerequisites for non-Docker server builds (#28)
