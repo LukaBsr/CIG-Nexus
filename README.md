@@ -100,6 +100,20 @@ Discord client ID/secret, a generated RS256 keypair under `secrets/`, and two
 random secrets. `web` and `server` both fail fast at startup if anything
 required is missing or unreadable.
 
+Generate the keypair **before the first `docker compose up`** (the private key
+must be mode `600` — `web` and `server` refuse to start if it is group- or
+world-readable; the public key is not secret and is `644`):
+
+```bash
+mkdir -p secrets
+openssl genrsa -out /tmp/rsa.pem 2048
+openssl pkcs8 -topk8 -nocrypt -in /tmp/rsa.pem -out secrets/private.pem
+openssl rsa -in /tmp/rsa.pem -pubout -out secrets/public.pem
+rm /tmp/rsa.pem
+chmod 600 secrets/private.pem
+chmod 644 secrets/public.pem
+```
+
 ### 3. Start the stack
 
 ```bash
@@ -114,6 +128,26 @@ Available services:
 
 Postgres and Redis also run as part of the stack but aren't published to the
 host — only reachable from within the Compose network.
+
+### First-run troubleshooting
+
+**`secrets/private.pem` / `secrets/public.pem` are directories, or you can't
+write to `secrets/`.** `docker-compose.yml` bind-mounts `./secrets/private.pem`
+and `./secrets/public.pem`. If they don't exist when you run
+`docker compose up`, Docker creates *empty root-owned directories* at those
+paths (and creates `secrets/` itself as root if it was missing), and the
+services then fail to start because they can't read a key from a directory.
+Generating the keys first (step 2) avoids this. To recover:
+
+```bash
+docker compose down
+sudo rmdir secrets/private.pem secrets/public.pem   # only succeeds on empty directories
+sudo chown "$(id -u):$(id -g)" secrets              # take ownership of secrets/ itself
+```
+
+then regenerate the keypair with the commands from step 2 and run
+`docker compose up --build` again. `ls -l secrets` should show `private.pem` as
+`-rw-------` and `public.pem` as `-rw-r--r--`, both owned by you.
 
 ## Local Development
 
