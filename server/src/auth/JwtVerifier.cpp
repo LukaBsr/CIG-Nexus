@@ -193,7 +193,11 @@ JwtVerification JwtVerifier::verify(const std::string& token) const {
         return {JwtVerifyResult::Malformed, std::nullopt};
     }
 
-    if (!payload.is_object() || !payload.contains("exp") || !payload["exp"].is_number_integer()) {
+    // is_number_unsigned(), not is_number_integer(): nlohmann parses a
+    // non-negative JSON integer as unsigned and a negative one as signed, and
+    // get<uint64_t>() on a negative value wraps to a huge number — a token
+    // with a negative exp would then never expire.
+    if (!payload.is_object() || !payload.contains("exp") || !payload["exp"].is_number_unsigned()) {
         return {JwtVerifyResult::Malformed, std::nullopt};
     }
 
