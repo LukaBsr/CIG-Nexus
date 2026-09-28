@@ -125,7 +125,7 @@ server/
 │   ├── ServerBackgroundSync.cpp  # Startup hydration (guild catalog, message sequences) and the revocation poll/sweep
 │   ├── auth/           # JwtVerifier, RevocationCache — RS256 session-token verification
 │   ├── guild/           # GuildManager — guild/channel catalog write-through cache, role-rank predicates
-│   ├── http/            # CurlInternalApiClient — calls to Next.js's /internal/* API (server never touches Postgres directly)
+│   ├── http/            # CurlInternalApiClient (+ internal WireParsers) — calls to Next.js's /internal/* API (server never touches Postgres directly)
 │   ├── persistence/     # MessagePersistenceWorker — chat/channel message persistence
 │   ├── protocol/
 │   │   ├── handlers/   # BlockHandler, ChannelHandler, ChatHandler, DMHandler, FriendHandler,
