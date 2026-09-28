@@ -122,6 +122,7 @@ server/
 │   ├── ServerRoutes.cpp  # Server::registerRoutes() — the message-type -> handler dispatch table
 │   ├── ServerDelivery.cpp  # Server socket delivery: sendMessage, broadcast, broadcastExcluding
 │   ├── ServerSessionLifecycle.cpp  # Presence transitions, removeSessionTrackingPresence, applying async hydration results
+│   ├── ServerBackgroundSync.cpp  # Startup hydration (guild catalog, message sequences) and the revocation poll/sweep
 │   ├── auth/           # JwtVerifier, RevocationCache — RS256 session-token verification
 │   ├── guild/           # GuildManager — guild/channel catalog write-through cache, role-rank predicates
 │   ├── http/            # CurlInternalApiClient — calls to Next.js's /internal/* API (server never touches Postgres directly)
