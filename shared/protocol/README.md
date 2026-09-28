@@ -104,6 +104,9 @@ Validation:
 - `session_token` must be a well-formed JWT with a valid signature and the
   expected audience, signed with the algorithm this server is configured
   to verify (`INVALID_SESSION` otherwise — see error codes below)
+- the token's `exp` claim must be a non-negative integer (`INVALID_SESSION`
+  otherwise — a negative, fractional, or non-numeric `exp` is malformed, not
+  "already expired" and never "never expires")
 - `session_token` must not be expired (`SESSION_EXPIRED` otherwise)
 - `session_token` must reference a session that has not been revoked
   (`SESSION_REVOKED` otherwise)
