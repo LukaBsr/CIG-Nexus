@@ -40,13 +40,13 @@ Run tests:
 ```bash
 cd server/build && ctest
 # or to see output:
-./cig-nexus-tests
+./tests/cig-nexus-tests
 ```
 
 Run a single test (Catch2):
 
 ```bash
-./cig-nexus-tests "[HelloHandler]"
+./tests/cig-nexus-tests "[HelloHandler]"
 ```
 
 Check formatting the way CI does. CI pins `clang-format==18.1.8`
@@ -130,7 +130,7 @@ server/
 │   ├── protocol/
 │   │   ├── handlers/   # BlockHandler, ChannelHandler, ChatHandler, DMHandler, FriendHandler,
 │   │   │               # GuildHandler, HelloHandler, IdentifyHandler, InviteHandler, JoinRequestHandler
-│   │               # (shared makeError/requireIdentified live in include/protocol/handlers/HandlerSupport.hpp)
+│   │   │               # (shared makeError/requireIdentified live in include/protocol/handlers/HandlerSupport.hpp)
 │   │   ├── MessageDispatcher.cpp
 │   │   └── MessageParser.cpp
 │   ├── session/         # SessionManager (per-fd sessions, presence counts), SessionHydrationWorker (async post-IDENTIFY load)

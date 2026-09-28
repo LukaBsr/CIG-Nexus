@@ -528,7 +528,13 @@ design would need revisiting first.
   `SESSION_JWT_PRIVATE_KEY_PATH`, `INTERNAL_API_SHARED_SECRET`.
   `SESSION_JWT_PRIVATE_KEY_PATH` holds a file path, not the key content
   itself — the keypair lives in `secrets/*.pem` (gitignored) and is
-  bind-mounted into the container, not passed as an env var.
+  bind-mounted into the container, not passed as an env var. File modes:
+  `secrets/private.pem` must be `600` (web's `lib/auth/env.ts` and the C++
+  server's `util/FilePermissions` refuse to start if it is group- or
+  world-readable, per `docs/security-audit.md` §1.3); `secrets/public.pem`
+  is `644`. Both files must exist before the first `docker compose up`, or
+  Docker creates root-owned directories in their place — the generation
+  commands and recovery steps are in the root `README.md` and `.env.example`.
 
 **Gateway (`gateway/`)**
 - **No changes.** It forwards `IDENTIFY { session_token }` exactly like it
