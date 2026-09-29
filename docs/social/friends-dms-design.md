@@ -409,10 +409,11 @@ in-memory, IDENTIFY-hydrated-and-live-updated cache that DM permission
 re-checking needs is exactly what presence filtering needs too; this
 document proposes building it once and using it for both.
 
-**Profile.** Covered in §4.5 — a blocked caller's profile fetch returns
-the same "not found" shape a nonexistent `user_id` would, checked live
-inside the same internal API call (profile reads are never cached, so
-this needs no C++-side state at all, unlike presence).
+**Profile.** Covered in §4.6 (v0.8 addition) — a blocked caller's profile
+fetch returns the same "not found" shape a nonexistent `user_id` or a
+no-relationship target would, checked live inside the same query (profile
+reads are never cached, so this needs no C++-side state at all, unlike
+presence).
 
 **Scope note**: this is exactly the one direction the request specifies
 — the blocked user loses visibility into the blocker, not the reverse.
@@ -879,9 +880,11 @@ caller's own session (never a client-supplied `user_id`).
 - **`GET /api/users/:id/profile`** — viewing *another* user's profile
   (the "view profile" UI action). Also `__session`-cookie authenticated
   (needs to know the caller's own identity, not just the target's), since
-  the block check (§2.5/§2.6) is "has the target blocked the caller,"
-  checked live in the same query — a nonexistent target and a target who
-  has blocked the caller both yield the same `404`, per §2.6.
+  visibility (§4.6, v0.8 addition) depends on the caller's own
+  relationship to the target, not just the target's own state — a
+  nonexistent target, a target who has blocked the caller, and a target
+  the caller has no friend/shared-guild relationship with all yield the
+  same `404`, per §4.6/§2.6.
 
 ### 4.5 Where profile data reaches the C++ server
 
@@ -958,6 +961,89 @@ shipped with **no `username` field at all** (unlike `CHAT_MESSAGE`/
 only `peer_id`/`last_message_at` — also unrenderable as a conversation list
 without a name — `username` added there too (mandatory, not optional,
 matching every other list entry).
+
+### 4.6 `ARBITRATION`: profile-view visibility (v0.8 addition)
+
+§4.4's `GET /api/users/:id/profile` shipped with exactly one gate: the
+existing block check (target has blocked caller → `404`). Nothing else
+restricted it — any authenticated caller could view any other account's
+`bio`/`status_message`/`accent_color` by `user_id` alone, with no friend
+or shared-guild relationship required. This was never a deliberate
+decision recorded anywhere in this document; it's simply what "the block
+check, and nothing else" left in place. v0.8 closes that gap.
+
+**Option A — leave it open.** Consistent with this app's existing
+baseline: `shared/protocol/README.md`'s Security and Limits section
+already documents presence leaking across guild boundaries as
+intentional ("consistent with, not a regression from, the existing
+baseline"), and the open lobby already exposes every active user's
+`user_id`/`username` to every other identified client regardless of any
+relationship. A stranger seen in the lobby is already "known" in every
+way that currently matters.
+
+**Option B — restrict to friends or shared guild membership.** Reuses
+`canSendDm`'s exact permission shape (§3.2):
+
+```
+canViewProfile(caller, target) :=
+    (areFriends(caller, target) || shareAnyGuild(caller, target))
+    && !isBlockedEitherDirection(caller, target)
+```
+
+This is the first real privacy boundary this document (or the protocol
+it specifies) introduces — everything else so far is either fully open
+(guild/channel existence, presence, message content in shared scopes) or
+gated only by blocking. It does not stop a caller from *learning* a
+stranger's `user_id`/`username` via the open lobby or a shared channel —
+that exposure is unrelated and unchanged — it stops that caller from
+then using the id to pull the stranger's `bio`/`status_message` cold.
+
+**Resolved: Option B.** A single mental model — "you can view a full
+profile only for someone you could also DM" — rather than two unrelated
+rules for two adjacent features. Flagged as a real judgment call, the
+same way §1.8 of the guild doc and §2.6 above flag theirs, not a foregone
+conclusion baked in silently.
+
+**Preventing profile enumeration.** Wire `user_id`s are real UUIDv4s
+(`u_<uuid>`, `gen_random_uuid()` — §5 of the guild doc) — brute-force
+guessing an id is cryptographically infeasible, so enumeration here isn't
+about guessing ids nobody has. The real risk is scope creep: an id
+learned incidentally (a lobby message, a guild roster, a DM) getting
+reused to pull an unrelated stranger's bio outside whatever context it
+was learned in. The fix is §2.6's silent-failure convention, extended to
+a third case: a nonexistent target, a target who has blocked the caller,
+and a target the caller has no relationship with (Option B's `false`)
+all return the **identical** `404` — same status, same body shape. A
+caller cannot distinguish "this account doesn't exist" from "it exists
+but you have no access to it" unless they already have a qualifying
+relationship with it, which is a stronger anti-enumeration property than
+the block-only gate gave: previously, existence of *any* known id was
+directly testable (200 vs. 404) by anyone; now it's only testable by
+someone already entitled to see it.
+
+**Implementation note, not yet built.** `canViewProfile` needs its own
+Postgres-side check — this route runs in `web/`, not the C++ server, so
+it can't reuse `canSendDm`'s in-memory `Session`-cached sets (§3.3), which
+exist only inside the C++ process for a currently-identified connection.
+The shared-guild half reuses the existing `getGuildIdsForUser` query
+(already used for the internal API's own version of this check, §3.6)
+against both caller and target and intersects the results; the
+friendship half is a canonical-pair lookup against `friendships`,
+mirroring the one `removeFriend`/`acceptFriendRequest` already perform.
+Both are small, additive, single-purpose queries — no new tables, no
+change to the C++ server or the wire protocol (this route was never
+reached by it — see §4.5).
+
+**Rate limiting.** `GET /api/users/:id/profile` shipped with none — it
+was never in §5's original checklist, and while it stayed reachable only
+from the self-view settings flow that was fine. Once it's wired to a real
+"view profile" affordance on rosters/messages/DM headers, it becomes
+probe-able (rapidly clicking through a roster to see which entries 404).
+The `404`-uniformity above prevents that probe from *learning* anything
+useful, but doesn't stop the traffic itself — add it to the existing
+fail-open per-user limiter (`checkRateLimitFailOpen`, the same mechanism
+`PATCH /api/user/profile` already uses), a generous cap (e.g. 60/minute)
+well above any real usage pattern.
 
 ---
 
@@ -1037,10 +1123,20 @@ matching every other list entry).
   against the exact pattern `saveAvatar` produces before ever touching
   the filesystem, so a request for an arbitrary path under the avatar
   directory can't be smuggled through the dynamic segment either.
-- [ ] **`GET /api/users/:id/profile` doesn't leak whether a user exists
-  vs. is blocked.** Both cases return the identical `404` (§4.4/§2.6) —
-  same reasoning as `GUILD_NOT_FOUND` for private guilds, applied to
-  profile lookups.
+- [ ] **`GET /api/users/:id/profile` doesn't leak whether a user exists,
+  is blocked, or is simply outside the caller's visibility.** All three
+  cases return the identical `404` (§4.6, v0.8) — same reasoning as
+  `GUILD_NOT_FOUND` for private guilds, applied to profile lookups.
+- [ ] **`GET /api/users/:id/profile`'s visibility check can't be bypassed
+  by a stale/cached relationship.** `canViewProfile` (§4.6) is
+  recomputed live on every call from `friendships`/guild-membership
+  tables, the same "true right now, not true when this started"
+  precedent §3.3 establishes for `canSendDm` — leaving a shared guild or
+  a friendship doesn't leave a dangling ability to keep viewing a
+  profile the caller no longer has a qualifying relationship for.
+- [ ] **`GET /api/users/:id/profile` is rate limited.** Added in v0.8
+  (§4.6) via `checkRateLimitFailOpen`, closing the gap that existed while
+  this route was reachable only from self-view.
 - [ ] **`display_name` doesn't become a second identity/authentication
   surface.** It's explicitly non-unique (§4.1) and never used to resolve
   a user for any authorization-relevant lookup — every internal join and
