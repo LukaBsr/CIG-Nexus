@@ -15,10 +15,15 @@ the plan. Not built, or built differently:
   thresholds. Every other §5 checklist box remains a design-time item, not
   a completion marker.
 - **Profile fields**: `bio`, `status_message` and `accent_color` are stored
-  and editable (Settings → Profile), but no UI displays them — the "view
-  profile" action §4.3/§4.4 imply doesn't exist, even though
-  `GET /api/users/:id/profile` and `fetchProfile()` do. Only `display_name`
-  and `avatar_url` reach rosters and messages.
+  and editable (Settings → Profile). `display_name` and `avatar_url` reach
+  rosters and messages as designed. **v0.8 update**: the "view profile" UI
+  §4.3/§4.4 imply was missing is now built — a `ProfileView` modal
+  (`web/components/ProfileView.tsx`), opened from an avatar click in
+  `MessageList`, `MemberList`, and `FriendsView` (friend list, DM
+  conversation list, and active DM thread header). Also added in v0.8:
+  §4.6's visibility rule (`GET /api/users/:id/profile` now requires a
+  friend or shared-guild relationship, not just "target hasn't blocked
+  caller") and its rate limit — see §4.6 for both.
 - Internal API routes are shaped `[requesterId]/[recipientId]` where §1.6
   writes `:requesterId` with a body; `web/app/internal/` is authoritative.
 

@@ -10,6 +10,7 @@ import { JoinRequestInbox } from "@/components/JoinRequestInbox";
 import { LandingView } from "@/components/LandingView";
 import { MemberList } from "@/components/MemberList";
 import { MessageList } from "@/components/MessageList";
+import { ProfileView } from "@/components/ProfileView";
 import { SettingsModal } from "@/components/SettingsModal";
 import { TextInputWithSubmit } from "@/components/TextInputWithSubmit";
 import { useGatewayConnection } from "@/hooks/useGatewayConnection";
@@ -83,6 +84,7 @@ export default function Home() {
 
   const [view, setView] = useState<"lobby" | "guild" | "friends">("lobby");
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [viewingProfileUserId, setViewingProfileUserId] = useState<string | null>(null);
   const [input, setInput] = useState("");
   const [isCreatingChannel, setIsCreatingChannel] = useState(false);
   const [channelNameInput, setChannelNameInput] = useState("");
@@ -164,6 +166,14 @@ export default function Home() {
             onUnblock={unblockUser}
           />
         )}
+        {/* key={viewingProfileUserId}: a fresh mount per profile viewed —
+            see ProfileView's own comment on why this replaces a
+            synchronous setState-to-loading inside its effect. */}
+        <ProfileView
+          key={viewingProfileUserId}
+          userId={viewingProfileUserId}
+          onClose={() => setViewingProfileUserId(null)}
+        />
 
         {lastError && (
           <div className="flex shrink-0 items-center justify-between gap-2 border-b border-slate/20 bg-red-400/10 px-5 py-1.5 font-mono text-xs text-red-300">
@@ -183,7 +193,12 @@ export default function Home() {
 
             <div className="flex-1 overflow-y-auto px-3">
               <div className="mx-auto max-w-3xl">
-                <MessageList messages={chatMessages} emptyText="No messages yet — say hello." />
+                <MessageList
+                  messages={chatMessages}
+                  emptyText="No messages yet — say hello."
+                  myUserId={myUserId}
+                  onViewProfile={setViewingProfileUserId}
+                />
               </div>
             </div>
 
@@ -296,6 +311,8 @@ export default function Home() {
                             <MessageList
                               messages={channelMessages}
                               emptyText="No messages in this channel yet..."
+                              myUserId={myUserId}
+                              onViewProfile={setViewingProfileUserId}
                             />
                           </div>
                         </div>
@@ -320,6 +337,7 @@ export default function Home() {
                     onlineUserIds={onlineUserIds}
                     myUserId={myUserId}
                     onBlock={blockUser}
+                    onViewProfile={setViewingProfileUserId}
                   />
                 </div>
               </>
@@ -334,12 +352,14 @@ export default function Home() {
             outgoingFriendRequests={outgoingFriendRequests}
             friendCode={friendCode}
             onlineUserIds={onlineUserIds}
+            myUserId={myUserId}
             onAddByCode={addFriendByCode}
             onRegenerateCode={regenerateFriendCode}
             onAcceptRequest={acceptFriendRequest}
             onRejectRequest={rejectFriendRequest}
             onCancelRequest={cancelFriendRequest}
             onBlock={blockUser}
+            onViewProfile={setViewingProfileUserId}
             dmConversations={dmConversations}
             activeDmPeerId={activeDmPeerId}
             dmMessages={dmMessages}

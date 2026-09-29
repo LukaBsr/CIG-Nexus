@@ -6,6 +6,9 @@
 - `BROADCAST` (lobby chat and `PRESENCE_UPDATE`) now reaches identified connections only; previously a socket that never completed `IDENTIFY` still received them (#30)
 - `GUILD_LIST` entries carry `is_member`, so a returning user's guild rail and Join buttons are correct after a page load (#31)
 
+**Features**
+- View-profile UI: clicking an avatar in the lobby/channel/DM message lists, the guild member roster, or the friends/DM-conversation lists opens a profile card (display name, status message, bio, accent-colored header) — the "view profile" action `docs/social/friends-dms-design.md` §4.3/§4.4 always implied but never had a UI for (`web/components/ProfileView.tsx`)
+
 **Security**
 - `GET /api/users/:id/profile` now requires the caller to be friends with, or share a guild with, the target (mirroring `canSendDm`'s permission shape), in addition to the existing block check — previously any authenticated user could view any other account's `bio`/`status_message`/`accent_color` with no relationship required. Nonexistent target, blocked (either direction, not just target-blocked-caller as before), and no-relationship all return an identical 404. Also newly rate limited (60/minute per caller, fail-open)
 - The C++ JWT verifier now checks the `iss` claim against a new required server setting, `AUTH_JWT_EXPECTED_ISSUER` (`cig-nexus-web` in `.env.example`); a missing or different issuer is rejected with `INVALID_SESSION`. **Upgrade note:** add the new line from `.env.example` to your `.env` — the server refuses to start without it, and `docker-compose.yml` now makes `docker compose up`/`build`/`config` fail with a clear message if it is unset. Tokens already issued by the web signer carry `iss: "cig-nexus-web"` and keep working
