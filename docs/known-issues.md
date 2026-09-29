@@ -238,6 +238,76 @@ to shrink opportunistically.
 
 ---
 
+## `web/test/internalIsolation.test.ts` intermittently times out under local resource contention, not a code defect
+
+**Symptom**: `npm test`'s full 59-file suite occasionally reports one
+failure — always the same file, `test/internalIsolation.test.ts` — with
+`Error: Hook timed out in 300000ms` inside its `beforeAll` (specifically
+at `network = await new Network().start();`, the first line of the hook).
+Every other file in the run passes; the isolation test's own assertions
+never run at all, let alone fail — the timeout is in container/network
+provisioning, before the test body executes.
+
+**Investigated (2026-09), reproduced and bounded, not a security concern**:
+`npm test` (the full 59-file suite) was run four times in a row on the
+same machine, on `feat/profile-view-visibility` before merging PR #55, in
+response to that PR's review asking whether this recurs:
+
+| Run | Result | Duration |
+|---|---|---|
+| 1 (original, during #55) | `internalIsolation.test.ts` failed (`beforeAll` timeout) | 420s |
+| 2 | 59/59 passed | 150s |
+| 3 | 59/59 passed | 242s |
+| 4 | `internalIsolation.test.ts` failed (`beforeAll` timeout) | 413s |
+
+The two failures and the two full passes correlate directly with total
+run duration (~420s vs. ~150–240s) — the slow runs are slow throughout,
+not just at the isolation test, consistent with system-wide resource
+pressure rather than a bug specific to this test or to any of the other
+58 files. At the time of a slow run, `free -h` showed the host (7.1 GiB
+total RAM) down to under 500 MiB free with active swap use; `docker system
+df` showed no leftover containers accumulating between runs (2 total, one
+weeks-old and exited) — so this isn't stale-container buildup, it's
+memory/IO contention during the run itself. `internalIsolation.test.ts` is
+explicitly the heaviest file in the suite (it builds the real `web`
+Docker image and starts two containers on a dedicated network — see its
+own header comment) and already gets a generous, deliberately-set 300s
+`beforeAll` timeout (5x the suite's global 60s default,
+`test/internalIsolation.test.ts:88`) specifically because it's slow even
+when healthy; under this machine's memory pressure, even that budget
+wasn't always enough.
+
+**Not reproduced in CI**: the last 15 `web-ci.yml` runs on GitHub Actions
+(as of 2026-09-29) all succeeded. Small sample, and this doesn't rule out
+the same mechanism ever affecting a `ubuntu-latest` runner (comparable
+~7 GiB RAM spec to the machine above) under its own load, but there is no
+observed occurrence there to date — this is currently a local, not a CI,
+flake.
+
+**Why this isn't being treated as a bug to fix**: no assertion inside
+`internalIsolation.test.ts` has ever failed — only container/network
+*provisioning* timed out, before the isolation check itself ran. The
+`/internal/*` isolation property this test verifies (`docs/security-audit.md`
+§1.2) was never actually exercised-and-failed in any of these runs; the
+failure mode is "didn't get to run in time," not "ran and found the
+boundary broken." Raising the hook timeout further
+would only mask slow-machine symptoms, not fix anything, and this test is
+correctly the last line of defense for a real security property, so it
+should stay strict about actually running to completion rather than being
+loosened.
+
+**If this recurs and needs investigating further**: check `free -h`/
+`docker system df` at failure time first — the working hypothesis is
+purely "not enough headroom on this machine for a 59-file suite's peak
+concurrent Docker usage," not application or test-code behavior. A fix,
+if one is ever needed, belongs in CI/local-environment resourcing (e.g.
+running this file in its own `vitest` invocation, separate from the other
+58 files, so its container build doesn't compete with whatever the rest
+of the suite already has in flight) rather than in `internalIsolation.test.ts`
+itself.
+
+---
+
 ## Resolved
 
 ### Client's `myGuildIds` didn't reflect pre-existing membership on a fresh connection
