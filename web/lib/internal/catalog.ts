@@ -1,4 +1,5 @@
 import { and, eq } from "drizzle-orm";
+import { alias } from "drizzle-orm/pg-core";
 
 import { db } from "@/db/client";
 import { channels, guildJoinRequests, guildMemberships, guilds, users } from "@/db/schema";
@@ -234,6 +235,24 @@ export async function getGuildIdsForUser(userWireId: string): Promise<string[] |
   }
   const rows = await db.select({ guildId: guildMemberships.guildId }).from(guildMemberships).where(eq(guildMemberships.userId, userId));
   return rows.map((r) => toGuildWireId(r.guildId));
+}
+
+// docs/social/friends-dms-design.md §4.6 (v0.8) — the other half of
+// GET /api/users/:id/profile's canViewProfile check, mirroring canSendDm's
+// shared-guild half (§3.2). A single self-join rather than two
+// getGuildIdsForUser calls intersected client-side — both users' guild
+// counts are small, but this stays one round trip either way. Raw
+// (non-wire) ids, matching areFriends/isBlockedEitherDirection.
+export async function shareAnyGuild(userIdA: string, userIdB: string): Promise<boolean> {
+  const membershipA = alias(guildMemberships, "membership_a");
+  const membershipB = alias(guildMemberships, "membership_b");
+  const [row] = await db
+    .select({ guildId: membershipA.guildId })
+    .from(membershipA)
+    .innerJoin(membershipB, eq(membershipA.guildId, membershipB.guildId))
+    .where(and(eq(membershipA.userId, userIdA), eq(membershipB.userId, userIdB)))
+    .limit(1);
+  return !!row;
 }
 
 // docs/guilds/social-presence-design.md §2.3: LIST_MEMBERS is a live read, not

@@ -29,6 +29,19 @@ function orderedPair(a: string, b: string): [string, string] {
   return a < b ? [a, b] : [b, a];
 }
 
+// docs/social/friends-dms-design.md §4.6 (v0.8) — one half of
+// GET /api/users/:id/profile's canViewProfile check, mirroring canSendDm's
+// friendship half (§3.2). Raw (non-wire) ids, like isBlockedEitherDirection/
+// isBlockedBy in blocks.ts.
+export async function areFriends(userIdA: string, userIdB: string): Promise<boolean> {
+  const [a, b] = orderedPair(userIdA, userIdB);
+  const [row] = await db
+    .select({ id: friendships.id })
+    .from(friendships)
+    .where(and(eq(friendships.userIdA, a), eq(friendships.userIdB, b)));
+  return !!row;
+}
+
 // docs/social/friends-dms-design.md §1.4's ordered validation: target
 // exists -> not self -> blocked either direction -> already friends ->
 // reverse-pending auto-accept. Step 3 (blocked) deliberately reuses the
