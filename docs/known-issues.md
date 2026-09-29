@@ -308,6 +308,16 @@ itself.
 
 ---
 
+## No React component-rendering tests exist anywhere in `web/` (backlog decision, not an urgent gap)
+
+**What's missing**: `web/`'s test suite (59 files, ~380 tests as of v0.8) covers API routes, internal-API/Postgres query functions, auth/JWT logic, and the gateway-protocol hook's pure-mapping functions — but zero tests render a React component and assert on what it shows or does. `vitest.config.ts` sets `test.environment: "node"` for the whole suite; there is no jsdom or happy-dom environment configured anywhere, and no `@testing-library/react` (or any React rendering/testing library) in `package.json`. This is true despite the app itself being almost entirely interactive components (`web/components/`, `web/app/page.tsx`) — the UI layer has no automated coverage of its own, only of the data/logic it's built on top of.
+
+**Why this is being flagged now**: `ProfileView`'s self-view exception (`docs/social/friends-dms-design.md` §4.6, v0.8) is the first piece of UI logic in this codebase where "does the right thing conditionally render" is itself the thing worth testing — whether the "Edit profile" button shows only when `userId === myUserId`, and whether clicking it correctly closes `ProfileView` and opens `SettingsModal` to its Profile section. Two such tests were asked for when that feature was built; they weren't added, because writing them means standing up React Testing Library and a jsdom/happy-dom environment first — a real infrastructure decision (which library, whether it's a second `environment` in the existing `vitest.config.ts` or a separate project/config, whether it runs alongside or serially with the Postgres/Redis-backed `node`-environment tests) rather than something to make unilaterally inside a feature PR.
+
+**Not treated as urgent**: nothing here is broken, and the codebase has shipped a substantial amount of conditional UI logic already (role-gated buttons, self-exclusion guards throughout `MemberList`/`FriendsView` before this same PR removed several of them, `SettingsModal`'s section switching) without this kind of test and without an incident traceable to that gap. This is a backlog item for a deliberate decision — when component-level UI logic is complex enough that manual browser verification alone stops being sufficient — not a fix to schedule reactively.
+
+---
+
 ## Resolved
 
 ### Client's `myGuildIds` didn't reflect pre-existing membership on a fresh connection
