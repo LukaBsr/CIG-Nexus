@@ -4,7 +4,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import { db } from "@/db/client";
 import { friendRequests, friendships, userBlocks, users } from "@/db/schema";
 
-import { blockUser, isBlockedBy, isBlockedEitherDirection, listBlocks, unblockUser } from "./blocks";
+import { blockUser, isBlockedEitherDirection, listBlocks, unblockUser } from "./blocks";
 import { acceptFriendRequest, sendFriendRequest } from "./friends";
 import { toUserWireId } from "./wireIds";
 
@@ -103,20 +103,12 @@ describe("listBlocks", () => {
   });
 });
 
-describe("isBlockedEitherDirection / isBlockedBy", () => {
-  it("isBlockedEitherDirection is true regardless of which side blocked", async () => {
+describe("isBlockedEitherDirection", () => {
+  it("is true regardless of which side blocked", async () => {
     const a = await insertUser("1");
     const b = await insertUser("2");
     await blockUser(toUserWireId(b.id), toUserWireId(a.id)); // b blocked a
     expect(await isBlockedEitherDirection(a.id, b.id)).toBe(true);
     expect(await isBlockedEitherDirection(b.id, a.id)).toBe(true);
-  });
-
-  it("isBlockedBy is one-directional", async () => {
-    const a = await insertUser("1");
-    const b = await insertUser("2");
-    await blockUser(toUserWireId(b.id), toUserWireId(a.id)); // b blocked a
-    expect(await isBlockedBy(b.id, a.id)).toBe(true);
-    expect(await isBlockedBy(a.id, b.id)).toBe(false);
   });
 });
