@@ -1009,6 +1009,41 @@ rules for two adjacent features. Flagged as a real judgment call, the
 same way §1.8 of the guild doc and §2.6 above flag theirs, not a foregone
 conclusion baked in silently.
 
+**Self-view exception (v0.8, added at UI implementation).** `canViewProfile`
+is bypassed entirely — not just its relationship half — when `caller ==
+target`: a user can always view their own profile through this same UI
+path, with no friend/shared-guild/block check evaluated at all. This is
+an explicit carve-out, not a relaxation of Option B's boundary: it only
+ever grants a caller their own already-fully-visible data (everything
+`GET /api/users/:id/profile` returns is also editable by that same user
+via `PATCH /api/user/profile`/`ProfileSettings.tsx`), so there is no
+account whose visibility posture changes because of this exception.
+
+Skipping the check for self is also a correctness fix, not purely a
+convenience — found by inspection while adding it, not assumed: without
+the exception, self-view was **already** silently possible whenever the
+caller belonged to any guild at all, as an unintended side effect of
+`shareAnyGuild`'s self-join (`membershipA.userId = caller AND
+membershipB.userId = caller` trivially matches on any guild the caller is
+in). `areFriends(caller, caller)` can never be true (`friendships`'
+`CHECK (user_id_a < user_id_b)` makes a self-row impossible), but
+`shareAnyGuild(caller, caller)` was never guarded against the degenerate
+case. So self-view previously worked by accident for guild members and
+404'd for guildless, friendless users viewing themselves — an
+inconsistency nobody had a reason to notice until the UI made this path
+reachable at all. The explicit `caller == target` bypass replaces that
+accidental, coverage-dependent behavior with the same result for every
+account unconditionally, and — as a secondary benefit — skips three
+otherwise-pointless queries (a caller's own `friendships`/guild-overlap/
+block state against themselves is never informative).
+
+**UI**: `ProfileView` (`web/components/ProfileView.tsx`) shows an "Edit
+profile" button only when viewing your own id (`userId === myUserId`),
+absent for every other profile. Clicking it closes `ProfileView` and
+opens the Settings modal directly to its existing Profile section
+(§4.3) — reusing `ProfileSettings.tsx` rather than adding a second,
+parallel edit surface inside `ProfileView` itself.
+
 **Preventing profile enumeration.** Wire `user_id`s are real UUIDv4s
 (`u_<uuid>`, `gen_random_uuid()` — §5 of the guild doc) — brute-force
 guessing an id is cryptographically infeasible, so enumeration here isn't
