@@ -30,7 +30,7 @@ TEST_CASE("Server broadcasts PRESENCE_UPDATE online/offline only on real transit
           "additional tabs for the same user") {
     test_helpers::TestRsaKeyPair keys;
     Server server(0);
-    server.configureAuth(keys.publicKeyPem());
+    server.configureAuth(keys.publicKeyPem(), test_helpers::kTestIssuer);
 
     std::thread t([&server] { server.start(); });
     std::this_thread::sleep_for(std::chrono::milliseconds(50));
@@ -108,7 +108,7 @@ TEST_CASE("Server broadcasts PRESENCE_UPDATE online/offline only on real transit
 TEST_CASE("Server excludes a blocked user's connections from the blocker's PRESENCE_UPDATE") {
     test_helpers::TestRsaKeyPair keys;
     Server server(0);
-    server.configureAuth(keys.publicKeyPem());
+    server.configureAuth(keys.publicKeyPem(), test_helpers::kTestIssuer);
     auto api = std::make_unique<test_helpers::FakeInternalApiClient>();
     test_helpers::FakeInternalApiClient* api_ptr = api.get();
     server.setInternalApiClient(std::move(api));
@@ -190,7 +190,7 @@ TEST_CASE("Server broadcasts online on every reconnect, not just the first, acro
           "connect/disconnect cycles") {
     test_helpers::TestRsaKeyPair keys;
     Server server(0);
-    server.configureAuth(keys.publicKeyPem());
+    server.configureAuth(keys.publicKeyPem(), test_helpers::kTestIssuer);
 
     std::thread t([&server] { server.start(); });
     std::this_thread::sleep_for(std::chrono::milliseconds(50));

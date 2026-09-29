@@ -5,6 +5,7 @@
 #include <catch2/catch_test_macros.hpp>
 
 #include <chrono>
+#include <stdexcept>
 
 namespace {
 
@@ -21,7 +22,7 @@ nlohmann::json validPayload() {
                           {"sid", "22222222-2222-2222-2222-222222222222"},
                           {"iat", nowSeconds()},
                           {"exp", nowSeconds() + 900},
-                          {"iss", "cig-nexus-web"},
+                          {"iss", test_helpers::kTestIssuer},
                           {"aud", "cig-nexus-server"}};
 }
 
@@ -33,7 +34,7 @@ nlohmann::json rs256Header() {
 
 TEST_CASE("JwtVerifier accepts a well-formed RS256 token and returns its claims", "[JwtVerifier]") {
     test_helpers::TestRsaKeyPair keys;
-    auth::JwtVerifier verifier(keys.publicKeyPem());
+    auth::JwtVerifier verifier(keys.publicKeyPem(), test_helpers::kTestIssuer);
 
     const std::string token = test_helpers::signTestJwt(keys.key, rs256Header(), validPayload());
     const auto verification = verifier.verify(token);
@@ -48,7 +49,7 @@ TEST_CASE("JwtVerifier accepts a well-formed RS256 token and returns its claims"
 
 TEST_CASE("JwtVerifier rejects a token declaring a different algorithm", "[JwtVerifier]") {
     test_helpers::TestRsaKeyPair keys;
-    auth::JwtVerifier verifier(keys.publicKeyPem());
+    auth::JwtVerifier verifier(keys.publicKeyPem(), test_helpers::kTestIssuer);
 
     // Signed the same way (RS256, real signature) but the header claims a
     // different algorithm — this must be rejected on the header check
@@ -64,7 +65,7 @@ TEST_CASE("JwtVerifier rejects a token declaring a different algorithm", "[JwtVe
 
 TEST_CASE("JwtVerifier rejects alg: none", "[JwtVerifier]") {
     test_helpers::TestRsaKeyPair keys;
-    auth::JwtVerifier verifier(keys.publicKeyPem());
+    auth::JwtVerifier verifier(keys.publicKeyPem(), test_helpers::kTestIssuer);
 
     nlohmann::json header = rs256Header();
     header["alg"] = "none";
@@ -77,7 +78,7 @@ TEST_CASE("JwtVerifier rejects alg: none", "[JwtVerifier]") {
 TEST_CASE("JwtVerifier rejects a token signed by a different key", "[JwtVerifier]") {
     test_helpers::TestRsaKeyPair signing_keys;
     test_helpers::TestRsaKeyPair other_keys;
-    auth::JwtVerifier verifier(other_keys.publicKeyPem());
+    auth::JwtVerifier verifier(other_keys.publicKeyPem(), test_helpers::kTestIssuer);
 
     const std::string token =
         test_helpers::signTestJwt(signing_keys.key, rs256Header(), validPayload());
@@ -88,7 +89,7 @@ TEST_CASE("JwtVerifier rejects a token signed by a different key", "[JwtVerifier
 
 TEST_CASE("JwtVerifier rejects a tampered payload", "[JwtVerifier]") {
     test_helpers::TestRsaKeyPair keys;
-    auth::JwtVerifier verifier(keys.publicKeyPem());
+    auth::JwtVerifier verifier(keys.publicKeyPem(), test_helpers::kTestIssuer);
 
     std::string token = test_helpers::signTestJwt(keys.key, rs256Header(), validPayload());
     // Flip a character in the payload segment without re-signing.
@@ -103,7 +104,7 @@ TEST_CASE("JwtVerifier rejects a tampered payload", "[JwtVerifier]") {
 
 TEST_CASE("JwtVerifier rejects an expired token", "[JwtVerifier]") {
     test_helpers::TestRsaKeyPair keys;
-    auth::JwtVerifier verifier(keys.publicKeyPem());
+    auth::JwtVerifier verifier(keys.publicKeyPem(), test_helpers::kTestIssuer);
 
     nlohmann::json payload = validPayload();
     payload["exp"] = nowSeconds() - 60;
@@ -120,7 +121,7 @@ TEST_CASE(
     "JwtVerifier rejects a negative exp as malformed instead of treating it as never-expiring",
     "[JwtVerifier]") {
     test_helpers::TestRsaKeyPair keys;
-    auth::JwtVerifier verifier(keys.publicKeyPem());
+    auth::JwtVerifier verifier(keys.publicKeyPem(), test_helpers::kTestIssuer);
 
     for (const long long negative_exp : {-1LL, -60LL, -9223372036854775807LL - 1}) {
         nlohmann::json payload = validPayload();
@@ -135,7 +136,7 @@ TEST_CASE(
 
 TEST_CASE("JwtVerifier rejects a non-integer exp as malformed", "[JwtVerifier]") {
     test_helpers::TestRsaKeyPair keys;
-    auth::JwtVerifier verifier(keys.publicKeyPem());
+    auth::JwtVerifier verifier(keys.publicKeyPem(), test_helpers::kTestIssuer);
 
     for (const nlohmann::json& bad_exp :
          {nlohmann::json(1.5e9), nlohmann::json("9999999999"), nlohmann::json(true)}) {
@@ -149,7 +150,7 @@ TEST_CASE("JwtVerifier rejects a non-integer exp as malformed", "[JwtVerifier]")
 
 TEST_CASE("JwtVerifier treats exp of 0 as expired, not malformed", "[JwtVerifier]") {
     test_helpers::TestRsaKeyPair keys;
-    auth::JwtVerifier verifier(keys.publicKeyPem());
+    auth::JwtVerifier verifier(keys.publicKeyPem(), test_helpers::kTestIssuer);
 
     nlohmann::json payload = validPayload();
     payload["exp"] = 0;
@@ -160,7 +161,7 @@ TEST_CASE("JwtVerifier treats exp of 0 as expired, not malformed", "[JwtVerifier
 
 TEST_CASE("JwtVerifier rejects the wrong audience", "[JwtVerifier]") {
     test_helpers::TestRsaKeyPair keys;
-    auth::JwtVerifier verifier(keys.publicKeyPem());
+    auth::JwtVerifier verifier(keys.publicKeyPem(), test_helpers::kTestIssuer);
 
     nlohmann::json payload = validPayload();
     payload["aud"] = "someone-else";
@@ -172,7 +173,7 @@ TEST_CASE("JwtVerifier rejects the wrong audience", "[JwtVerifier]") {
 
 TEST_CASE("JwtVerifier rejects a token missing a required claim", "[JwtVerifier]") {
     test_helpers::TestRsaKeyPair keys;
-    auth::JwtVerifier verifier(keys.publicKeyPem());
+    auth::JwtVerifier verifier(keys.publicKeyPem(), test_helpers::kTestIssuer);
 
     nlohmann::json payload = validPayload();
     payload.erase("sid");
@@ -184,8 +185,84 @@ TEST_CASE("JwtVerifier rejects a token missing a required claim", "[JwtVerifier]
 
 TEST_CASE("JwtVerifier rejects a string that isn't a JWT at all", "[JwtVerifier]") {
     test_helpers::TestRsaKeyPair keys;
-    auth::JwtVerifier verifier(keys.publicKeyPem());
+    auth::JwtVerifier verifier(keys.publicKeyPem(), test_helpers::kTestIssuer);
 
     const auto verification = verifier.verify("not-a-jwt");
     CHECK(verification.result == auth::JwtVerifyResult::Malformed);
+}
+
+TEST_CASE("JwtVerifier rejects a token from the wrong issuer", "[JwtVerifier]") {
+    test_helpers::TestRsaKeyPair keys;
+    auth::JwtVerifier verifier(keys.publicKeyPem(), test_helpers::kTestIssuer);
+
+    nlohmann::json payload = validPayload();
+    payload["iss"] = "someone-else";
+    const std::string token = test_helpers::signTestJwt(keys.key, rs256Header(), payload);
+
+    const auto verification = verifier.verify(token);
+    CHECK(verification.result == auth::JwtVerifyResult::WrongIssuer);
+    CHECK_FALSE(verification.claims.has_value());
+}
+
+TEST_CASE("JwtVerifier rejects a token with no iss", "[JwtVerifier]") {
+    test_helpers::TestRsaKeyPair keys;
+    auth::JwtVerifier verifier(keys.publicKeyPem(), test_helpers::kTestIssuer);
+
+    nlohmann::json payload = validPayload();
+    payload.erase("iss");
+    const std::string token = test_helpers::signTestJwt(keys.key, rs256Header(), payload);
+
+    const auto verification = verifier.verify(token);
+    CHECK(verification.result == auth::JwtVerifyResult::WrongIssuer);
+    CHECK_FALSE(verification.claims.has_value());
+}
+
+TEST_CASE("JwtVerifier requires iss to be exactly the configured string", "[JwtVerifier]") {
+    test_helpers::TestRsaKeyPair keys;
+    auth::JwtVerifier verifier(keys.publicKeyPem(), test_helpers::kTestIssuer);
+
+    const std::string expected = test_helpers::kTestIssuer;
+    for (const nlohmann::json& bad_iss :
+         {nlohmann::json(expected + " "), nlohmann::json(expected + "-x"),
+          nlohmann::json("CIG-NEXUS-WEB"), nlohmann::json(""), nlohmann::json(42),
+          nlohmann::json::array({expected}), nlohmann::json(nullptr)}) {
+        nlohmann::json payload = validPayload();
+        payload["iss"] = bad_iss;
+        const std::string token = test_helpers::signTestJwt(keys.key, rs256Header(), payload);
+
+        CHECK(verifier.verify(token).result == auth::JwtVerifyResult::WrongIssuer);
+    }
+}
+
+TEST_CASE("JwtVerifier accepts only the issuer it was configured with", "[JwtVerifier]") {
+    test_helpers::TestRsaKeyPair keys;
+    auth::JwtVerifier verifier(keys.publicKeyPem(), "other-issuer");
+
+    const std::string default_issuer_token =
+        test_helpers::signTestJwt(keys.key, rs256Header(), validPayload());
+    CHECK(verifier.verify(default_issuer_token).result == auth::JwtVerifyResult::WrongIssuer);
+
+    nlohmann::json payload = validPayload();
+    payload["iss"] = "other-issuer";
+    const std::string token = test_helpers::signTestJwt(keys.key, rs256Header(), payload);
+    CHECK(verifier.verify(token).result == auth::JwtVerifyResult::Ok);
+}
+
+TEST_CASE("JwtVerifier refuses to be constructed with an empty expected issuer", "[JwtVerifier]") {
+    test_helpers::TestRsaKeyPair keys;
+    CHECK_THROWS_AS(auth::JwtVerifier(keys.publicKeyPem(), ""), std::invalid_argument);
+}
+
+TEST_CASE("JwtVerifier uses the injected clock for expiry", "[JwtVerifier]") {
+    test_helpers::TestRsaKeyPair keys;
+
+    nlohmann::json payload = validPayload();
+    payload["exp"] = 1000;
+    const std::string token = test_helpers::signTestJwt(keys.key, rs256Header(), payload);
+
+    auth::JwtVerifier before(keys.publicKeyPem(), test_helpers::kTestIssuer, [] { return 999; });
+    CHECK(before.verify(token).result == auth::JwtVerifyResult::Ok);
+
+    auth::JwtVerifier at(keys.publicKeyPem(), test_helpers::kTestIssuer, [] { return 1000; });
+    CHECK(at.verify(token).result == auth::JwtVerifyResult::Expired);
 }

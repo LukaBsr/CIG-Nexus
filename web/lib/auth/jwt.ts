@@ -3,9 +3,9 @@ import { importPKCS8, SignJWT } from "jose";
 import { authEnv } from "./env";
 
 // design doc §6: short TTL, RS256, private key never leaves Next.js.
-const ACCESS_JWT_TTL_SECONDS = 15 * 60;
-const ISSUER = "cig-nexus-web";
-const AUDIENCE = "cig-nexus-server";
+export const ACCESS_JWT_TTL_SECONDS = 15 * 60;
+export const ACCESS_JWT_ISSUER = "cig-nexus-web";
+export const ACCESS_JWT_AUDIENCE = "cig-nexus-server";
 
 export interface AccessJwtClaims {
   sub: string; // "u_<uuid>"
@@ -33,8 +33,8 @@ export async function issueAccessJwt(claims: AccessJwtClaims): Promise<IssuedAcc
     .setSubject(claims.sub)
     .setIssuedAt(now)
     .setExpirationTime(exp)
-    .setIssuer(ISSUER)
-    .setAudience(AUDIENCE)
+    .setIssuer(ACCESS_JWT_ISSUER)
+    .setAudience(ACCESS_JWT_AUDIENCE)
     .sign(privateKey);
 
   return { token, expiresAt: new Date(exp * 1000) };

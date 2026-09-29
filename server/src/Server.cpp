@@ -54,8 +54,9 @@ Server::Server(uint16_t port) : port_(port), running_(false), listener_(port) {
     registerRoutes();
 }
 
-void Server::configureAuth(const std::string& jwt_public_key_pem) {
-    jwt_verifier_.emplace(jwt_public_key_pem);
+void Server::configureAuth(const std::string& jwt_public_key_pem,
+                           const std::string& expected_issuer) {
+    jwt_verifier_.emplace(jwt_public_key_pem, expected_issuer);
     identify_handler_.setJwtVerifier(&*jwt_verifier_);
 }
 

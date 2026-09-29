@@ -75,7 +75,7 @@ TEST_CASE("Server returns PROTOCOL_VIOLATION for unknown message type") {
 TEST_CASE("Server handles CREATE_GUILD end-to-end") {
     test_helpers::TestRsaKeyPair keys;
     Server server(0);
-    server.configureAuth(keys.publicKeyPem());
+    server.configureAuth(keys.publicKeyPem(), test_helpers::kTestIssuer);
     server.setInternalApiClient(std::make_unique<test_helpers::FakeInternalApiClient>());
 
     std::thread t([&server] { server.start(); });
@@ -115,7 +115,7 @@ TEST_CASE("Server handles CREATE_GUILD end-to-end") {
 TEST_CASE("Server delivers CHANNEL_MESSAGE only to connections with that channel active") {
     test_helpers::TestRsaKeyPair keys;
     Server server(0);
-    server.configureAuth(keys.publicKeyPem());
+    server.configureAuth(keys.publicKeyPem(), test_helpers::kTestIssuer);
     server.setInternalApiClient(std::make_unique<test_helpers::FakeInternalApiClient>());
 
     std::thread t([&server] { server.start(); });
@@ -207,7 +207,7 @@ TEST_CASE("Server delivers CHANNEL_MESSAGE only to connections with that channel
 TEST_CASE("Server survives broadcasting to a connection reset by its peer") {
     test_helpers::TestRsaKeyPair keys;
     Server server(0);
-    server.configureAuth(keys.publicKeyPem());
+    server.configureAuth(keys.publicKeyPem(), test_helpers::kTestIssuer);
 
     std::thread t([&server] { server.start(); });
     std::this_thread::sleep_for(std::chrono::milliseconds(50));
@@ -271,7 +271,7 @@ TEST_CASE("Server survives broadcasting to a connection reset by its peer") {
 TEST_CASE("Server does not deliver BROADCAST messages to connections that haven't identified") {
     test_helpers::TestRsaKeyPair keys;
     Server server(0);
-    server.configureAuth(keys.publicKeyPem());
+    server.configureAuth(keys.publicKeyPem(), test_helpers::kTestIssuer);
 
     std::thread t([&server] { server.start(); });
     std::this_thread::sleep_for(std::chrono::milliseconds(50));

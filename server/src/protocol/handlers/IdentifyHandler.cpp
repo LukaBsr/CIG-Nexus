@@ -67,6 +67,7 @@ Message IdentifyHandler::handle(const Message& message, int fd) {
     case auth::JwtVerifyResult::UnsupportedAlgorithm:
     case auth::JwtVerifyResult::InvalidSignature:
     case auth::JwtVerifyResult::WrongAudience:
+    case auth::JwtVerifyResult::WrongIssuer:
         return makeError("INVALID_SESSION", "session_token is invalid");
     }
 

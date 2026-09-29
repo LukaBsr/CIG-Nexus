@@ -101,9 +101,11 @@ Validation:
 - payload must be an object
 - `session_token` must exist (`AUTH_REQUIRED` otherwise)
 - `session_token` must be a string (`AUTH_REQUIRED` otherwise)
-- `session_token` must be a well-formed JWT with a valid signature and the
-  expected audience, signed with the algorithm this server is configured
-  to verify (`INVALID_SESSION` otherwise — see error codes below)
+- `session_token` must be a well-formed JWT with a valid signature, the
+  expected audience, and the expected issuer (`iss` — a deployment setting,
+  `AUTH_JWT_EXPECTED_ISSUER`; a missing or different `iss` is rejected),
+  signed with the algorithm this server is configured to verify
+  (`INVALID_SESSION` otherwise — see error codes below)
 - the token's `exp` claim must be a non-negative integer (`INVALID_SESSION`
   otherwise — a negative, fractional, or non-numeric `exp` is malformed, not
   "already expired" and never "never expires")
@@ -1129,7 +1131,7 @@ Current error codes used by the implementation:
 | `NOT_IDENTIFIED` | client attempted chat before successful `IDENTIFY` |
 | `INTERNAL_ERROR` | missing internal context for request processing |
 | `AUTH_REQUIRED` | `IDENTIFY` sent without a `session_token` |
-| `INVALID_SESSION` | `session_token` is malformed, has an invalid signature, or was issued for a different audience |
+| `INVALID_SESSION` | `session_token` is malformed, has an invalid signature, or was issued for a different audience or by a different issuer (missing `iss` included) |
 | `SESSION_EXPIRED` | `session_token` has passed its expiry |
 | `SESSION_REVOKED` | `session_token` references a session that has been revoked |
 | `GUILD_NOT_FOUND` | referenced `guild_id` does not exist |

@@ -9,9 +9,12 @@ changelog. Where the shipped code differs from what's written here:
   gained `visibility` and `role_theme`.
 - §10's "message history persistence" was built afterwards (v0.7.0,
   `docs/guilds/social-presence-design.md` §4).
-- The access JWT is issued with `iss: "cig-nexus-web"`, but the C++ verifier
-  enforces only signature, pinned `RS256`, `exp`, and `aud` — it does not
-  check `iss` (§8's `INVALID_SESSION` wording implies it would).
+- The access JWT is issued with `iss: "cig-nexus-web"`. The C++ verifier
+  enforces signature, pinned `RS256`, `exp` (a non-negative integer), `aud`,
+  and `iss`. It initially did not check `iss` (§8's `INVALID_SESSION`
+  wording implied it would); the expected issuer is now required
+  deployment config (`AUTH_JWT_EXPECTED_ISSUER`, fail-fast at startup), not a
+  hardcoded constant.
 - No `/.well-known/jwks.json` route exists; the C++ server reads the public
   key from the file at `AUTH_JWT_PUBLIC_KEY_PATH` (the "static
   env-provided public key" option in §8.2).
@@ -381,8 +384,10 @@ Client → server:
 Validation:
 - `session_token` must exist and be a string.
 - JWT signature must verify against the server's cached RS256 public key.
-- `exp` must not have passed.
+- `exp` must be a non-negative integer and must not have passed.
 - `aud` must equal `"cig-nexus-server"`.
+- `iss` must equal the configured expected issuer (`AUTH_JWT_EXPECTED_ISSUER`,
+  `"cig-nexus-web"` in the shipped `.env.example`); a missing `iss` is rejected.
 - The session must not be locally known-revoked (§9 revocation cache).
 
 On success, the server creates a session **exactly as it does today**
@@ -528,7 +533,9 @@ design would need revisiting first.
   `SESSION_JWT_PRIVATE_KEY_PATH`, `INTERNAL_API_SHARED_SECRET`.
   `SESSION_JWT_PRIVATE_KEY_PATH` holds a file path, not the key content
   itself — the keypair lives in `secrets/*.pem` (gitignored) and is
-  bind-mounted into the container, not passed as an env var. File modes:
+  bind-mounted into the container, not passed as an env var. The C++ server
+  additionally requires `AUTH_JWT_EXPECTED_ISSUER` (the `iss` its verifier
+  accepts; must match what web signs, `cig-nexus-web`). File modes:
   `secrets/private.pem` must be `600` (web's `lib/auth/env.ts` and the C++
   server's `util/FilePermissions` refuse to start if it is group- or
   world-readable, per `docs/security-audit.md` §1.3); `secrets/public.pem`

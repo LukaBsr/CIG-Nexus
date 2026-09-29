@@ -8,6 +8,10 @@
 
 namespace test_helpers {
 
+// The issuer every test token carries and every test verifier expects — the
+// value the web signer emits (web/lib/auth/jwt.ts).
+inline constexpr const char* kTestIssuer = "cig-nexus-web";
+
 // RAII wrapper so tests don't have to remember EVP_PKEY_free.
 struct TestRsaKeyPair {
     TestRsaKeyPair();

@@ -1,6 +1,8 @@
 #ifndef CIG_NEXUS_AUTH_JWT_VERIFIER_HPP
 #define CIG_NEXUS_AUTH_JWT_VERIFIER_HPP
 
+#include <cstdint>
+#include <functional>
 #include <memory>
 #include <optional>
 #include <string>
@@ -20,7 +22,8 @@ enum class JwtVerifyResult {
     UnsupportedAlgorithm, // header "alg" is not exactly "RS256"
     InvalidSignature,
     Expired,
-    WrongAudience
+    WrongAudience,
+    WrongIssuer // "iss" missing, not a string, or not the configured issuer
 };
 
 struct JwtVerification {
@@ -42,7 +45,18 @@ class JwtVerifier {
     // Next.js's SESSION_JWT_PRIVATE_KEY_PATH counterpart, design doc
     // §6/§8.2's AUTH_JWT_PUBLIC_KEY_PATH — read from disk by main.cpp
     // before this constructor is ever called).
-    explicit JwtVerifier(const std::string& public_key_pem);
+    //
+    // expected_issuer: the "iss" a token must carry (AUTH_JWT_EXPECTED_ISSUER;
+    // what the web signer emits). Required, no default, so a caller cannot
+    // forget it and silently accept any issuer.
+    //
+    // now: seconds since the Unix epoch; injectable so a test can verify a
+    // frozen token at a fixed time. Defaults to the system clock.
+    using Clock = std::function<uint64_t()>;
+    JwtVerifier(const std::string& public_key_pem, std::string expected_issuer,
+                Clock now = systemClock());
+
+    static Clock systemClock();
     ~JwtVerifier();
 
     JwtVerifier(const JwtVerifier&) = delete;

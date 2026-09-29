@@ -44,7 +44,7 @@ class Server {
     // succeed — without it, jwt_verifier_ stays unset and IdentifyHandler
     // returns INTERNAL_ERROR for every IDENTIFY, matching how an unset
     // GuildManager/InternalApiClient already behaves elsewhere.
-    void configureAuth(const std::string& jwt_public_key_pem);
+    void configureAuth(const std::string& jwt_public_key_pem, const std::string& expected_issuer);
 
     // Takes ownership. Wires the client into GuildHandler/ChannelHandler
     // (design doc §8.1) and enables catalog hydration at start() and the

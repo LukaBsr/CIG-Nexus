@@ -64,18 +64,27 @@ std::vector<std::string> splitJwt(const std::string& token) {
     return parts;
 }
 
-uint64_t nowSeconds() {
-    const auto now = std::chrono::system_clock::now();
-    return static_cast<uint64_t>(
-        std::chrono::duration_cast<std::chrono::seconds>(now.time_since_epoch()).count());
-}
-
 } // namespace
+
+JwtVerifier::Clock JwtVerifier::systemClock() {
+    return [] {
+        const auto now = std::chrono::system_clock::now();
+        return static_cast<uint64_t>(
+            std::chrono::duration_cast<std::chrono::seconds>(now.time_since_epoch()).count());
+    };
+}
 
 struct JwtVerifier::Impl {
     EVP_PKEY* public_key = nullptr;
+    std::string expected_issuer;
+    Clock now;
 
-    explicit Impl(const std::string& public_key_pem) {
+    Impl(const std::string& public_key_pem, std::string issuer, Clock clock)
+        : expected_issuer(std::move(issuer)), now(std::move(clock)) {
+        if (expected_issuer.empty()) {
+            throw std::invalid_argument("JwtVerifier: expected issuer must not be empty");
+        }
+
         BIO* bio = BIO_new_mem_buf(public_key_pem.data(), static_cast<int>(public_key_pem.size()));
         if (!bio) {
             throw std::runtime_error("JwtVerifier: failed to allocate BIO for public key");
@@ -99,8 +108,8 @@ struct JwtVerifier::Impl {
     Impl& operator=(const Impl&) = delete;
 };
 
-JwtVerifier::JwtVerifier(const std::string& public_key_pem)
-    : impl_(std::make_unique<Impl>(public_key_pem)) {}
+JwtVerifier::JwtVerifier(const std::string& public_key_pem, std::string expected_issuer, Clock now)
+    : impl_(std::make_unique<Impl>(public_key_pem, std::move(expected_issuer), std::move(now))) {}
 
 JwtVerifier::~JwtVerifier() = default;
 JwtVerifier::JwtVerifier(JwtVerifier&&) noexcept = default;
@@ -202,13 +211,20 @@ JwtVerification JwtVerifier::verify(const std::string& token) const {
     }
 
     const uint64_t exp = payload["exp"].get<uint64_t>();
-    if (nowSeconds() >= exp) {
+    if (impl_->now() >= exp) {
         return {JwtVerifyResult::Expired, std::nullopt};
     }
 
     if (!payload.contains("aud") || !payload["aud"].is_string() ||
         payload["aud"].get<std::string>() != kExpectedAudience) {
         return {JwtVerifyResult::WrongAudience, std::nullopt};
+    }
+
+    // Exact string match against the configured issuer. A missing or
+    // non-string iss is rejected the same way as a wrong one (mirrors aud).
+    if (!payload.contains("iss") || !payload["iss"].is_string() ||
+        payload["iss"].get<std::string>() != impl_->expected_issuer) {
+        return {JwtVerifyResult::WrongIssuer, std::nullopt};
     }
 
     AccessJwtClaims claims;

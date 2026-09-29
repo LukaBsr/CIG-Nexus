@@ -27,7 +27,7 @@ nlohmann::json validClaims(const std::string& sub = "u_11111111-1111-1111-1111-1
                           {"sid", sid},
                           {"iat", nowSeconds()},
                           {"exp", nowSeconds() + 900},
-                          {"iss", "cig-nexus-web"},
+                          {"iss", test_helpers::kTestIssuer},
                           {"aud", "cig-nexus-server"}};
 }
 
@@ -47,7 +47,7 @@ protocol::Message make_identify(const std::string& token) {
 TEST_CASE(
     "IdentifyHandler accepts a valid session_token and populates the session from its claims") {
     test_helpers::TestRsaKeyPair keys;
-    auth::JwtVerifier verifier(keys.publicKeyPem());
+    auth::JwtVerifier verifier(keys.publicKeyPem(), test_helpers::kTestIssuer);
 
     protocol::IdentifyHandler handler;
     session::SessionManager sessions;
@@ -73,7 +73,7 @@ TEST_CASE(
 
 TEST_CASE("IdentifyHandler rejects second IDENTIFY on same connection") {
     test_helpers::TestRsaKeyPair keys;
-    auth::JwtVerifier verifier(keys.publicKeyPem());
+    auth::JwtVerifier verifier(keys.publicKeyPem(), test_helpers::kTestIssuer);
 
     protocol::IdentifyHandler handler;
     session::SessionManager sessions;
@@ -91,7 +91,7 @@ TEST_CASE("IdentifyHandler rejects second IDENTIFY on same connection") {
 
 TEST_CASE("IdentifyHandler rejects a missing session_token") {
     test_helpers::TestRsaKeyPair keys;
-    auth::JwtVerifier verifier(keys.publicKeyPem());
+    auth::JwtVerifier verifier(keys.publicKeyPem(), test_helpers::kTestIssuer);
 
     protocol::IdentifyHandler handler;
     session::SessionManager sessions;
@@ -109,7 +109,7 @@ TEST_CASE("IdentifyHandler rejects a missing session_token") {
 
 TEST_CASE("IdentifyHandler rejects a non-string session_token") {
     test_helpers::TestRsaKeyPair keys;
-    auth::JwtVerifier verifier(keys.publicKeyPem());
+    auth::JwtVerifier verifier(keys.publicKeyPem(), test_helpers::kTestIssuer);
 
     protocol::IdentifyHandler handler;
     session::SessionManager sessions;
@@ -127,7 +127,7 @@ TEST_CASE("IdentifyHandler rejects a non-string session_token") {
 
 TEST_CASE("IdentifyHandler rejects an expired session_token") {
     test_helpers::TestRsaKeyPair keys;
-    auth::JwtVerifier verifier(keys.publicKeyPem());
+    auth::JwtVerifier verifier(keys.publicKeyPem(), test_helpers::kTestIssuer);
 
     protocol::IdentifyHandler handler;
     session::SessionManager sessions;
@@ -147,7 +147,7 @@ TEST_CASE("IdentifyHandler rejects an expired session_token") {
 TEST_CASE("IdentifyHandler rejects a token signed by an unrecognized key") {
     test_helpers::TestRsaKeyPair signing_keys;
     test_helpers::TestRsaKeyPair server_keys;
-    auth::JwtVerifier verifier(server_keys.publicKeyPem());
+    auth::JwtVerifier verifier(server_keys.publicKeyPem(), test_helpers::kTestIssuer);
 
     protocol::IdentifyHandler handler;
     session::SessionManager sessions;
@@ -164,7 +164,7 @@ TEST_CASE("IdentifyHandler rejects a token signed by an unrecognized key") {
 
 TEST_CASE("IdentifyHandler rejects a revoked session") {
     test_helpers::TestRsaKeyPair keys;
-    auth::JwtVerifier verifier(keys.publicKeyPem());
+    auth::JwtVerifier verifier(keys.publicKeyPem(), test_helpers::kTestIssuer);
     auth::RevocationCache revocation_cache;
     revocation_cache.merge({"22222222-2222-2222-2222-222222222222"});
 
@@ -184,7 +184,7 @@ TEST_CASE("IdentifyHandler rejects a revoked session") {
 
 TEST_CASE("IdentifyHandler returns INTERNAL_ERROR when session manager is missing") {
     test_helpers::TestRsaKeyPair keys;
-    auth::JwtVerifier verifier(keys.publicKeyPem());
+    auth::JwtVerifier verifier(keys.publicKeyPem(), test_helpers::kTestIssuer);
 
     protocol::IdentifyHandler handler;
     handler.setJwtVerifier(&verifier);
@@ -210,7 +210,7 @@ TEST_CASE("IdentifyHandler returns INTERNAL_ERROR when the JWT verifier is missi
 TEST_CASE("IdentifyHandler hydrates Session.guild_ids from GuildManager on success "
           "(docs/guilds/social-presence-design.md §3.4/§1.10)") {
     test_helpers::TestRsaKeyPair keys;
-    auth::JwtVerifier verifier(keys.publicKeyPem());
+    auth::JwtVerifier verifier(keys.publicKeyPem(), test_helpers::kTestIssuer);
     guild::GuildManager guilds;
     guilds.setMemberRank("g_1", "u_11111111-1111-1111-1111-111111111111", guild::kOwnerRank);
     guilds.setMemberRank("g_2", "u_11111111-1111-1111-1111-111111111111", guild::kMemberRank);
@@ -234,7 +234,7 @@ TEST_CASE("IdentifyHandler hydrates Session.guild_ids from GuildManager on succe
 
 TEST_CASE("IdentifyHandler leaves Session.guild_ids empty for a user with no memberships") {
     test_helpers::TestRsaKeyPair keys;
-    auth::JwtVerifier verifier(keys.publicKeyPem());
+    auth::JwtVerifier verifier(keys.publicKeyPem(), test_helpers::kTestIssuer);
     guild::GuildManager guilds;
 
     protocol::IdentifyHandler handler;
@@ -254,7 +254,7 @@ TEST_CASE("IdentifyHandler leaves Session.guild_ids empty for a user with no mem
 
 TEST_CASE("IdentifyHandler does not crash without a GuildManager set, and leaves guild_ids empty") {
     test_helpers::TestRsaKeyPair keys;
-    auth::JwtVerifier verifier(keys.publicKeyPem());
+    auth::JwtVerifier verifier(keys.publicKeyPem(), test_helpers::kTestIssuer);
 
     protocol::IdentifyHandler handler;
     session::SessionManager sessions;
@@ -282,7 +282,7 @@ TEST_CASE("IdentifyHandler does not crash without a GuildManager set, and leaves
 TEST_CASE("IdentifyHandler never sets session_context_ready or the "
           "hydration-dependent fields — that's Server's job now (IDENTIFY hardening B2)") {
     test_helpers::TestRsaKeyPair keys;
-    auth::JwtVerifier verifier(keys.publicKeyPem());
+    auth::JwtVerifier verifier(keys.publicKeyPem(), test_helpers::kTestIssuer);
 
     protocol::IdentifyHandler handler;
     session::SessionManager sessions;
@@ -299,4 +299,42 @@ TEST_CASE("IdentifyHandler never sets session_context_ready or the "
     REQUIRE(session->blocked_user_ids.empty());
     REQUIRE(session->friend_ids.empty());
     REQUIRE_FALSE(session->display_name.has_value());
+}
+
+TEST_CASE("IdentifyHandler rejects a token from the wrong issuer with INVALID_SESSION") {
+    test_helpers::TestRsaKeyPair keys;
+    auth::JwtVerifier verifier(keys.publicKeyPem(), test_helpers::kTestIssuer);
+
+    protocol::IdentifyHandler handler;
+    session::SessionManager sessions;
+    handler.setSessionManager(&sessions);
+    handler.setJwtVerifier(&verifier);
+
+    nlohmann::json claims = validClaims();
+    claims["iss"] = "someone-else";
+    const std::string token = test_helpers::signTestJwt(keys.key, rs256Header(), claims);
+    const auto response = handler.handle(make_identify(token), 21);
+
+    REQUIRE(response.type == "ERROR");
+    REQUIRE(response.payload["code"] == "INVALID_SESSION");
+    REQUIRE_FALSE(sessions.hasSession(21));
+}
+
+TEST_CASE("IdentifyHandler rejects a token with no iss with INVALID_SESSION") {
+    test_helpers::TestRsaKeyPair keys;
+    auth::JwtVerifier verifier(keys.publicKeyPem(), test_helpers::kTestIssuer);
+
+    protocol::IdentifyHandler handler;
+    session::SessionManager sessions;
+    handler.setSessionManager(&sessions);
+    handler.setJwtVerifier(&verifier);
+
+    nlohmann::json claims = validClaims();
+    claims.erase("iss");
+    const std::string token = test_helpers::signTestJwt(keys.key, rs256Header(), claims);
+    const auto response = handler.handle(make_identify(token), 22);
+
+    REQUIRE(response.type == "ERROR");
+    REQUIRE(response.payload["code"] == "INVALID_SESSION");
+    REQUIRE_FALSE(sessions.hasSession(22));
 }

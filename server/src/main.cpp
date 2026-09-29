@@ -84,13 +84,16 @@ int main(int argc, char* argv[]) {
         // env-provided key file, not a JWKS endpoint (see
         // docs/auth/discord-design.md's "Key distribution" decision).
         const std::string jwt_public_key_pem = readRequiredFile("AUTH_JWT_PUBLIC_KEY_PATH");
+        // The `iss` claim a session token must carry (what the web signer
+        // emits, web/lib/auth/jwt.ts). Required config, no built-in default.
+        const std::string jwt_expected_issuer = requireEnv("AUTH_JWT_EXPECTED_ISSUER");
         const std::string internal_api_base_url = requireEnv("INTERNAL_API_BASE_URL");
         const std::string internal_api_shared_secret = requireEnv("INTERNAL_API_SHARED_SECRET");
 
         Server server(port);
         g_server = &server;
 
-        server.configureAuth(jwt_public_key_pem);
+        server.configureAuth(jwt_public_key_pem, jwt_expected_issuer);
         server.setInternalApiClient(std::make_unique<http::CurlInternalApiClient>(
             internal_api_base_url, internal_api_shared_secret));
 
