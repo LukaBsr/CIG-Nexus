@@ -113,6 +113,51 @@ TEST_CASE("JwtVerifier rejects an expired token", "[JwtVerifier]") {
     CHECK(verification.result == auth::JwtVerifyResult::Expired);
 }
 
+// exp is unsigned on the wire spec (shared/protocol/README.md, IDENTIFY
+// validation): a negative value must be malformed, not silently converted to
+// a huge uint64_t that never expires.
+TEST_CASE(
+    "JwtVerifier rejects a negative exp as malformed instead of treating it as never-expiring",
+    "[JwtVerifier]") {
+    test_helpers::TestRsaKeyPair keys;
+    auth::JwtVerifier verifier(keys.publicKeyPem());
+
+    for (const long long negative_exp : {-1LL, -60LL, -9223372036854775807LL - 1}) {
+        nlohmann::json payload = validPayload();
+        payload["exp"] = negative_exp;
+        const std::string token = test_helpers::signTestJwt(keys.key, rs256Header(), payload);
+
+        const auto verification = verifier.verify(token);
+        CHECK(verification.result == auth::JwtVerifyResult::Malformed);
+        CHECK_FALSE(verification.claims.has_value());
+    }
+}
+
+TEST_CASE("JwtVerifier rejects a non-integer exp as malformed", "[JwtVerifier]") {
+    test_helpers::TestRsaKeyPair keys;
+    auth::JwtVerifier verifier(keys.publicKeyPem());
+
+    for (const nlohmann::json& bad_exp :
+         {nlohmann::json(1.5e9), nlohmann::json("9999999999"), nlohmann::json(true)}) {
+        nlohmann::json payload = validPayload();
+        payload["exp"] = bad_exp;
+        const std::string token = test_helpers::signTestJwt(keys.key, rs256Header(), payload);
+
+        CHECK(verifier.verify(token).result == auth::JwtVerifyResult::Malformed);
+    }
+}
+
+TEST_CASE("JwtVerifier treats exp of 0 as expired, not malformed", "[JwtVerifier]") {
+    test_helpers::TestRsaKeyPair keys;
+    auth::JwtVerifier verifier(keys.publicKeyPem());
+
+    nlohmann::json payload = validPayload();
+    payload["exp"] = 0;
+    const std::string token = test_helpers::signTestJwt(keys.key, rs256Header(), payload);
+
+    CHECK(verifier.verify(token).result == auth::JwtVerifyResult::Expired);
+}
+
 TEST_CASE("JwtVerifier rejects the wrong audience", "[JwtVerifier]") {
     test_helpers::TestRsaKeyPair keys;
     auth::JwtVerifier verifier(keys.publicKeyPem());
