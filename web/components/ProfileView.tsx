@@ -15,6 +15,12 @@ interface ProfileViewProps {
   // synchronous setState at the top of an effect would otherwise require.
   userId: string | null;
   onClose: () => void;
+  // docs/social/friends-dms-design.md §4.6's self-view exception — when
+  // userId === myUserId, this is the caller's own profile (always
+  // viewable, per that exception), and "Edit profile" replaces the plain
+  // display with a path back into Settings -> Profile instead.
+  myUserId: string | null;
+  onEditProfile: () => void;
 }
 
 const DEFAULT_ACCENT = "#5eead4";
@@ -26,8 +32,10 @@ const DEFAULT_ACCENT = "#5eead4";
 // no session) into the same null, and §4.6's whole point is that the
 // caller shouldn't be able to tell them apart. Mirrors SettingsModal's
 // overlay/Escape/click-outside-to-close shape exactly, for one consistent
-// modal pattern across the app.
-export function ProfileView({ userId, onClose }: ProfileViewProps) {
+// modal pattern across the app. §4.6's self-view exception means viewing
+// your own id always succeeds here too (no separate "can't view yourself"
+// case to render) — the only difference is the "Edit profile" button.
+export function ProfileView({ userId, onClose, myUserId, onEditProfile }: ProfileViewProps) {
   // undefined = loading; null = loaded, unavailable (see the comment
   // above); WireProfile = loaded, viewable — same three-state shape
   // ProfileSettings.tsx already uses for the caller's own profile.
@@ -107,6 +115,14 @@ export function ProfileView({ userId, onClose }: ProfileViewProps) {
               <p className="w-full whitespace-pre-wrap break-words border-t border-slate/20 pt-3 text-left font-sans text-sm text-ivory/80">
                 {profile.bio}
               </p>
+            )}
+            {userId === myUserId && (
+              <button
+                onClick={onEditProfile}
+                className="mt-1 rounded-md border border-teal bg-teal/10 px-4 py-1.5 font-mono text-sm text-teal transition-colors hover:bg-teal/20"
+              >
+                Edit profile
+              </button>
             )}
           </div>
         )}

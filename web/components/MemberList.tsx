@@ -43,17 +43,16 @@ export function MemberList({ members, onlineUserIds, myUserId, onBlock, onViewPr
             className="flex items-center gap-2 rounded-md px-1.5 py-1 transition-colors hover:bg-surface/60"
           >
             <PresenceDot online={onlineUserIds.has(m.userId)} />
-            {m.userId === myUserId ? (
+            {/* docs/social/friends-dms-design.md §4.6's self-view exception —
+                your own roster entry opens your own ProfileView too, unlike
+                the Block button below (which still excludes self). */}
+            <button
+              onClick={() => onViewProfile(m.userId)}
+              aria-label={`View ${m.displayName ?? m.username}'s profile`}
+              className="shrink-0 rounded-full"
+            >
               <Avatar url={m.avatarUrl} name={m.displayName ?? m.username} size={20} />
-            ) : (
-              <button
-                onClick={() => onViewProfile(m.userId)}
-                aria-label={`View ${m.displayName ?? m.username}'s profile`}
-                className="shrink-0 rounded-full"
-              >
-                <Avatar url={m.avatarUrl} name={m.displayName ?? m.username} size={20} />
-              </button>
-            )}
+            </button>
             <span className="min-w-0 flex-1 truncate font-mono text-sm text-ivory/90">
               {m.displayName ?? m.username}
             </span>

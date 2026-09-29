@@ -174,6 +174,19 @@ describe("GET /api/users/[id]/profile", () => {
     expect(blockedBody).toEqual(noRelationshipBody);
   });
 
+  it("returns the caller's own profile with no friend/shared-guild relationship to anyone (self-view exception, §4.6)", async () => {
+    const caller = await insertUser("19", { bio: "my own bio", statusMessage: "here", accentColor: "#8b5cf6" });
+    const { refreshToken } = await createSession(caller.id, {});
+
+    const response = await GET(getRequest(`__session=${refreshToken}`), {
+      params: Promise.resolve({ id: toUserWireId(caller.id) })
+    });
+    expect(response.status).toBe(200);
+    const body = (await response.json()) as { user_id: string; bio: string | null };
+    expect(body.user_id).toBe(toUserWireId(caller.id));
+    expect(body.bio).toBe("my own bio");
+  });
+
   it("returns 429 once the per-caller rate limit is exceeded", async () => {
     const caller = await insertUser("17");
     const target = await insertUser("18");

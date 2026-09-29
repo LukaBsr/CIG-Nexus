@@ -84,7 +84,18 @@ export default function Home() {
 
   const [view, setView] = useState<"lobby" | "guild" | "friends">("lobby");
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  // docs/social/friends-dms-design.md §4.6 — which section Settings opens
+  // to; undefined = the default (Appearance). Set explicitly on every open
+  // (never left over from a previous open) so a later plain gear-icon
+  // click doesn't inherit "profile" from an earlier "Edit profile" click.
+  const [settingsInitialSectionId, setSettingsInitialSectionId] = useState<string | undefined>(undefined);
   const [viewingProfileUserId, setViewingProfileUserId] = useState<string | null>(null);
+
+  const handleEditProfile = () => {
+    setViewingProfileUserId(null);
+    setSettingsInitialSectionId("profile");
+    setIsSettingsOpen(true);
+  };
   const [input, setInput] = useState("");
   const [isCreatingChannel, setIsCreatingChannel] = useState(false);
   const [channelNameInput, setChannelNameInput] = useState("");
@@ -157,13 +168,20 @@ export default function Home() {
       />
 
       <div className="flex flex-1 flex-col overflow-hidden">
-        <Header status={status} onOpenSettings={() => setIsSettingsOpen(true)} />
+        <Header
+          status={status}
+          onOpenSettings={() => {
+            setSettingsInitialSectionId(undefined);
+            setIsSettingsOpen(true);
+          }}
+        />
         {isSettingsOpen && (
           <SettingsModal
             userId={myUserId}
             onClose={() => setIsSettingsOpen(false)}
             blockedUsers={blockedUsers}
             onUnblock={unblockUser}
+            initialSectionId={settingsInitialSectionId}
           />
         )}
         {/* key={viewingProfileUserId}: a fresh mount per profile viewed —
@@ -173,6 +191,8 @@ export default function Home() {
           key={viewingProfileUserId}
           userId={viewingProfileUserId}
           onClose={() => setViewingProfileUserId(null)}
+          myUserId={myUserId}
+          onEditProfile={handleEditProfile}
         />
 
         {lastError && (
@@ -196,7 +216,6 @@ export default function Home() {
                 <MessageList
                   messages={chatMessages}
                   emptyText="No messages yet — say hello."
-                  myUserId={myUserId}
                   onViewProfile={setViewingProfileUserId}
                 />
               </div>
@@ -311,7 +330,6 @@ export default function Home() {
                             <MessageList
                               messages={channelMessages}
                               emptyText="No messages in this channel yet..."
-                              myUserId={myUserId}
                               onViewProfile={setViewingProfileUserId}
                             />
                           </div>
@@ -352,7 +370,6 @@ export default function Home() {
             outgoingFriendRequests={outgoingFriendRequests}
             friendCode={friendCode}
             onlineUserIds={onlineUserIds}
-            myUserId={myUserId}
             onAddByCode={addFriendByCode}
             onRegenerateCode={regenerateFriendCode}
             onAcceptRequest={acceptFriendRequest}

@@ -13,7 +13,6 @@ interface FriendsViewProps {
   outgoingFriendRequests: FriendRequest[];
   friendCode: string | null;
   onlineUserIds: Set<string>;
-  myUserId: string | null;
   onAddByCode: (code: string) => void;
   onRegenerateCode: () => void;
   onAcceptRequest: (userId: string) => void;
@@ -40,7 +39,6 @@ export function FriendsView({
   outgoingFriendRequests,
   friendCode,
   onlineUserIds,
-  myUserId,
   onAddByCode,
   onRegenerateCode,
   onAcceptRequest,
@@ -193,12 +191,7 @@ export function FriendsView({
 
           <div className="flex-1 overflow-y-auto px-3 py-2">
             <div className="mx-auto max-w-3xl">
-              <MessageList
-                messages={dmMessages}
-                emptyText="No messages yet — say hello."
-                myUserId={myUserId}
-                onViewProfile={onViewProfile}
-              />
+              <MessageList messages={dmMessages} emptyText="No messages yet — say hello." onViewProfile={onViewProfile} />
             </div>
           </div>
 
