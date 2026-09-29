@@ -175,6 +175,24 @@ gateway/src/
 - `NEXT_PUBLIC_GATEWAY_URL` env var controls the WebSocket endpoint in the web client.
 - The desktop client (`desktop/`) exists in the repo but is not the active development path.
 
+## Code Organization
+
+One file, one responsibility; one function, one clear thing it does. A
+file or function that mixes unrelated concerns should be split, even if
+short. Conversely, a long file with one coherent job (e.g. a protocol
+handler implementing several related message types, or a dispatch table)
+is not automatically a problem.
+
+A rough size guide — **~400 lines for files, ~60 lines for functions** —
+is a prompt to go look, not an automatic requirement to split. Below it,
+don't go hunting for splits that aren't needed; above it, check whether
+the size is one coherent job (fine) or several concerns sharing a file
+(split it). See PRs #40–#49 for how this gets applied in practice: an
+audited, ranked list of splits (pure moves first, real restructuring
+called out and staged separately), each verified behavior-preserving
+(same tests green before and after, evidence that moved code is
+unchanged) and landed as one file or one closely related group per PR.
+
 ## Git Workflow
 
 - **Never commit directly to `main`.** All changes go through a feature branch and a pull request.
