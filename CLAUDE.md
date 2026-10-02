@@ -110,7 +110,7 @@ The server's `Message` type carries a `Scope` field:
 - `Scope::BROADCAST` — response goes to all identified connections (never to a socket that hasn't completed `IDENTIFY`)
 - `Scope::TARGETED` — response goes to an explicit fd list the handler computes (e.g. current guild members, connections with a channel active, or every connection identified as one `user_id`)
 
-`CHAT_MESSAGE` responses are always `BROADCAST`; handshake and error responses are `DIRECT`; guild/channel notifications, `CHANNEL_MESSAGE`, friend events and `DM_MESSAGE` are `TARGETED`. A handler may return several `Message`s from one request (e.g. approving a join request notifies the approver and the approved user separately).
+Which message type uses which scope is specified authoritatively in `shared/protocol/README.md`'s Behavior Notes section — not restated here, to avoid two sources of truth drifting apart. A handler may return several `Message`s from one request (e.g. approving a join request notifies the approver and the approved user separately).
 
 ### Server Layout
 
@@ -136,6 +136,7 @@ server/
 │   ├── session/         # SessionManager (per-fd sessions, presence counts), SessionHydrationWorker (async post-IDENTIFY load)
 │   └── util/            # FilePermissions (startup checks, e.g. private-key file mode), RateLimiter, DebugFlags
 └── tests/               # Catch2 tests mirroring src/: auth/, guild/, http/, integration/, persistence/, protocol/, session/, util/
+                         # (plus fixtures/ — frozen test data, e.g. the real-signer JWT fixture, not source-mirroring)
 ```
 
 ### Web Layout
@@ -144,7 +145,7 @@ server/
 web/
 ├── app/                 # Next.js App Router — page.tsx is the chat UI; api/ (OAuth/session/appearance
 │                        # routes) and internal/ (the Postgres-backed API the C++ server calls) live here too
-├── components/          # Extracted UI components (MessageList, FriendsView, GuildRail, SettingsModal, ...)
+├── components/          # Extracted UI components (MessageList, FriendsView, GuildRail, SettingsModal, ProfileView, ...)
 ├── hooks/
 │   └── useGatewayConnection.ts  # Owns the WS connection + protocol switch; wire snake_case -> camelCase boundary
 └── lib/
@@ -203,6 +204,28 @@ unchanged) and landed as one file or one closely related group per PR.
   `git checkout -b fix/identify-payload-type` (example).
 - Do not merge or push to `main` — open a PR and leave it for review.
 
+## Documentation and Changelog Discipline
+
+Check this before merging a feature or fix PR, not just before starting
+one — it's easy to satisfy at the start and drift out of sync by the end:
+
+1. **Update the relevant design doc's status banner, if one exists.**
+   Most docs under `docs/*/design.md` (see the Reference Documentation
+   table below) carry a `**Status: implemented (vX.Y.0).**` banner with a
+   "not built, or built differently" list. If the PR changes behavior that
+   doc describes, the banner needs to reflect that — either by amending
+   the existing list or adding a dated note, not by leaving the doc
+   describing a version of the feature that no longer matches the code.
+2. **Append a `CHANGELOG.md` entry under `## Unreleased`**, in the
+   matching category (Fixes / Features / Security / Reliability / Docs &
+   CI). Pure internal refactors with no behavior change (a file split, a
+   rename, dead-code removal) are the deliberate exception — they don't
+   get an entry, matching every refactor PR in this project's history.
+3. **Update `CLAUDE.md` itself if the PR touches something this file
+   describes** — a layout tree, a command, a constraint, a convention.
+   `CLAUDE.md` describing stale layout or commands is exactly the kind of
+   drift this section exists to prevent.
+
 ## Reference Documentation
 
 ### shared/protocol/ — wire protocol source of truth
@@ -225,7 +248,7 @@ If the spec and the code disagree, the spec is intentional — treat it as a bug
 | `docs/guilds/design.md` | Guilds/channels feature design record | Before touching guild/channel protocol handlers or the write-through cache |
 | `docs/guilds/social-presence-design.md` | Guild invites, visibility, roster/roles, presence, message persistence design record | Before touching invites, join requests, roles/roster, presence, or message persistence/history |
 | `docs/settings/appearance-design.md` | Settings shell + theme system design record | Before touching the settings modal, theme tokens/registry, or appearance sync |
-| `docs/known-issues.md` | Living list of found-but-not-reliably-reproduced bugs (currently one open: a presence connection-count leak; resolved entries are kept below it) | Before touching `SessionManager` presence tracking, or if you notice presence looking wrong |
+| `docs/known-issues.md` | Living list of open issues, tradeoffs, and backlog decisions — not all "bugs" (currently: the presence connection-count leak, the IDENTIFY hydration retry-bound/reconnect-flow tradeoff, a local-resource-contention test flake, and the no-component-tests backlog item; resolved entries are kept below those) | Before touching `SessionManager` presence tracking, IDENTIFY hydration retry logic, or adding web UI tests |
 | `docs/social/friends-dms-design.md` | Friends, blocking, 1:1 DMs, and customizable profiles design record | Before touching friend requests/codes, blocking, direct messages, or the profile/settings-Profile-section work |
 | `docs/security-audit.md` | Standing security audit: verified findings, dependency-advisory exposure traces, open hardening items | Before touching auth, `/internal/*`, cookies, rate limiting, or dependency versions |
 | `docs/architecture-audit.md` | Repo-structure/docs-organization audit (mostly executed; kept as a record) | Before reorganizing docs or moving files |
