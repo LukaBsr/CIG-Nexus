@@ -119,18 +119,3 @@ export async function isBlockedEitherDirection(userIdA: string, userIdB: string)
     );
   return !!row;
 }
-
-// docs/social/friends-dms-design.md §2.5/§4.4 — the one-directional check
-// GET /api/users/:id/profile uses ("has the target blocked the caller").
-// Deliberately one-directional, unlike isBlockedEitherDirection above: the
-// Scope section's note is explicit that only this direction is built
-// (the blocked user loses visibility into the blocker; the reverse — the
-// blocker also losing visibility into someone they've chosen to block —
-// isn't part of this design). Raw (non-wire) ids.
-export async function isBlockedBy(blockerId: string, blockedId: string): Promise<boolean> {
-  const [row] = await db
-    .select({ id: userBlocks.id })
-    .from(userBlocks)
-    .where(and(eq(userBlocks.blockerId, blockerId), eq(userBlocks.blockedId, blockedId)));
-  return !!row;
-}
