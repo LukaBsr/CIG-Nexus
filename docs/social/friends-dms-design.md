@@ -15,10 +15,15 @@ the plan. Not built, or built differently:
   thresholds. Every other §5 checklist box remains a design-time item, not
   a completion marker.
 - **Profile fields**: `bio`, `status_message` and `accent_color` are stored
-  and editable (Settings → Profile), but no UI displays them — the "view
-  profile" action §4.3/§4.4 imply doesn't exist, even though
-  `GET /api/users/:id/profile` and `fetchProfile()` do. Only `display_name`
-  and `avatar_url` reach rosters and messages.
+  and editable (Settings → Profile). `display_name` and `avatar_url` reach
+  rosters and messages as designed. **v0.8 update**: the "view profile" UI
+  §4.3/§4.4 imply was missing is now built — a `ProfileView` modal
+  (`web/components/ProfileView.tsx`), opened from an avatar click in
+  `MessageList`, `MemberList`, and `FriendsView` (friend list, DM
+  conversation list, and active DM thread header). Also added in v0.8:
+  §4.6's visibility rule (`GET /api/users/:id/profile` now requires a
+  friend or shared-guild relationship, not just "target hasn't blocked
+  caller") and its rate limit — see §4.6 for both.
 - Internal API routes are shaped `[requesterId]/[recipientId]` where §1.6
   writes `:requesterId` with a body; `web/app/internal/` is authoritative.
 
@@ -1003,6 +1008,41 @@ profile only for someone you could also DM" — rather than two unrelated
 rules for two adjacent features. Flagged as a real judgment call, the
 same way §1.8 of the guild doc and §2.6 above flag theirs, not a foregone
 conclusion baked in silently.
+
+**Self-view exception (v0.8, added at UI implementation).** `canViewProfile`
+is bypassed entirely — not just its relationship half — when `caller ==
+target`: a user can always view their own profile through this same UI
+path, with no friend/shared-guild/block check evaluated at all. This is
+an explicit carve-out, not a relaxation of Option B's boundary: it only
+ever grants a caller their own already-fully-visible data (everything
+`GET /api/users/:id/profile` returns is also editable by that same user
+via `PATCH /api/user/profile`/`ProfileSettings.tsx`), so there is no
+account whose visibility posture changes because of this exception.
+
+Skipping the check for self is also a correctness fix, not purely a
+convenience — found by inspection while adding it, not assumed: without
+the exception, self-view was **already** silently possible whenever the
+caller belonged to any guild at all, as an unintended side effect of
+`shareAnyGuild`'s self-join (`membershipA.userId = caller AND
+membershipB.userId = caller` trivially matches on any guild the caller is
+in). `areFriends(caller, caller)` can never be true (`friendships`'
+`CHECK (user_id_a < user_id_b)` makes a self-row impossible), but
+`shareAnyGuild(caller, caller)` was never guarded against the degenerate
+case. So self-view previously worked by accident for guild members and
+404'd for guildless, friendless users viewing themselves — an
+inconsistency nobody had a reason to notice until the UI made this path
+reachable at all. The explicit `caller == target` bypass replaces that
+accidental, coverage-dependent behavior with the same result for every
+account unconditionally, and — as a secondary benefit — skips three
+otherwise-pointless queries (a caller's own `friendships`/guild-overlap/
+block state against themselves is never informative).
+
+**UI**: `ProfileView` (`web/components/ProfileView.tsx`) shows an "Edit
+profile" button only when viewing your own id (`userId === myUserId`),
+absent for every other profile. Clicking it closes `ProfileView` and
+opens the Settings modal directly to its existing Profile section
+(§4.3) — reusing `ProfileSettings.tsx` rather than adding a second,
+parallel edit surface inside `ProfileView` itself.
 
 **Preventing profile enumeration.** Wire `user_id`s are real UUIDv4s
 (`u_<uuid>`, `gen_random_uuid()` — §5 of the guild doc) — brute-force

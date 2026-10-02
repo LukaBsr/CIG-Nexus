@@ -10,6 +10,7 @@ import { JoinRequestInbox } from "@/components/JoinRequestInbox";
 import { LandingView } from "@/components/LandingView";
 import { MemberList } from "@/components/MemberList";
 import { MessageList } from "@/components/MessageList";
+import { ProfileView } from "@/components/ProfileView";
 import { SettingsModal } from "@/components/SettingsModal";
 import { TextInputWithSubmit } from "@/components/TextInputWithSubmit";
 import { useGatewayConnection } from "@/hooks/useGatewayConnection";
@@ -83,6 +84,18 @@ export default function Home() {
 
   const [view, setView] = useState<"lobby" | "guild" | "friends">("lobby");
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  // docs/social/friends-dms-design.md §4.6 — which section Settings opens
+  // to; undefined = the default (Appearance). Set explicitly on every open
+  // (never left over from a previous open) so a later plain gear-icon
+  // click doesn't inherit "profile" from an earlier "Edit profile" click.
+  const [settingsInitialSectionId, setSettingsInitialSectionId] = useState<string | undefined>(undefined);
+  const [viewingProfileUserId, setViewingProfileUserId] = useState<string | null>(null);
+
+  const handleEditProfile = () => {
+    setViewingProfileUserId(null);
+    setSettingsInitialSectionId("profile");
+    setIsSettingsOpen(true);
+  };
   const [input, setInput] = useState("");
   const [isCreatingChannel, setIsCreatingChannel] = useState(false);
   const [channelNameInput, setChannelNameInput] = useState("");
@@ -155,15 +168,32 @@ export default function Home() {
       />
 
       <div className="flex flex-1 flex-col overflow-hidden">
-        <Header status={status} onOpenSettings={() => setIsSettingsOpen(true)} />
+        <Header
+          status={status}
+          onOpenSettings={() => {
+            setSettingsInitialSectionId(undefined);
+            setIsSettingsOpen(true);
+          }}
+        />
         {isSettingsOpen && (
           <SettingsModal
             userId={myUserId}
             onClose={() => setIsSettingsOpen(false)}
             blockedUsers={blockedUsers}
             onUnblock={unblockUser}
+            initialSectionId={settingsInitialSectionId}
           />
         )}
+        {/* key={viewingProfileUserId}: a fresh mount per profile viewed —
+            see ProfileView's own comment on why this replaces a
+            synchronous setState-to-loading inside its effect. */}
+        <ProfileView
+          key={viewingProfileUserId}
+          userId={viewingProfileUserId}
+          onClose={() => setViewingProfileUserId(null)}
+          myUserId={myUserId}
+          onEditProfile={handleEditProfile}
+        />
 
         {lastError && (
           <div className="flex shrink-0 items-center justify-between gap-2 border-b border-slate/20 bg-red-400/10 px-5 py-1.5 font-mono text-xs text-red-300">
@@ -183,7 +213,11 @@ export default function Home() {
 
             <div className="flex-1 overflow-y-auto px-3">
               <div className="mx-auto max-w-3xl">
-                <MessageList messages={chatMessages} emptyText="No messages yet — say hello." />
+                <MessageList
+                  messages={chatMessages}
+                  emptyText="No messages yet — say hello."
+                  onViewProfile={setViewingProfileUserId}
+                />
               </div>
             </div>
 
@@ -296,6 +330,7 @@ export default function Home() {
                             <MessageList
                               messages={channelMessages}
                               emptyText="No messages in this channel yet..."
+                              onViewProfile={setViewingProfileUserId}
                             />
                           </div>
                         </div>
@@ -320,6 +355,7 @@ export default function Home() {
                     onlineUserIds={onlineUserIds}
                     myUserId={myUserId}
                     onBlock={blockUser}
+                    onViewProfile={setViewingProfileUserId}
                   />
                 </div>
               </>
@@ -340,6 +376,7 @@ export default function Home() {
             onRejectRequest={rejectFriendRequest}
             onCancelRequest={cancelFriendRequest}
             onBlock={blockUser}
+            onViewProfile={setViewingProfileUserId}
             dmConversations={dmConversations}
             activeDmPeerId={activeDmPeerId}
             dmMessages={dmMessages}

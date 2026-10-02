@@ -20,7 +20,12 @@ const RATE_LIMIT = { windowMs: 60_000, limit: 60 };
 // authenticated — needs the caller's own identity, not just the target's,
 // because visibility (§4.6) depends on the caller's relationship to the
 // target: canViewProfile(caller, target) := (areFriends || shareAnyGuild)
-// && !isBlockedEitherDirection, the exact shape canSendDm (§3.2) uses.
+// && !isBlockedEitherDirection, the exact shape canSendDm (§3.2) uses,
+// EXCEPT when caller == target — self-view always bypasses this entirely
+// (§4.6's self-view exception): it only ever grants a caller their own
+// already-editable data, and skips shareAnyGuild's self-join, which would
+// otherwise trivially match on any guild the caller is in (a real,
+// pre-existing inconsistency this exception also closes — see §4.6).
 // A nonexistent target, a target with no qualifying relationship, and a
 // target blocked either direction all return the identical 404 (§4.6's
 // silent-failure extension) — never a distinguishing status/body.
@@ -49,13 +54,15 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     return NextResponse.json({ error: "not found" }, { status: 404 });
   }
 
-  const [friends, sharedGuild, blocked] = await Promise.all([
-    areFriends(session.userId, targetId),
-    shareAnyGuild(session.userId, targetId),
-    isBlockedEitherDirection(session.userId, targetId)
-  ]);
-  if ((!friends && !sharedGuild) || blocked) {
-    return NextResponse.json({ error: "not found" }, { status: 404 });
+  if (targetId !== session.userId) {
+    const [friends, sharedGuild, blocked] = await Promise.all([
+      areFriends(session.userId, targetId),
+      shareAnyGuild(session.userId, targetId),
+      isBlockedEitherDirection(session.userId, targetId)
+    ]);
+    if ((!friends && !sharedGuild) || blocked) {
+      return NextResponse.json({ error: "not found" }, { status: 404 });
+    }
   }
 
   return NextResponse.json({

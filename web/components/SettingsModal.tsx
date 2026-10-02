@@ -10,6 +10,16 @@ interface SettingsModalProps {
   onClose: () => void;
   blockedUsers: Block[];
   onUnblock: (userId: string) => void;
+  // docs/social/friends-dms-design.md §4.6 — ProfileView's "Edit profile"
+  // button opens this modal straight to the Profile section instead of
+  // always landing on the default (Appearance). Optional: every other
+  // caller (Header's settings icon) omits it and gets the old default.
+  // Since this modal is only ever mounted while open (page.tsx's
+  // `{isSettingsOpen && <SettingsModal .../>}`), a fresh mount already
+  // re-evaluates this on every open — no stale-state concern the way
+  // ProfileView's `key` trick addresses for a component that stays
+  // mounted across changes.
+  initialSectionId?: string;
 }
 
 // docs/settings/appearance-design.md §1.1: a centered overlay, not a
@@ -17,8 +27,12 @@ interface SettingsModalProps {
 // state underneath, not a peer view of Lobby/Guilds. §1.2's section rail
 // is built as a list even with one entry today (Appearance) so a second
 // section is additive, never a rearchitect.
-export function SettingsModal({ userId, onClose, blockedUsers, onUnblock }: SettingsModalProps) {
-  const [activeSectionId, setActiveSectionId] = useState(SETTINGS_SECTIONS[0].id);
+export function SettingsModal({ userId, onClose, blockedUsers, onUnblock, initialSectionId }: SettingsModalProps) {
+  const [activeSectionId, setActiveSectionId] = useState(
+    SETTINGS_SECTIONS.some((section) => section.id === initialSectionId)
+      ? (initialSectionId as string)
+      : SETTINGS_SECTIONS[0].id
+  );
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {

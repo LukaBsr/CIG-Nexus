@@ -19,6 +19,7 @@ interface FriendsViewProps {
   onRejectRequest: (userId: string) => void;
   onCancelRequest: (userId: string) => void;
   onBlock: (userId: string) => void;
+  onViewProfile: (userId: string) => void;
   dmConversations: DmConversation[];
   activeDmPeerId: string | null;
   dmMessages: DmMessage[];
@@ -44,6 +45,7 @@ export function FriendsView({
   onRejectRequest,
   onCancelRequest,
   onBlock,
+  onViewProfile,
   dmConversations,
   activeDmPeerId,
   dmMessages,
@@ -109,22 +111,23 @@ export function FriendsView({
               </h3>
               <ul className="mb-3 flex list-none flex-col gap-0.5 p-0">
                 {sortedConversations.map((c) => (
-                  <li key={c.peerId}>
+                  <li
+                    key={c.peerId}
+                    className={`flex items-center gap-2 rounded-md px-1.5 py-1.5 transition-colors ${
+                      c.peerId === activeDmPeerId ? "bg-surface" : "hover:bg-surface/60"
+                    }`}
+                  >
+                    <PresenceDot online={onlineUserIds.has(c.peerId)} />
+                    <button onClick={() => onViewProfile(c.peerId)} aria-label={`View ${c.displayName ?? c.username}'s profile`}>
+                      <Avatar url={c.avatarUrl} name={c.displayName ?? c.username} size={24} />
+                    </button>
                     <button
                       onClick={() => onOpenDm(c.peerId)}
-                      className={`flex w-full items-center gap-2 rounded-md px-1.5 py-1.5 text-left transition-colors ${
-                        c.peerId === activeDmPeerId ? "bg-surface" : "hover:bg-surface/60"
+                      className={`min-w-0 flex-1 truncate text-left font-mono text-sm ${
+                        c.peerId === activeDmPeerId ? "text-teal" : "text-ivory/90"
                       }`}
                     >
-                      <PresenceDot online={onlineUserIds.has(c.peerId)} />
-                      <Avatar url={c.avatarUrl} name={c.displayName ?? c.username} size={24} />
-                      <span
-                        className={`min-w-0 flex-1 truncate font-mono text-sm ${
-                          c.peerId === activeDmPeerId ? "text-teal" : "text-ivory/90"
-                        }`}
-                      >
-                        {c.displayName ?? c.username}
-                      </span>
+                      {c.displayName ?? c.username}
                     </button>
                   </li>
                 ))}
@@ -146,12 +149,15 @@ export function FriendsView({
                   key={f.userId}
                   className="flex items-center gap-2 rounded-md px-1.5 py-1.5 transition-colors hover:bg-surface/60"
                 >
-                  <button onClick={() => onOpenDm(f.userId)} className="flex min-w-0 flex-1 items-center gap-2 text-left">
-                    <PresenceDot online={onlineUserIds.has(f.userId)} />
+                  <PresenceDot online={onlineUserIds.has(f.userId)} />
+                  <button onClick={() => onViewProfile(f.userId)} aria-label={`View ${f.displayName ?? f.username}'s profile`}>
                     <Avatar url={f.avatarUrl} name={f.displayName ?? f.username} size={24} />
-                    <span className="min-w-0 flex-1 truncate font-mono text-sm text-ivory/90">
-                      {f.displayName ?? f.username}
-                    </span>
+                  </button>
+                  <button
+                    onClick={() => onOpenDm(f.userId)}
+                    className="min-w-0 flex-1 truncate text-left font-mono text-sm text-ivory/90"
+                  >
+                    {f.displayName ?? f.username}
                   </button>
                   <button
                     onClick={() => onBlock(f.userId)}
@@ -173,7 +179,11 @@ export function FriendsView({
       ) : (
         <section className="flex flex-1 flex-col overflow-hidden">
           <div className="flex shrink-0 items-center gap-2 border-b border-slate/20 px-4 py-2">
-            <Avatar url={activePeer?.avatarUrl} name={activePeer?.displayName ?? activePeer?.username ?? "?"} size={20} />
+            {activeDmPeerId && (
+              <button onClick={() => onViewProfile(activeDmPeerId)} aria-label="View profile">
+                <Avatar url={activePeer?.avatarUrl} name={activePeer?.displayName ?? activePeer?.username ?? "?"} size={20} />
+              </button>
+            )}
             <h2 className="min-w-0 truncate font-mono text-sm font-semibold text-ivory">
               {activePeer?.displayName ?? activePeer?.username ?? activeDmPeerId}
             </h2>
@@ -181,7 +191,7 @@ export function FriendsView({
 
           <div className="flex-1 overflow-y-auto px-3 py-2">
             <div className="mx-auto max-w-3xl">
-              <MessageList messages={dmMessages} emptyText="No messages yet — say hello." />
+              <MessageList messages={dmMessages} emptyText="No messages yet — say hello." onViewProfile={onViewProfile} />
             </div>
           </div>
 
