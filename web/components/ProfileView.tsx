@@ -45,12 +45,24 @@ export function ProfileView({ userId, onClose, myUserId, onEditProfile }: Profil
     if (!userId) {
       return;
     }
+    // Catches a rejected fetchProfile() (a network failure, or fetch()/
+    // response.json() throwing) the same as fetchProfile's own existing
+    // "non-2xx -> null" contract — without this, a rejection left `profile`
+    // stuck at `undefined` forever (an unclosable "Loading…") with an
+    // unhandled promise rejection, instead of the "unavailable" state every
+    // other failure already renders.
     let cancelled = false;
-    void fetchProfile(userId).then((result) => {
-      if (!cancelled) {
-        setProfile(result);
-      }
-    });
+    void fetchProfile(userId)
+      .then((result) => {
+        if (!cancelled) {
+          setProfile(result);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setProfile(null);
+        }
+      });
     return () => {
       cancelled = true;
     };
