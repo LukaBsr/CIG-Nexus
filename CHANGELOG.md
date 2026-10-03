@@ -5,6 +5,7 @@
 **Fixes**
 - `BROADCAST` (lobby chat and `PRESENCE_UPDATE`) now reaches identified connections only; previously a socket that never completed `IDENTIFY` still received them (#30)
 - `GUILD_LIST` entries carry `is_member`, so a returning user's guild rail and Join buttons are correct after a page load (#31)
+- `ProfileView` falls back to its existing "Profile unavailable" state when `fetchProfile()` rejects (a network failure, or a malformed response body); previously an unhandled rejection left the modal stuck on "Loading…" indefinitely
 
 **Features**
 - View-profile UI: clicking an avatar in the lobby/channel/DM message lists, the guild member roster, or the friends/DM-conversation lists opens a profile card (display name, status message, bio, accent-colored header) — the "view profile" action `docs/social/friends-dms-design.md` §4.3/§4.4 always implied but never had a UI for (`web/components/ProfileView.tsx`). Clicking your own avatar now opens the same card with an "Edit profile" button that jumps straight to Settings → Profile (previously excluded everywhere)
@@ -28,6 +29,8 @@
 - Fixed a `.gitignore` regression from the `.vscode/` ignore change that had also silently un-ignored `data/` (uploaded avatars)
 - Added opt-in stderr logging (`CIG_NEXUS_DEBUG_PRESENCE=1`) around presence increments/decrements and `IDENTIFY` for diagnosing the open presence-count-leak known issue; off by default
 - Gateway: Node 18 (end-of-life) -> Node 24 in the Dockerfile and CI; added its first test suite (frame codec unit tests, WebSocket<->TCP bridge integration tests, `npm ci --omit=dev` in the runtime image)
+- `server-ci.yml`'s formatting check now pins `clang-format==18.1.8` via a pip-installed venv instead of apt's version, so it no longer drifts with the runner image; the same pinned-venv recipe is documented in `CLAUDE.md` and `server/README.md` for local use (#40)
+- Documented first-run secrets setup: generating the RSA keypair and its required file modes (`private.pem` 600, `public.pem` 644) before the first `docker compose up`, and how to recover if Docker already created root-owned directories in their place; fixed `CLAUDE.md`'s server test binary path (#50)
 
 ## v0.7.0 — 2026-08-16
 
