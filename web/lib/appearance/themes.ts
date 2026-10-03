@@ -6,7 +6,9 @@
 export interface ThemeDefinition {
   id: string;
   label: string;
-  // For rendering a preview swatch in the picker UI (not yet built).
+  // Preview swatch for the Appearance picker (AppearanceSettings renders it).
+  // Hex values are data, not class names, so they are not tied to the token
+  // names; keep them in sync with globals.css's --color-brand/--color-brand-2.
   swatch: { accent: string; secondary: string };
 }
 

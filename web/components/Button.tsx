@@ -7,13 +7,13 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 }
 
 const VARIANT_CLASSES: Record<ButtonVariant, string> = {
-  primary: "bg-teal text-ink hover:bg-teal/90",
-  secondary: "border border-slate bg-surface text-ivory hover:border-teal/60"
+  primary: "bg-brand text-page hover:bg-brand/90",
+  secondary: "border border-slate bg-surface text-fg hover:border-brand/60"
 };
 
 export function Button({ variant = "primary", className = "", disabled, ...props }: ButtonProps) {
   const stateClasses = disabled
-    ? "cursor-not-allowed border border-slate/40 bg-surface text-ivory/30"
+    ? "cursor-not-allowed border border-slate/40 bg-surface text-fg/30"
     : `cursor-pointer ${VARIANT_CLASSES[variant]}`;
 
   return (

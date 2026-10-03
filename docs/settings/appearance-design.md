@@ -9,6 +9,8 @@ limiting on `PATCH /api/user/appearance` (and, on the same
 §4's profile PATCH and avatar upload/delete routes) was added later — see
 the checklist item below.
 
+> **Naming note:** `teal` -> `brand`, `violet` -> `brand-2`, `ink` -> `page`, `ivory` -> `fg` (utilities and `--color-*`); names below are the pre-rename originals.
+
 ## Scope
 
 Two related but separable pieces:

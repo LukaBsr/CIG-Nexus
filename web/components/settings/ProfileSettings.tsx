@@ -123,11 +123,11 @@ export function ProfileSettings({ userId }: SettingsSectionProps) {
   };
 
   if (!userId) {
-    return <p className="font-mono text-sm text-ivory/40">Connecting…</p>;
+    return <p className="font-mono text-sm text-fg/40">Connecting…</p>;
   }
 
   if (profile === undefined) {
-    return <p className="font-mono text-sm text-ivory/40">Loading…</p>;
+    return <p className="font-mono text-sm text-fg/40">Loading…</p>;
   }
 
   return (
@@ -138,7 +138,7 @@ export function ProfileSettings({ userId }: SettingsSectionProps) {
             // eslint-disable-next-line @next/next/no-img-element -- user-uploaded/Discord-CDN URLs, not build-time-known assets
             <img src={profile.avatar_url} alt="" className="h-full w-full object-cover" />
           ) : (
-            <span className="font-mono text-lg text-ivory/40">{displayName.charAt(0).toUpperCase() || "?"}</span>
+            <span className="font-mono text-lg text-fg/40">{displayName.charAt(0).toUpperCase() || "?"}</span>
           )}
         </div>
         <div className="flex flex-col gap-1.5">
@@ -146,7 +146,7 @@ export function ProfileSettings({ userId }: SettingsSectionProps) {
             <button
               onClick={() => fileInputRef.current?.click()}
               disabled={avatarPending}
-              className="rounded-md border border-slate/40 px-3 py-1 font-mono text-xs text-ivory transition-colors hover:border-teal"
+              className="rounded-md border border-slate/40 px-3 py-1 font-mono text-xs text-fg transition-colors hover:border-brand"
             >
               Upload avatar
             </button>
@@ -154,7 +154,7 @@ export function ProfileSettings({ userId }: SettingsSectionProps) {
               <button
                 onClick={() => void handleRemoveAvatar()}
                 disabled={avatarPending}
-                className="rounded-md border border-slate/40 px-3 py-1 font-mono text-xs text-ivory/60 transition-colors hover:border-red-400 hover:text-red-400"
+                className="rounded-md border border-slate/40 px-3 py-1 font-mono text-xs text-fg/60 transition-colors hover:border-red-400 hover:text-red-400"
               >
                 Remove
               </button>
@@ -172,7 +172,7 @@ export function ProfileSettings({ userId }: SettingsSectionProps) {
       </div>
 
       <label className="flex flex-col gap-1">
-        <span className="font-mono text-xs font-semibold tracking-wider text-ivory/40 uppercase">
+        <span className="font-mono text-xs font-semibold tracking-wider text-fg/40 uppercase">
           Display name
         </span>
         <input
@@ -181,12 +181,12 @@ export function ProfileSettings({ userId }: SettingsSectionProps) {
           maxLength={DISPLAY_NAME_MAX_LENGTH}
           onChange={(e) => setDisplayName(e.target.value)}
           placeholder="Falls back to your Discord name"
-          className="rounded-md border border-slate/40 bg-ink px-3 py-1.5 font-mono text-sm text-ivory outline-none focus:border-teal"
+          className="rounded-md border border-slate/40 bg-page px-3 py-1.5 font-mono text-sm text-fg outline-none focus:border-brand"
         />
       </label>
 
       <label className="flex flex-col gap-1">
-        <span className="font-mono text-xs font-semibold tracking-wider text-ivory/40 uppercase">
+        <span className="font-mono text-xs font-semibold tracking-wider text-fg/40 uppercase">
           Status message
         </span>
         <input
@@ -194,23 +194,23 @@ export function ProfileSettings({ userId }: SettingsSectionProps) {
           value={statusMessage}
           maxLength={STATUS_MESSAGE_MAX_LENGTH}
           onChange={(e) => setStatusMessage(e.target.value)}
-          className="rounded-md border border-slate/40 bg-ink px-3 py-1.5 font-mono text-sm text-ivory outline-none focus:border-teal"
+          className="rounded-md border border-slate/40 bg-page px-3 py-1.5 font-mono text-sm text-fg outline-none focus:border-brand"
         />
       </label>
 
       <label className="flex flex-col gap-1">
-        <span className="font-mono text-xs font-semibold tracking-wider text-ivory/40 uppercase">Bio</span>
+        <span className="font-mono text-xs font-semibold tracking-wider text-fg/40 uppercase">Bio</span>
         <textarea
           value={bio}
           maxLength={BIO_MAX_LENGTH}
           onChange={(e) => setBio(e.target.value)}
           rows={3}
-          className="resize-none rounded-md border border-slate/40 bg-ink px-3 py-1.5 font-mono text-sm text-ivory outline-none focus:border-teal"
+          className="resize-none rounded-md border border-slate/40 bg-page px-3 py-1.5 font-mono text-sm text-fg outline-none focus:border-brand"
         />
       </label>
 
       <label className="flex items-center gap-3">
-        <span className="font-mono text-xs font-semibold tracking-wider text-ivory/40 uppercase">
+        <span className="font-mono text-xs font-semibold tracking-wider text-fg/40 uppercase">
           Accent color
         </span>
         <input
@@ -220,7 +220,7 @@ export function ProfileSettings({ userId }: SettingsSectionProps) {
             setAccentColor(e.target.value);
             setAccentTouched(true);
           }}
-          className="h-7 w-10 cursor-pointer rounded border border-slate/40 bg-ink"
+          className="h-7 w-10 cursor-pointer rounded border border-slate/40 bg-page"
         />
       </label>
 
@@ -228,7 +228,7 @@ export function ProfileSettings({ userId }: SettingsSectionProps) {
         <button
           onClick={() => void handleSave()}
           disabled={saving}
-          className="rounded-md border border-teal bg-teal/10 px-4 py-1.5 font-mono text-sm text-teal transition-colors hover:bg-teal/20"
+          className="rounded-md border border-brand bg-brand/10 px-4 py-1.5 font-mono text-sm text-brand transition-colors hover:bg-brand/20"
         >
           {saving ? "Saving…" : "Save"}
         </button>

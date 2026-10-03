@@ -66,7 +66,7 @@ export function AddFriendPopover({ friendCode, onAddByCode, onRegenerateCode }: 
         aria-label="Add friend"
         title="Add friend"
         className={`rounded-md p-1.5 transition-colors ${
-          open ? "bg-surface text-teal" : "text-ivory/50 hover:text-ivory"
+          open ? "bg-surface text-brand" : "text-fg/50 hover:text-fg"
         }`}
       >
         <PersonPlusIcon />
@@ -77,7 +77,7 @@ export function AddFriendPopover({ friendCode, onAddByCode, onRegenerateCode }: 
         // this trigger sits inside a narrow left sidebar near the screen
         // edge, so a right-aligned w-72 panel would overflow off-screen.
         <div className="absolute left-0 top-full z-40 mt-2 w-72 rounded-lg border border-slate/40 bg-surface p-3 shadow-xl">
-          <h3 className="mb-2 font-mono text-xs font-semibold tracking-wider text-ivory/40 uppercase">
+          <h3 className="mb-2 font-mono text-xs font-semibold tracking-wider text-fg/40 uppercase">
             Add Friend by Code
           </h3>
           <TextInputWithSubmit
@@ -89,20 +89,20 @@ export function AddFriendPopover({ friendCode, onAddByCode, onRegenerateCode }: 
           />
 
           <div className="mt-3 border-t border-slate/20 pt-3">
-            <h3 className="mb-2 font-mono text-xs font-semibold tracking-wider text-ivory/40 uppercase">
+            <h3 className="mb-2 font-mono text-xs font-semibold tracking-wider text-fg/40 uppercase">
               Your Code
             </h3>
             {friendCode ? (
-              <div className="flex items-center justify-between gap-2 rounded-md border border-teal/30 bg-teal/10 px-3 py-2 font-mono text-xs text-teal">
+              <div className="flex items-center justify-between gap-2 rounded-md border border-brand/30 bg-brand/10 px-3 py-2 font-mono text-xs text-brand">
                 <span className="font-semibold">{friendCode}</span>
                 <div className="flex shrink-0 gap-2">
-                  <button onClick={handleCopy} className="font-semibold text-teal/70 hover:text-teal">
+                  <button onClick={handleCopy} className="font-semibold text-brand/70 hover:text-brand">
                     {copied ? "Copied" : "Copy"}
                   </button>
                 </div>
               </div>
             ) : (
-              <p className="font-mono text-xs text-ivory/40">Loading…</p>
+              <p className="font-mono text-xs text-fg/40">Loading…</p>
             )}
             <Button variant="secondary" onClick={onRegenerateCode} className="mt-2 w-full">
               Regenerate

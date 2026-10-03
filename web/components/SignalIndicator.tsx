@@ -9,7 +9,7 @@ interface StatusConfig {
 
 // connected/error are status semantics (green = good, red = bad), not
 // theme decoration — fixed Tailwind literals, not the swappable
-// --color-teal/--color-violet accent tokens (web/app/globals.css), so
+// --color-brand/--color-brand-2 accent tokens (web/app/globals.css), so
 // switching themes (docs/settings/appearance-design.md §2) never makes
 // "connected" read as "error" or vice versa.
 const STATUS_CONFIG: Record<ConnectionStatus, StatusConfig> = {
@@ -32,7 +32,7 @@ export function SignalIndicator({ status }: SignalIndicatorProps) {
   const config = STATUS_CONFIG[status];
 
   return (
-    <div className="flex items-center gap-2 font-mono text-xs text-ivory/70">
+    <div className="flex items-center gap-2 font-mono text-xs text-fg/70">
       <span className="relative flex h-2.5 w-2.5">
         {config.pulse && (
           <span

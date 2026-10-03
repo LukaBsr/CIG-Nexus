@@ -45,12 +45,12 @@ export function JoinRequestInbox({ requests, onApprove, onReject }: JoinRequestI
         aria-label="Join requests"
         title="Join requests"
         className={`relative rounded-md p-1.5 transition-colors ${
-          open ? "bg-surface text-teal" : "text-ivory/50 hover:text-ivory"
+          open ? "bg-surface text-brand" : "text-fg/50 hover:text-fg"
         }`}
       >
         <InboxIcon />
         {requests.length > 0 && (
-          <span className="absolute -right-1 -top-1 flex h-3.5 min-w-3.5 items-center justify-center rounded-full bg-red-400 px-1 font-mono text-[9px] font-bold text-ink">
+          <span className="absolute -right-1 -top-1 flex h-3.5 min-w-3.5 items-center justify-center rounded-full bg-red-400 px-1 font-mono text-[9px] font-bold text-page">
             {requests.length}
           </span>
         )}
@@ -58,28 +58,28 @@ export function JoinRequestInbox({ requests, onApprove, onReject }: JoinRequestI
 
       {open && (
         <div className="absolute right-0 top-full z-40 mt-2 w-72 rounded-lg border border-slate/40 bg-surface p-3 shadow-xl">
-          <h3 className="mb-2 font-mono text-xs font-semibold tracking-wider text-ivory/40 uppercase">
+          <h3 className="mb-2 font-mono text-xs font-semibold tracking-wider text-fg/40 uppercase">
             Join Requests
           </h3>
           {requests.length === 0 ? (
-            <p className="font-mono text-xs text-ivory/40">No pending requests.</p>
+            <p className="font-mono text-xs text-fg/40">No pending requests.</p>
           ) : (
             <ul className="flex list-none flex-col gap-1 p-0">
               {requests.map((r) => (
                 <li
                   key={r.userId}
-                  className="flex items-center justify-between gap-2 rounded-md bg-ink/40 px-2 py-1.5"
+                  className="flex items-center justify-between gap-2 rounded-md bg-page/40 px-2 py-1.5"
                 >
                   <span className="flex min-w-0 flex-1 items-center gap-2">
                     <Avatar url={r.avatarUrl} name={r.displayName ?? r.username} size={20} />
-                    <span className="min-w-0 flex-1 truncate font-mono text-sm text-ivory">
+                    <span className="min-w-0 flex-1 truncate font-mono text-sm text-fg">
                       {r.displayName ?? r.username}
                     </span>
                   </span>
                   <div className="flex shrink-0 gap-1">
                     <button
                       onClick={() => onApprove(r.userId)}
-                      className="rounded-md bg-teal/15 px-2 py-1 font-mono text-xs font-semibold text-teal transition-colors hover:bg-teal/25"
+                      className="rounded-md bg-brand/15 px-2 py-1 font-mono text-xs font-semibold text-brand transition-colors hover:bg-brand/25"
                     >
                       Approve
                     </button>

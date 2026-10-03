@@ -50,7 +50,7 @@ export function SettingsModal({ userId, onClose, blockedUsers, onUnblock, initia
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-ink/70 p-4"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-page/70 p-4"
       onClick={onClose}
     >
       <div
@@ -58,7 +58,7 @@ export function SettingsModal({ userId, onClose, blockedUsers, onUnblock, initia
         onClick={(e) => e.stopPropagation()}
       >
         <aside className="w-40 shrink-0 border-r border-slate/20 p-3">
-          <h2 className="mb-3 px-2 font-mono text-xs font-semibold tracking-wider text-ivory/40 uppercase">
+          <h2 className="mb-3 px-2 font-mono text-xs font-semibold tracking-wider text-fg/40 uppercase">
             Settings
           </h2>
           <ul className="flex list-none flex-col gap-1 p-0">
@@ -68,8 +68,8 @@ export function SettingsModal({ userId, onClose, blockedUsers, onUnblock, initia
                   onClick={() => setActiveSectionId(section.id)}
                   className={`w-full rounded-md px-3 py-1.5 text-left font-mono text-sm transition-colors ${
                     section.id === activeSectionId
-                      ? "bg-teal/15 font-semibold text-teal"
-                      : "text-ivory/60 hover:text-ivory"
+                      ? "bg-brand/15 font-semibold text-brand"
+                      : "text-fg/60 hover:text-fg"
                   }`}
                 >
                   {section.label}
@@ -81,11 +81,11 @@ export function SettingsModal({ userId, onClose, blockedUsers, onUnblock, initia
 
         <div className="flex max-h-[70vh] flex-1 flex-col overflow-y-auto p-5">
           <div className="mb-4 flex shrink-0 items-center justify-between">
-            <h3 className="font-mono text-sm font-semibold text-ivory">{activeSection.label}</h3>
+            <h3 className="font-mono text-sm font-semibold text-fg">{activeSection.label}</h3>
             <button
               onClick={onClose}
               aria-label="Close settings"
-              className="font-mono text-lg leading-none text-ivory/50 transition-colors hover:text-ivory"
+              className="font-mono text-lg leading-none text-fg/50 transition-colors hover:text-fg"
             >
               &times;
             </button>
