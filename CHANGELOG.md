@@ -31,6 +31,7 @@
 - Gateway: Node 18 (end-of-life) -> Node 24 in the Dockerfile and CI; added its first test suite (frame codec unit tests, WebSocket<->TCP bridge integration tests, `npm ci --omit=dev` in the runtime image)
 - `server-ci.yml`'s formatting check now pins `clang-format==18.1.8` via a pip-installed venv instead of apt's version, so it no longer drifts with the runner image; the same pinned-venv recipe is documented in `CLAUDE.md` and `server/README.md` for local use (#40)
 - Documented first-run secrets setup: generating the RSA keypair and its required file modes (`private.pem` 600, `public.pem` 644) before the first `docker compose up`, and how to recover if Docker already created root-owned directories in their place; fixed `CLAUDE.md`'s server test binary path (#50)
+- Brand and design system charter v0.2 (`docs/design/brand-guidelines.md`): logo family, color tokens, typography, and a 13-theme catalog (`docs/design/theme-catalog.css` and `.json`); light and dark logo variants (`mark-dark`, `mark-light`, `icon-light`, `lockup-dark`, `lockup-light`) added to `web/public/branding/`. Documentation only — no theme is applied by this change
 
 ## v0.7.0 — 2026-08-16
 
