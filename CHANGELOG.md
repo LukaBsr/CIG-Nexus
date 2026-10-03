@@ -6,6 +6,7 @@
 - `BROADCAST` (lobby chat and `PRESENCE_UPDATE`) now reaches identified connections only; previously a socket that never completed `IDENTIFY` still received them (#30)
 - `GUILD_LIST` entries carry `is_member`, so a returning user's guild rail and Join buttons are correct after a page load (#31)
 - `ProfileView` falls back to its existing "Profile unavailable" state when `fetchProfile()` rejects (a network failure, or a malformed response body); previously an unhandled rejection left the modal stuck on "Loading…" indefinitely
+- Guild icon initials are a fixed light color (`#edeffb`) instead of the `text-ivory` theme token, and the background lightness is 30% instead of 32%, so the initials keep at least 4.5:1 contrast at every hue. Previously the worst hue fell to 4.2:1 (`docs/design/brand-guidelines.md` §2.5–2.6)
 
 **Features**
 - View-profile UI: clicking an avatar in the lobby/channel/DM message lists, the guild member roster, or the friends/DM-conversation lists opens a profile card (display name, status message, bio, accent-colored header) — the "view profile" action `docs/social/friends-dms-design.md` §4.3/§4.4 always implied but never had a UI for (`web/components/ProfileView.tsx`). Clicking your own avatar now opens the same card with an "Edit profile" button that jumps straight to Settings → Profile (previously excluded everywhere)
