@@ -20,6 +20,12 @@ the two disagree, the code wins and this document has a bug — fix it in the
 same PR as the code change (see `CLAUDE.md`, Documentation and Changelog
 Discipline).
 
+**What landed since the first v0.2 draft** (this revision describes `main` as of 2026-10-03):
+PR #61 made the guild icon theme-independent, PR #62 added this charter and
+the logo variants, and PR #63 renamed the four color tokens: `ink` to `page`,
+`ivory` to `fg`, `teal` to `brand`, `violet` to `brand-2`. Everything below uses
+the new names.
+
 **Companion files** (produced from the same dataset as section 7, so all three agree at v0.2; keep them in sync when editing):
 
 - `docs/design/theme-catalog.css` — one `[data-theme]` block per theme, ready to paste into `web/app/globals.css`.
@@ -90,7 +96,7 @@ Two treatments exist today. Keep both, with fixed jobs:
 | Face | Geist Mono Bold, skewed -6 degrees | Geist Mono Bold (`font-mono font-bold`) |
 | Layout | "CIG" over "NEXUS", size ratio 0.72 | one line: "CIG NEXUS" |
 | Tracking | about 0.11em (CIG) / 0.06em (NEXUS) | `tracking-[0.2em]` |
-| Color | CIG solid ivory/ink, NEXUS in the brand gradient | CIG `text-ivory`, NEXUS `text-teal` (follows the theme) |
+| Color | CIG solid (`fg`-colored), NEXUS in the brand gradient | CIG `text-fg`, NEXUS `text-brand` (follows the theme) |
 | Sizes | n/a | `text-sm` beside a 28px mark, `text-3xl` beside a 64px mark |
 
 Rule: product UI uses the inline wordmark (it is live text and follows the
@@ -130,8 +136,8 @@ Do not:
 
 ### 2.1 Token architecture [As-built]
 
-Six tokens in a Tailwind v4 `@theme` block in `web/app/globals.css` (`ink`,
-`surface`, `slate`, `teal`, `violet`, `ivory`). Tailwind compiles every color
+Six tokens in a Tailwind v4 `@theme` block in `web/app/globals.css` (`page`,
+`surface`, `slate`, `brand`, `brand-2`, `fg`). Tailwind compiles every color
 utility against `var(--color-...)`, so a `[data-theme="..."]` block that
 redeclares tokens re-skins the whole app with no component changes. There is
 deliberately no `[data-theme="abyss"]` block: the `@theme` defaults are Abyss.
@@ -139,27 +145,49 @@ The active theme is a `data-theme` attribute on `<html>`, set server-side
 from a cookie (no flash), with ids registered in `web/lib/appearance/themes.ts`.
 Section 2.7 proposes five more tokens.
 
+**Renamed in PR #63.** The old names described colors, and in a light theme or
+in Ember they were wrong (a `teal` that is coral, an `ink` that is white).
+
+| Was | Now | Role |
+|---|---|---|
+| `ink` | `page` | page background |
+| `ivory` | `fg` | primary text |
+| `teal` | `brand` | primary accent |
+| `violet` | `brand-2` | secondary accent |
+
+`accent` and `text` were rejected: `accent` collides with Tailwind's native
+`accent-*` utility (it would read `accent-accent`) and `text` would read
+`text-text`. Usage on `main`: 198 utility uses in 23 files (`fg` 109, `brand`
+63 including one `accent-brand`, `page` 23, `brand-2` 3), all literal class
+strings, none built by concatenation.
+
+**One hazard the rename exposed.** Tailwind emits rules in an order that
+depends on class names, so a rename can change which of two same-property
+utilities wins on one element. PR #63 found exactly one such case (the Friends
+button in the rail, whose active icon would have turned grey) and fixed it.
+See the rule in section 8.
+
 ### 2.2 Palettes
 
-Roles are positional, not literal: in a light theme `ink` is the light page
-color and `ivory` is the dark text color. Daylight is an exact inversion of
-Abyss (its `ink` is Abyss's `ivory` and vice versa), which keeps the primary
+Roles are positional, not literal: in a light theme `page` is the light page
+color and `fg` is the dark text color. Daylight is an exact inversion of
+Abyss (its `page` is Abyss's `fg` and vice versa), which keeps the primary
 text contrast identical (16.8:1).
 
 | Token | Role | Abyss [As-built] | Ember [As-built] | Daylight [Proposed] |
 |---|---|---|---|---|
-| `ink` | page background | `#0d0e18` | `#0d0e18` | `#edeffb` |
+| `page` | page background | `#0d0e18` | `#0d0e18` | `#edeffb` |
 | `surface` | panels, rail, cards, inputs | `#1a1c2e` | `#1a1c2e` | `#ffffff` |
 | `slate` | borders, dividers, muted chrome (used at 20-50% opacity) | `#4a4e72` | `#4a4e72` | `#4a4e72` |
-| `teal` | primary accent: connected, links, active, primary buttons | `#5eead4` | `#f87171` | `#0d6b63` |
-| `violet` | secondary accent: ownership, emphasis, usernames | `#8b5cf6` | `#fb923c` | `#6d28d9` |
-| `ivory` | primary text (used at 25-100% opacity) | `#edeffb` | `#edeffb` | `#0d0e18` |
+| `brand` | primary accent: connected, links, active, primary buttons | `#5eead4` | `#f87171` | `#0d6b63` |
+| `brand-2` | secondary accent: ownership, emphasis, usernames | `#8b5cf6` | `#fb923c` | `#6d28d9` |
+| `fg` | primary text (used at 25-100% opacity) | `#edeffb` | `#edeffb` | `#0d0e18` |
 | `danger` | errors, blocked, destructive (fixed literal today) | `#f87171` | `#f87171` | `#b91c1c` |
 | `online` | online / connected dot (fixed literal today) | `#4ade80` | `#4ade80` | `#15803d` |
 
 Notes:
 
-- Ember overrides only `teal` and `violet`; it keeps the dark base.
+- Ember overrides only `brand` and `brand-2`; it keeps the dark base.
 - `danger` and `online` are **not tokens today**: the code uses Tailwind
   literals `red-400` / `red-300` / `green-400`. The values above are those
   literals (Abyss, Ember) and the proposed light values (Daylight). See 5.3.
@@ -173,33 +201,33 @@ Contrast (WCAG 2.x), accent text on the page background:
 
 | Pair | Ratio | |
 |---|---|---|
-| Abyss `teal` on `ink` | 13.0 | |
-| Abyss `violet` on `ink` / on `surface` | 4.5 / 4.0 | below 4.5 on surface |
-| Ember `teal` / `violet` on `ink` | 6.9 / 8.5 | |
-| Abyss `teal` on Daylight `ink` | 1.3 | unusable, hence a new teal |
-| Abyss `violet` on Daylight `ink` | 3.7 | too low for small text |
-| Daylight `teal` on `ink` / `surface` | 5.6 / 6.4 | |
-| Daylight `violet` on `ink` | 6.2 | |
-| Daylight primary button: `ink` text on `teal` / on `teal/90` | 5.6 / 4.6 | |
+| Abyss `brand` on `page` | 13.0 | |
+| Abyss `brand-2` on `page` / on `surface` | 4.5 / 4.0 | below 4.5 on surface |
+| Ember `brand` / `brand-2` on `page` | 6.9 / 8.5 | |
+| Abyss `brand` on Daylight `page` | 1.3 | unusable, hence a new teal |
+| Abyss `brand-2` on Daylight `page` | 3.7 | too low for small text |
+| Daylight `brand` on `page` / `surface` | 5.6 / 6.4 | |
+| Daylight `brand-2` on `page` | 6.2 | |
+| Daylight primary button: `page` text on `brand` / on `brand/90` | 5.6 / 4.6 | |
 
 ### 2.3 Text opacity tiers [As-built]
 
-Text hierarchy is made with opacity on `ivory`, not with extra tokens.
-Contrast is measured on the page background (`ink`).
+Text hierarchy is made with opacity on `fg`, not with extra tokens.
+Contrast is measured on the page background (`page`).
 
 | Utility | Uses | Typical role | Abyss | Daylight |
 |---|---|---|---|---|
-| `text-ivory` | 39x | primary text | 16.8 | 16.8 |
-| `text-ivory/90` | 3x | list-row names | 13.6 | 13.4 |
-| `text-ivory/80` | rare | bio / long-form | 10.8 | 9.7 |
-| `text-ivory/70` | 4x | secondary icons and text | 8.4 | 6.8 |
-| `text-ivory/60` | 6x | descriptions | 6.4 | 4.8 |
-| `text-ivory/50` | 10x | timestamps, icon buttons, tertiary text | 4.8 | 3.5 |
-| `text-ivory/40` | 40x | uppercase section labels (18), empty states, helper text | 3.5 | 2.6 |
-| `text-ivory/30` | 4x | placeholders | 2.5 | 2.0 |
+| `text-fg` | 38x | primary text | 16.8 | 16.8 |
+| `text-fg/90` | 3x | list-row names | 13.6 | 13.4 |
+| `text-fg/80` | 1x | bio / long-form | 10.8 | 9.7 |
+| `text-fg/70` | 4x | secondary icons and text | 8.4 | 6.8 |
+| `text-fg/60` | 6x | descriptions | 6.4 | 4.8 |
+| `text-fg/50` | 10x | timestamps, icon buttons, tertiary text | 4.8 | 3.5 |
+| `text-fg/40` | 40x | uppercase section labels (18), empty states, helper text | 3.5 | 2.6 |
+| `text-fg/30` | 4x | placeholders | 2.5 | 2.0 |
 
 **Proposed rule (replaces the earlier "/60 or stronger" idea):** informational
-text is `ivory` or the new solid `muted` token, both guaranteed AA in every
+text is `fg` or the new solid `muted` token, both guaranteed AA in every
 theme. The opacity tiers (`/90` ... `/30`) are for decoration: placeholders,
 disabled states, hover tints, dividers. About 60 current uses of `/40` to
 `/70` (40 + 10 + 6 + 4) would be reviewed for migration to `text-muted`. See
@@ -210,8 +238,8 @@ disabled states, hover tints, dividers. About 60 current uses of `/40` to
 - Borders and dividers: `border-slate/20` (21 uses, section dividers) and
   `border-slate/40` (21 uses, controls); text inputs use `border-slate/50`.
 - Panels: `bg-surface`; translucent rails `bg-surface/40` to `/60`.
-- Accent tint for active/selected states: `bg-teal/10` to `/25`.
-- Overlays and backdrops: `bg-ink/40`, `bg-ink/70`; elevated cards use
+- Accent tint for active/selected states: `bg-brand/10` to `/25`.
+- Overlays and backdrops: `bg-page/40`, `bg-page/70`; elevated cards use
   `shadow-xl`.
 
 ### 2.5 Colors that do not follow the theme [As-built]
@@ -224,9 +252,10 @@ Three things are intentionally independent of the active theme:
    values are hardcoded literals tuned for dark backgrounds (see 2.6, 5.3).
    v0.2 keeps the rule (status keeps its meaning across themes) but makes the
    values tokens, so each theme can tune them for its own backgrounds.
-2. **Guild icons**: background `hsl(hue, 45%, 32%)` with the hue hashed from
-   the guild id, so it is theme-independent by design. Its initials must
-   therefore also be theme-independent (a fixed light color, not `text-ivory`).
+2. **Guild icons** [fixed in PR #61]: background `hsl(hue, 45%, 30%)` with the
+   hue hashed from the guild id, and initials in a fixed `#edeffb`
+   (`web/lib/guildIconColor.ts`). Neither follows the theme, by design. A test
+   sweeps all 360 hues and asserts at least 4.5:1.
 3. **The brand gradient**, which exists only in logo artwork.
 
 ### 2.6 Accessibility findings
@@ -238,7 +267,7 @@ opacity modifiers in OKLab, so those values differ by a few tenths: confirm in
 browser DevTools before locking any threshold. Solid-color figures (the
 catalog in section 7) do not have this caveat.
 
-1. **The muted tier is below AA even in Abyss.** `text-ivory/40` is the most
+1. **The muted tier is below AA even in Abyss.** `text-fg/40` is the most
    used tier (40 uses) and the style of 18 of the 19 uppercase labels:
    3.5:1 in Abyss, 2.6:1 in Daylight. `/50` is
    4.8:1 / 3.5:1 and `/60` is 6.4:1 / 4.8:1.
@@ -250,29 +279,36 @@ catalog in section 7) do not have this caveat.
    erases what makes those themes themselves. A solid `muted` color per theme
    (the approach Discord, Catppuccin and Rose Pine all take) keeps each
    theme's identity and gives AA by construction.
-3. **Abyss violet on surface is 4.0:1** (usernames):
-   fine on ink (4.5:1), marginal on panels. v0.2
+3. **Abyss `brand-2` on `surface` is 4.0:1** (usernames):
+   fine on `page` (4.5:1), marginal on panels. v0.2
    lightens it to `#a079f8` (4.5:1 on the weakest surface).
 4. **Status literals fail on light backgrounds**: `red-400` is
-   2.4:1 and `green-400` is 1.5:1 on Daylight `ink`.
-5. **Guild initials**: `#edeffb` on `hsl(hue, 45%, 32%)` is 4.2:1 at the
-   worst hue. At 30% lightness the worst case is 4.6:1, so lowering the
-   lightness by two points is enough.
+   2.4:1 and `green-400` is 1.5:1 on Daylight `page`.
+5. **Guild initials** [resolved in PR #61]: `#edeffb` on `hsl(hue, 45%, 32%)`
+   was 4.17:1 at the worst hue (60). At 30% lightness the worst case is
+   4.60:1, which is what shipped, with a 360-hue test.
+6. **No theme declares `color-scheme`.** A search of `web/app`, `web/components`
+   and `web/lib` finds no `color-scheme` and no `colorScheme` metadata, so the
+   browser's default (light) styling applies to native scrollbars, form
+   controls and autofill, even on the dark default theme. Browsers or the OS
+   may override this, so check it in a browser before relying on it. The fix is
+   one line on the default theme (`color-scheme: dark`); every catalog block
+   already sets its own.
 
 ### 2.7 Token set v0.2 [Proposed]
 
-Eleven tokens instead of six. Names stay positional; see the rename note below.
+Eleven tokens instead of six. The four renamed tokens are already on `main` (2.1); five are new.
 
 | Token | Role | Status | Why |
 |---|---|---|---|
-| `ink` | page background | as-built | unchanged |
+| `page` | page background | as-built (was `ink`) | renamed in PR #63 |
 | `surface` | panels, rail, cards | as-built | unchanged |
 | `raised` | hover, selected rows, input fill | **new** | Discord stacks three surface levels; CIG has two, so hover and inputs borrow translucent tints today |
 | `slate` | borders and chrome (used at /20 to /50) | as-built | unchanged |
-| `ivory` | primary text | as-built | unchanged (AAA on ink and surface in every catalog theme) |
-| `muted` | secondary text, a solid color | **new** | replaces informational use of `ivory/40` to `/70`; AA by construction |
-| `teal` | primary accent | as-built | holds a non-teal hue in most catalog themes |
-| `violet` | secondary accent | as-built | Abyss value lightened |
+| `fg` | primary text | as-built (was `ivory`) | renamed in PR #63; AAA on page and surface in every catalog theme |
+| `muted` | secondary text, a solid color | **new** | replaces informational use of `fg/40` to `/70`; AA by construction |
+| `brand` | primary accent | as-built (was `teal`) | renamed in PR #63; most catalog themes use a non-teal hue |
+| `brand-2` | secondary accent | as-built (was `violet`) | renamed in PR #63; Abyss value lightened |
 | `danger` | errors, blocked | **new token** (literal today) | per-theme tuning |
 | `warning` | idle, caution | **new** | idle presence and cautions have no color yet |
 | `online` | online dot | **new token** (literal today) | per-theme tuning |
@@ -282,18 +318,16 @@ What changes for Abyss and Ember (the two shipping themes):
 | Token | As-built | v0.2 | Note |
 |---|---|---|---|
 | `raised` | none | `#252840` | one step above `surface` |
-| `muted` | `ivory/40` to `/70` | `#9aa0c8` | about today's `ivory/60` on `ink`; 5.7:1 on the weakest surface |
-| `violet` (Abyss) | `#8b5cf6` | `#a079f8` | lightness only; 4.5:1 on the weakest surface |
+| `muted` | `fg/40` to `/70` | `#9aa0c8` | about today's `fg/60` on `page`; 5.7:1 on the weakest surface |
+| `brand-2` (Abyss) | `#8b5cf6` | `#a079f8` | lightness only; 4.5:1 on the weakest surface |
 | `danger` (Ember) | `#f87171`, same as the accent | `#ff4d79` | distinct from the coral accent |
 | `warning` | none | `#fbbf24` | amber, readable on every dark surface |
 | `danger`, `online` (Abyss) | `red-400`, `green-400` literals | `#f87171`, `#4ade80` | same values, now tokens |
 
-**Rename note [optional].** `teal`, `violet`, `ink` and `ivory` are
-positional, and in the catalog the `teal` token is a periwinkle, a mauve or a
-brick red depending on the theme. A mechanical rename (`teal` to `accent`,
-`violet` to `accent-2`, `ink` to `page`, `ivory` to `text`) would make the
-code say what it means, at the cost of touching every color utility. Not
-needed for v0.2; worth deciding before the catalog ships (section 9).
+**Rename [done, PR #63].** The four renamed tokens no longer name a color,
+so the catalog can give `brand` a periwinkle, a mauve or a brick red without
+the code lying. See 2.1 for the mapping and the reasons `accent` and `text` were
+rejected.
 
 ---
 
@@ -325,7 +359,7 @@ Weights: `font-semibold` (600) is the default emphasis (41 uses);
 Everything else is regular.
 
 **Section label style** (8+ uses, the one fully consistent micro-pattern):
-`font-mono text-xs font-semibold tracking-wider uppercase text-ivory/40`.
+`font-mono text-xs font-semibold tracking-wider uppercase text-fg/40`.
 Headlines use `tracking-tight`; the inline wordmark uses `tracking-[0.2em]`.
 
 Rule: Geist Mono for anything the product *says* (chrome, names, labels),
@@ -355,12 +389,12 @@ the main reading surface.
 
 | Role | As-built | v0.2 | Why |
 |---|---|---|---|
-| Chat message body | Geist Sans 14 / 20, `ivory` | Geist Sans 16 / 22 (`text-base`, `leading-[1.375]`), `ivory` | 16px floor; Discord's 16 / 1.375 |
+| Chat message body | Geist Sans 14 / 20, `fg` | Geist Sans 16 / 22 (`text-base`, `leading-[1.375]`), `fg` | 16px floor; Discord's 16 / 1.375 |
 | Text inputs | Geist Sans 14 | Geist Sans 16 | iOS Safari zooms into inputs below 16px |
-| Username | Geist Mono semibold 14, `violet` | unchanged | the mono voice |
-| Timestamp, metadata, helper text | Geist Mono 12, `ivory/40` to `/50` | Geist Mono 12, `muted` | AA (2.3) |
-| Section label | mono 12 semibold, `tracking-wider`, uppercase, `ivory/40` | same style, `muted` | AA; Discord uses +0.02em, CIG's wider tracking suits mono |
-| Bio and long-form | Geist Sans 14, `ivory/80` | Geist Sans 14 / 22 (`leading-relaxed`), `ivory` | line height at least 1.4 |
+| Username | Geist Mono semibold 14, `brand-2` | unchanged | the mono voice |
+| Timestamp, metadata, helper text | Geist Mono 12, `fg/40` to `/50` | Geist Mono 12, `muted` | AA (2.3) |
+| Section label | mono 12 semibold, `tracking-wider`, uppercase, `fg/40` | same style, `muted` | AA; Discord uses +0.02em, CIG's wider tracking suits mono |
+| Bio and long-form | Geist Sans 14, `fg/80` | Geist Sans 14 / 22 (`leading-relaxed`), `fg` | line height at least 1.4 |
 | Role badge and micro labels | 10px and 9px | 12px (`text-xs`) | below the 12px floor today |
 | Everything else | as in the scale above | unchanged | |
 
@@ -383,7 +417,7 @@ check, not a v0.2 requirement.
 | Element | Size |
 |---|---|
 | Guild rail | 72px wide; buttons 44x44; dividers 32px wide, 1px |
-| Active-guild pill | 4px x 24px, `rounded-r-full`, `bg-ivory`, 10px left of the button |
+| Active-guild pill | 4px x 24px, `rounded-r-full`, `bg-fg`, 10px left of the button |
 | Member list | 208px wide (`w-52`), `p-3` |
 | Header | `px-6 py-4`, bottom border `slate/20` |
 | Popovers | 288px wide (`w-72`) |
@@ -393,7 +427,7 @@ check, not a v0.2 requirement.
 
 ### 4.1 Discord-inspired details [Proposed, optional]
 
-- **Three surface levels.** `ink` (page) < `surface` (panels) < `raised`
+- **Three surface levels.** `page` (page) < `surface` (panels) < `raised`
   (hover, selected, inputs) mirrors Discord's three grays. Hover and selected
   rows would use `bg-raised` instead of translucent tints, which also keeps
   them legible in every theme.
@@ -425,14 +459,14 @@ tokens are unchanged from the first draft.
 ```css
 [data-theme="daylight"] {
   color-scheme: light;
-  --color-ink: #edeffb;           /* page background */
+  --color-page: #edeffb;          /* page background */
   --color-surface: #ffffff;       /* panels, rail, cards */
   --color-raised: #e2e5f6;        /* hover, selected, input fill */
   --color-slate: #4a4e72;         /* borders at /20-/50 */
-  --color-ivory: #0d0e18;         /* primary text */
+  --color-fg: #0d0e18;            /* primary text */
   --color-muted: #4d5278;         /* secondary text */
-  --color-teal: #0d6b63;          /* primary accent */
-  --color-violet: #6d28d9;        /* secondary accent */
+  --color-brand: #0d6b63;         /* primary accent */
+  --color-brand-2: #6d28d9;       /* secondary accent */
   --color-danger: #b91c1c;        /* errors, blocked */
   --color-warning: #b45309;       /* idle, caution */
   --color-online: #15803d;        /* online dot */
@@ -444,26 +478,26 @@ tokens are unchanged from the first draft.
 { id: "daylight", label: "Daylight", swatch: { accent: "#0d6b63", secondary: "#6d28d9" } },
 ```
 
-Why these values: `ivory`/`ink` are an exact inversion of Abyss, so the
-primary text contrast is the same (16.8:1). `teal` is the
-lightest teal of its ramp for which both `text-teal` and the primary button's
-hover state (`text-ink` on `bg-teal/90`, 4.6:1) stay at or above
+Why these values: `fg`/`page` are an exact inversion of Abyss, so the
+primary text contrast is the same (16.8:1). `brand` is the
+lightest teal of its ramp for which both `text-brand` and the primary button's
+hover state (`text-page` on `bg-brand/90`, 4.6:1) stay at or above
 4.5:1. `slate` is unchanged because it is only ever used at partial opacity.
 
 ### 5.3 Required follow-ups for Daylight and the catalog [Proposed]
 
-1. **Guild icon initials:** stop using `text-ivory`; use a fixed light color
-   and set the background lightness to 30% (see 2.6, item 5). In progress as a
-   separate change.
+1. **Guild icon initials:** done in PR #61 (fixed `#edeffb`, 30% lightness,
+   tested at all 360 hues). Nothing left to do.
 2. **New tokens:** add `raised`, `muted`, `warning` to `@theme`, and turn the
    `red-400` / `red-300` / `green-400` literals into `danger` / `online`
    (about 20 uses: `grep -rn "red-\(300\|400\)\|green-400" web/app
    web/components`). Without this, error text is 2.4:1 on Daylight.
-3. **Migrate informational text** from `ivory/40` to `/70` (about 60 uses) to
+3. **Migrate informational text** from `fg/40` to `/70` (about 60 uses) to
    `text-muted`, and keep the opacity tiers for decoration (2.3).
 4. **`color-scheme`:** each catalog block sets it (`light` or `dark`), so
-   native scrollbars, form controls and autofill follow the theme. Check that
-   the default Abyss declares `dark`.
+   native scrollbars, form controls and autofill follow the theme. The default
+   theme does **not** declare it today (2.6, item 6): add `color-scheme: dark`
+   to it, in the same PR as the new tokens.
 5. **Logo in the UI** — decide between:
    - A. Two static assets swapped by CSS (`icon.svg` / `icon-light.svg`, or
      `mark-dark` / `mark-light`). Simple, no JS. The mark stays blue-teal
@@ -477,7 +511,12 @@ hover state (`text-ink` on `bg-teal/90`, 4.6:1) stay at or above
    profile modal, popovers) in each theme that ships. There is no
    visual-regression suite, so cost scales with the number of themes (7.16).
 7. **Docs:** update `appearance-design.md` (scope and status) in the PR that
-   ships the first new theme, and add the new files to `CLAUDE.md`.
+   ships the first new theme. The `CLAUDE.md` row for this charter already
+   landed in PR #62.
+8. **Drift guard:** the swatches in `themes.ts` and `DEFAULT_ACCENT`
+   (`#5eead4`, in `ProfileView` and `ProfileSettings`) copy values from
+   `globals.css`. With 13 themes that is a lot of copies to forget: add a test
+   that compares them to the CSS, as was done for the JWT issuer.
 
 ---
 
@@ -494,7 +533,7 @@ extraction, consistent across several sources but not an official spec.
 |---|---|---|
 | Four base themes: Light, Ash, Dark, Onyx (Onyx is true black, for OLED) | official (support pages, Mar 2025 desktop update, 2026 mobile update) | Adapt: Chalk, Ash, Onyx join the catalog |
 | "Sync with computer" and a choice of which light and which dark theme to use | official | Adapt: system mode proposal in 7.17 |
-| Three dark surface levels: server rail, sidebar, chat | `#1e1f22`, `#2b2d31`, `#313338` (community) | Adapt: `ink` / `surface` / `raised` ramp |
+| Three dark surface levels: server rail, sidebar, chat | `#1e1f22`, `#2b2d31`, `#313338` (community) | Adapt: `page` / `surface` / `raised` ramp |
 | Light surfaces | `#ffffff`, `#f2f3f5`, `#e3e5e8` (community) | Used as the Chalk reference |
 | One saturated accent | blurple `#5865f2` (official brand) | Keep the one-accent discipline; secondary accent only for emphasis |
 | Solid text tiers rather than opacity | `#dbdee1` normal, `#b5bac1` muted (community) | Adopt: solid `muted` token |
@@ -546,14 +585,14 @@ Daylight is the proposal above; the other ten are new.
 
 Each theme maps a reference palette onto the 11 tokens of 2.7, then colors are
 nudged **in lightness only** (hue and saturation kept) until they meet these
-targets on `ink`, `surface` and `raised`. Every adjustment is listed under its
+targets on `page`, `surface` and `raised`. Every adjustment is listed under its
 theme.
 
 | Token | Target |
 |---|---|
-| `ivory` | 7:1 on `ink` and `surface` (AAA), 4.5:1 on `raised` |
-| `muted`, `teal`, `violet`, `danger` | 4.5:1 on all three surfaces |
-| `teal` as a button | `ink` text on `teal` 4.5:1, and on `teal/90` (hover) 4.5:1 |
+| `fg` | 7:1 on `page` and `surface` (AAA), 4.5:1 on `raised` |
+| `muted`, `brand`, `brand-2`, `danger` | 4.5:1 on all three surfaces |
+| `brand` as a button | `page` text on `brand` 4.5:1, and on `brand/90` (hover) 4.5:1 |
 | `warning`, `online` | 3:1 on all three surfaces (they are dots, not text) |
 
 All 13 themes meet every target. That is by construction, since the
@@ -563,7 +602,7 @@ not that they look good, so each shipped theme still needs the manual pass
 
 ### 7.2 At a glance
 
-| Theme | Mode | Family | `ink` | `surface` | `ivory` | `teal` | `violet` | Status |
+| Theme | Mode | Family | `page` | `surface` | `fg` | `brand` | `brand-2` | Status |
 |---|---|---|---|---|---|---|---|---|
 | **Abyss** | dark | CIG brand | `#0d0e18` | `#1a1c2e` | `#edeffb` | `#5eead4` | `#a079f8` | As-built |
 | **Ember** | dark | CIG brand | `#0d0e18` | `#1a1c2e` | `#edeffb` | `#f87171` | `#fb923c` | As-built |
@@ -579,42 +618,43 @@ not that they look good, so each shipped theme still needs the manual pass
 | **Dawn** | light | Rose Pine | `#faf4ed` | `#fffaf3` | `#464261` | `#6e5888` | `#ba3f3a` | Proposed |
 | **Parchment** | light | Gruvbox | `#ebdbb2` | `#fbf1c7` | `#3c3836` | `#065b6b` | `#813966` | Proposed |
 
-`teal` and `violet` are the primary and secondary accents. In most themes the
-`teal` token is not teal (rename note, 2.7).
+`brand` and `brand-2` are the primary and secondary accents. Their hue
+changes with the theme, which is why the token names no longer say a color
+(2.1).
 
 ### 7.3 Abyss - dark, CIG brand [As-built]
 
 *Ink-navy instrument panel, teal signal. The default.*
 
-**Reference.** All values from globals.css and themes.ts. New in v0.2: raised, muted, warning, and a lightened violet (4.0:1 on surface as-built).
+**Reference.** All values from globals.css and themes.ts. New in v0.2: raised, muted, warning, and a lightened brand-2 (4.0:1 on surface as-built).
 
-| Token | Hex | Role | Contrast (min over ink, surface, raised) |
+| Token | Hex | Role | Contrast (min over page, surface, raised) |
 |---|---|---|---|
-| `ink` | `#0d0e18` | page background | - |
+| `page` | `#0d0e18` | page background | - |
 | `surface` | `#1a1c2e` | panels, rail, cards | - |
 | `raised` | `#252840` | hover, selected, input fill | - |
 | `slate` | `#4a4e72` | borders and chrome, used at /20-/50 | - |
-| `ivory` | `#edeffb` | primary text | 12.6:1 min |
+| `fg` | `#edeffb` | primary text | 12.6:1 min |
 | `muted` | `#9aa0c8` | secondary text (solid) | 5.7:1 min |
-| `teal` | `#5eead4` | primary accent | 9.7:1 min; button 13.0:1, hover 10.6:1 |
-| `violet` | `#a079f8` | secondary accent | 4.5:1 min |
+| `brand` | `#5eead4` | primary accent | 9.7:1 min; button 13.0:1, hover 10.6:1 |
+| `brand-2` | `#a079f8` | secondary accent | 4.5:1 min |
 | `danger` | `#f87171` | errors, blocked | 5.2:1 min |
 | `warning` | `#fbbf24` | idle, caution | 8.6:1 min (dot) |
 | `online` | `#4ade80` | online dot | 8.3:1 min (dot) |
 
-**Tuned for contrast** (lightness only, hue and saturation kept): `violet` #8b5cf6 -> #a079f8.
+**Tuned for contrast** (lightness only, hue and saturation kept): `brand-2` #8b5cf6 -> #a079f8.
 
 ```css
 [data-theme="abyss"] {
   color-scheme: dark;
-  --color-ink: #0d0e18;           /* page background */
+  --color-page: #0d0e18;          /* page background */
   --color-surface: #1a1c2e;       /* panels, rail, cards */
   --color-raised: #252840;        /* hover, selected, input fill */
   --color-slate: #4a4e72;         /* borders at /20-/50 */
-  --color-ivory: #edeffb;         /* primary text */
+  --color-fg: #edeffb;            /* primary text */
   --color-muted: #9aa0c8;         /* secondary text */
-  --color-teal: #5eead4;          /* primary accent */
-  --color-violet: #a079f8;        /* secondary accent */
+  --color-brand: #5eead4;         /* primary accent */
+  --color-brand-2: #a079f8;       /* secondary accent */
   --color-danger: #f87171;        /* errors, blocked */
   --color-warning: #fbbf24;       /* idle, caution */
   --color-online: #4ade80;        /* online dot */
@@ -627,20 +667,20 @@ not that they look good, so each shipped theme still needs the manual pass
 
 ### 7.4 Ember - dark, CIG brand [As-built]
 
-*Same ink base with a warm coral and orange accent.*
+*Same dark navy base with a warm coral and orange accent.*
 
 **Reference.** Accent values from themes.ts. New in v0.2: raised, muted, warning, and a distinct danger (as-built danger shares the accent hue).
 
-| Token | Hex | Role | Contrast (min over ink, surface, raised) |
+| Token | Hex | Role | Contrast (min over page, surface, raised) |
 |---|---|---|---|
-| `ink` | `#0d0e18` | page background | - |
+| `page` | `#0d0e18` | page background | - |
 | `surface` | `#1a1c2e` | panels, rail, cards | - |
 | `raised` | `#252840` | hover, selected, input fill | - |
 | `slate` | `#4a4e72` | borders and chrome, used at /20-/50 | - |
-| `ivory` | `#edeffb` | primary text | 12.6:1 min |
+| `fg` | `#edeffb` | primary text | 12.6:1 min |
 | `muted` | `#9aa0c8` | secondary text (solid) | 5.7:1 min |
-| `teal` | `#f87171` | primary accent | 5.2:1 min; button 6.9:1, hover 5.8:1 |
-| `violet` | `#fb923c` | secondary accent | 6.4:1 min |
+| `brand` | `#f87171` | primary accent | 5.2:1 min; button 6.9:1, hover 5.8:1 |
+| `brand-2` | `#fb923c` | secondary accent | 6.4:1 min |
 | `danger` | `#ff4d79` | errors, blocked | 4.5:1 min |
 | `warning` | `#fbbf24` | idle, caution | 8.6:1 min (dot) |
 | `online` | `#4ade80` | online dot | 8.3:1 min (dot) |
@@ -650,14 +690,14 @@ not that they look good, so each shipped theme still needs the manual pass
 ```css
 [data-theme="ember"] {
   color-scheme: dark;
-  --color-ink: #0d0e18;           /* page background */
+  --color-page: #0d0e18;          /* page background */
   --color-surface: #1a1c2e;       /* panels, rail, cards */
   --color-raised: #252840;        /* hover, selected, input fill */
   --color-slate: #4a4e72;         /* borders at /20-/50 */
-  --color-ivory: #edeffb;         /* primary text */
+  --color-fg: #edeffb;            /* primary text */
   --color-muted: #9aa0c8;         /* secondary text */
-  --color-teal: #f87171;          /* primary accent */
-  --color-violet: #fb923c;        /* secondary accent */
+  --color-brand: #f87171;         /* primary accent */
+  --color-brand-2: #fb923c;       /* secondary accent */
   --color-danger: #ff4d79;        /* errors, blocked */
   --color-warning: #fbbf24;       /* idle, caution */
   --color-online: #4ade80;        /* online dot */
@@ -672,18 +712,18 @@ not that they look good, so each shipped theme still needs the manual pass
 
 *Cool lavender-white page, deep teal and violet. The neutral light theme.*
 
-**Reference.** Our own design: ink and ivory swapped from Abyss; teal and violet deepened for contrast.
+**Reference.** Our own design: page and fg swapped from Abyss; brand and brand-2 deepened for contrast.
 
-| Token | Hex | Role | Contrast (min over ink, surface, raised) |
+| Token | Hex | Role | Contrast (min over page, surface, raised) |
 |---|---|---|---|
-| `ink` | `#edeffb` | page background | - |
+| `page` | `#edeffb` | page background | - |
 | `surface` | `#ffffff` | panels, rail, cards | - |
 | `raised` | `#e2e5f6` | hover, selected, input fill | - |
 | `slate` | `#4a4e72` | borders and chrome, used at /20-/50 | - |
-| `ivory` | `#0d0e18` | primary text | 15.3:1 min |
+| `fg` | `#0d0e18` | primary text | 15.3:1 min |
 | `muted` | `#4d5278` | secondary text (solid) | 6.0:1 min |
-| `teal` | `#0d6b63` | primary accent | 5.1:1 min; button 5.6:1, hover 4.6:1 |
-| `violet` | `#6d28d9` | secondary accent | 5.7:1 min |
+| `brand` | `#0d6b63` | primary accent | 5.1:1 min; button 5.6:1, hover 4.6:1 |
+| `brand-2` | `#6d28d9` | secondary accent | 5.7:1 min |
 | `danger` | `#b91c1c` | errors, blocked | 5.2:1 min |
 | `warning` | `#b45309` | idle, caution | 4.0:1 min (dot) |
 | `online` | `#15803d` | online dot | 4.0:1 min (dot) |
@@ -693,14 +733,14 @@ not that they look good, so each shipped theme still needs the manual pass
 ```css
 [data-theme="daylight"] {
   color-scheme: light;
-  --color-ink: #edeffb;           /* page background */
+  --color-page: #edeffb;          /* page background */
   --color-surface: #ffffff;       /* panels, rail, cards */
   --color-raised: #e2e5f6;        /* hover, selected, input fill */
   --color-slate: #4a4e72;         /* borders at /20-/50 */
-  --color-ivory: #0d0e18;         /* primary text */
+  --color-fg: #0d0e18;            /* primary text */
   --color-muted: #4d5278;         /* secondary text */
-  --color-teal: #0d6b63;          /* primary accent */
-  --color-violet: #6d28d9;        /* secondary accent */
+  --color-brand: #0d6b63;         /* primary accent */
+  --color-brand-2: #6d28d9;       /* secondary accent */
   --color-danger: #b91c1c;        /* errors, blocked */
   --color-warning: #b45309;       /* idle, caution */
   --color-online: #15803d;        /* online dot */
@@ -717,33 +757,33 @@ not that they look good, so each shipped theme still needs the manual pass
 
 **Reference.** True-black page is Discord Onyx (official). #1e1f22 is Discord's darkest dark surface and #f23f43 / #23a55a its red / green (community-extracted). Blurple #5865f2 is Discord's brand color. The idle yellow #f0b232 is commonly cited but was not confirmed in the sources read. Panel steps and the fuchsia pairing are ours.
 
-| Token | Hex | Role | Contrast (min over ink, surface, raised) |
+| Token | Hex | Role | Contrast (min over page, surface, raised) |
 |---|---|---|---|
-| `ink` | `#000000` | page background | - |
+| `page` | `#000000` | page background | - |
 | `surface` | `#111214` | panels, rail, cards | - |
 | `raised` | `#1e1f22` | hover, selected, input fill | - |
 | `slate` | `#4e5058` | borders and chrome, used at /20-/50 | - |
-| `ivory` | `#f2f3f5` | primary text | 14.8:1 min |
+| `fg` | `#f2f3f5` | primary text | 14.8:1 min |
 | `muted` | `#b5bac1` | secondary text (solid) | 8.4:1 min |
-| `teal` | `#6f7af4` | primary accent | 4.5:1 min; button 5.8:1, hover 4.8:1 |
-| `violet` | `#eb459e` | secondary accent | 4.6:1 min |
+| `brand` | `#6f7af4` | primary accent | 4.5:1 min; button 5.8:1, hover 4.8:1 |
+| `brand-2` | `#eb459e` | secondary accent | 4.6:1 min |
 | `danger` | `#f3474a` | errors, blocked | 4.6:1 min |
 | `warning` | `#f0b232` | idle, caution | 8.7:1 min (dot) |
 | `online` | `#23a55a` | online dot | 5.2:1 min (dot) |
 
-**Tuned for contrast** (lightness only, hue and saturation kept): `teal` #5865f2 -> #6f7af4; `danger` #f23f43 -> #f3474a.
+**Tuned for contrast** (lightness only, hue and saturation kept): `brand` #5865f2 -> #6f7af4; `danger` #f23f43 -> #f3474a.
 
 ```css
 [data-theme="onyx"] {
   color-scheme: dark;
-  --color-ink: #000000;           /* page background */
+  --color-page: #000000;          /* page background */
   --color-surface: #111214;       /* panels, rail, cards */
   --color-raised: #1e1f22;        /* hover, selected, input fill */
   --color-slate: #4e5058;         /* borders at /20-/50 */
-  --color-ivory: #f2f3f5;         /* primary text */
+  --color-fg: #f2f3f5;            /* primary text */
   --color-muted: #b5bac1;         /* secondary text */
-  --color-teal: #6f7af4;          /* primary accent */
-  --color-violet: #eb459e;        /* secondary accent */
+  --color-brand: #6f7af4;         /* primary accent */
+  --color-brand-2: #eb459e;       /* secondary accent */
   --color-danger: #f3474a;        /* errors, blocked */
   --color-warning: #f0b232;       /* idle, caution */
   --color-online: #23a55a;        /* online dot */
@@ -760,33 +800,33 @@ not that they look good, so each shipped theme still needs the manual pass
 
 **Reference.** Discord's pre-2022 dark palette (the original dark that Discord now calls Ash), recalled from the legacy UI and partly confirmed by community palette sites. The exact hexes of today's Ash were not published in the sources read, so treat this as inspired by, not a copy. Text and accents are tuned.
 
-| Token | Hex | Role | Contrast (min over ink, surface, raised) |
+| Token | Hex | Role | Contrast (min over page, surface, raised) |
 |---|---|---|---|
-| `ink` | `#2f3136` | page background | - |
+| `page` | `#2f3136` | page background | - |
 | `surface` | `#36393f` | panels, rail, cards | - |
 | `raised` | `#40444b` | hover, selected, input fill | - |
 | `slate` | `#72767d` | borders and chrome, used at /20-/50 | - |
-| `ivory` | `#dcddde` | primary text | 7.2:1 min |
+| `fg` | `#dcddde` | primary text | 7.2:1 min |
 | `muted` | `#b9bbbe` | secondary text (solid) | 5.1:1 min |
-| `teal` | `#9fafe6` | primary accent | 4.5:1 min; button 6.0:1, hover 5.2:1 |
-| `violet` | `#32bbff` | secondary accent | 4.5:1 min |
+| `brand` | `#9fafe6` | primary accent | 4.5:1 min; button 6.0:1, hover 5.2:1 |
+| `brand-2` | `#32bbff` | secondary accent | 4.5:1 min |
 | `danger` | `#f69696` | errors, blocked | 4.5:1 min |
 | `warning` | `#faa61a` | idle, caution | 4.9:1 min (dot) |
 | `online` | `#43b581` | online dot | 3.8:1 min (dot) |
 
-**Tuned for contrast** (lightness only, hue and saturation kept): `teal` #7289da -> #9fafe6; `violet` #00a8fc -> #32bbff; `danger` #f04747 -> #f69696.
+**Tuned for contrast** (lightness only, hue and saturation kept): `brand` #7289da -> #9fafe6; `brand-2` #00a8fc -> #32bbff; `danger` #f04747 -> #f69696.
 
 ```css
 [data-theme="ash"] {
   color-scheme: dark;
-  --color-ink: #2f3136;           /* page background */
+  --color-page: #2f3136;          /* page background */
   --color-surface: #36393f;       /* panels, rail, cards */
   --color-raised: #40444b;        /* hover, selected, input fill */
   --color-slate: #72767d;         /* borders at /20-/50 */
-  --color-ivory: #dcddde;         /* primary text */
+  --color-fg: #dcddde;            /* primary text */
   --color-muted: #b9bbbe;         /* secondary text */
-  --color-teal: #9fafe6;          /* primary accent */
-  --color-violet: #32bbff;        /* secondary accent */
+  --color-brand: #9fafe6;         /* primary accent */
+  --color-brand-2: #32bbff;       /* secondary accent */
   --color-danger: #f69696;        /* errors, blocked */
   --color-warning: #faa61a;       /* idle, caution */
   --color-online: #43b581;        /* online dot */
@@ -803,16 +843,16 @@ not that they look good, so each shipped theme still needs the manual pass
 
 **Reference.** Tokyo Night (night variant), read from the official repository: bg #1a1b26, bg_dark #16161e, bg_highlight #292e42, fg #c0caf5, fg_dark #a9b1d6, comment #565f89, blue #7aa2f7, magenta #bb9af7, red #f7768e, yellow #e0af68, green #9ece6a.
 
-| Token | Hex | Role | Contrast (min over ink, surface, raised) |
+| Token | Hex | Role | Contrast (min over page, surface, raised) |
 |---|---|---|---|
-| `ink` | `#16161e` | page background | - |
+| `page` | `#16161e` | page background | - |
 | `surface` | `#1a1b26` | panels, rail, cards | - |
 | `raised` | `#292e42` | hover, selected, input fill | - |
 | `slate` | `#565f89` | borders and chrome, used at /20-/50 | - |
-| `ivory` | `#c0caf5` | primary text | 8.3:1 min |
+| `fg` | `#c0caf5` | primary text | 8.3:1 min |
 | `muted` | `#a9b1d6` | secondary text (solid) | 6.4:1 min |
-| `teal` | `#7aa2f7` | primary accent | 5.3:1 min; button 7.1:1, hover 6.0:1 |
-| `violet` | `#bb9af7` | secondary accent | 5.8:1 min |
+| `brand` | `#7aa2f7` | primary accent | 5.3:1 min; button 7.1:1, hover 6.0:1 |
+| `brand-2` | `#bb9af7` | secondary accent | 5.8:1 min |
 | `danger` | `#f7768e` | errors, blocked | 5.1:1 min |
 | `warning` | `#e0af68` | idle, caution | 6.7:1 min (dot) |
 | `online` | `#9ece6a` | online dot | 7.3:1 min (dot) |
@@ -822,14 +862,14 @@ not that they look good, so each shipped theme still needs the manual pass
 ```css
 [data-theme="midnight"] {
   color-scheme: dark;
-  --color-ink: #16161e;           /* page background */
+  --color-page: #16161e;          /* page background */
   --color-surface: #1a1b26;       /* panels, rail, cards */
   --color-raised: #292e42;        /* hover, selected, input fill */
   --color-slate: #565f89;         /* borders at /20-/50 */
-  --color-ivory: #c0caf5;         /* primary text */
+  --color-fg: #c0caf5;            /* primary text */
   --color-muted: #a9b1d6;         /* secondary text */
-  --color-teal: #7aa2f7;          /* primary accent */
-  --color-violet: #bb9af7;        /* secondary accent */
+  --color-brand: #7aa2f7;         /* primary accent */
+  --color-brand-2: #bb9af7;       /* secondary accent */
   --color-danger: #f7768e;        /* errors, blocked */
   --color-warning: #e0af68;       /* idle, caution */
   --color-online: #9ece6a;        /* online dot */
@@ -846,16 +886,16 @@ not that they look good, so each shipped theme still needs the manual pass
 
 **Reference.** Catppuccin Mocha, read from the official palette.json: mantle #181825, base #1e1e2e, surface0 #313244, text #cdd6f4, subtext0 #a6adc8, mauve #cba6f7, pink #f5c2e7, red #f38ba8, yellow #f9e2af, green #a6e3a1.
 
-| Token | Hex | Role | Contrast (min over ink, surface, raised) |
+| Token | Hex | Role | Contrast (min over page, surface, raised) |
 |---|---|---|---|
-| `ink` | `#181825` | page background | - |
+| `page` | `#181825` | page background | - |
 | `surface` | `#1e1e2e` | panels, rail, cards | - |
 | `raised` | `#313244` | hover, selected, input fill | - |
 | `slate` | `#585b70` | borders and chrome, used at /20-/50 | - |
-| `ivory` | `#cdd6f4` | primary text | 8.7:1 min |
+| `fg` | `#cdd6f4` | primary text | 8.7:1 min |
 | `muted` | `#a6adc8` | secondary text (solid) | 5.6:1 min |
-| `teal` | `#cba6f7` | primary accent | 6.2:1 min; button 8.6:1, hover 7.2:1 |
-| `violet` | `#f5c2e7` | secondary accent | 8.2:1 min |
+| `brand` | `#cba6f7` | primary accent | 6.2:1 min; button 8.6:1, hover 7.2:1 |
+| `brand-2` | `#f5c2e7` | secondary accent | 8.2:1 min |
 | `danger` | `#f38ba8` | errors, blocked | 5.4:1 min |
 | `warning` | `#f9e2af` | idle, caution | 9.9:1 min (dot) |
 | `online` | `#a6e3a1` | online dot | 8.5:1 min (dot) |
@@ -865,14 +905,14 @@ not that they look good, so each shipped theme still needs the manual pass
 ```css
 [data-theme="mocha"] {
   color-scheme: dark;
-  --color-ink: #181825;           /* page background */
+  --color-page: #181825;          /* page background */
   --color-surface: #1e1e2e;       /* panels, rail, cards */
   --color-raised: #313244;        /* hover, selected, input fill */
   --color-slate: #585b70;         /* borders at /20-/50 */
-  --color-ivory: #cdd6f4;         /* primary text */
+  --color-fg: #cdd6f4;            /* primary text */
   --color-muted: #a6adc8;         /* secondary text */
-  --color-teal: #cba6f7;          /* primary accent */
-  --color-violet: #f5c2e7;        /* secondary accent */
+  --color-brand: #cba6f7;         /* primary accent */
+  --color-brand-2: #f5c2e7;       /* secondary accent */
   --color-danger: #f38ba8;        /* errors, blocked */
   --color-warning: #f9e2af;       /* idle, caution */
   --color-online: #a6e3a1;        /* online dot */
@@ -889,16 +929,16 @@ not that they look good, so each shipped theme still needs the manual pass
 
 **Reference.** Original palette from the 2026 calm-earth direction (jade, khaki, walnut, teal). No third-party source.
 
-| Token | Hex | Role | Contrast (min over ink, surface, raised) |
+| Token | Hex | Role | Contrast (min over page, surface, raised) |
 |---|---|---|---|
-| `ink` | `#0e1714` | page background | - |
+| `page` | `#0e1714` | page background | - |
 | `surface` | `#141f1b` | panels, rail, cards | - |
 | `raised` | `#1d2c26` | hover, selected, input fill | - |
 | `slate` | `#46605a` | borders and chrome, used at /20-/50 | - |
-| `ivory` | `#e8f0ea` | primary text | 12.6:1 min |
+| `fg` | `#e8f0ea` | primary text | 12.6:1 min |
 | `muted` | `#9db3a8` | secondary text (solid) | 6.6:1 min |
-| `teal` | `#5cc9a7` | primary accent | 7.2:1 min; button 9.0:1, hover 7.5:1 |
-| `violet` | `#d6936f` | secondary accent | 5.7:1 min |
+| `brand` | `#5cc9a7` | primary accent | 7.2:1 min; button 9.0:1, hover 7.5:1 |
+| `brand-2` | `#d6936f` | secondary accent | 5.7:1 min |
 | `danger` | `#f0716f` | errors, blocked | 5.1:1 min |
 | `warning` | `#f2c14e` | idle, caution | 8.7:1 min (dot) |
 | `online` | `#8bd450` | online dot | 8.1:1 min (dot) |
@@ -908,14 +948,14 @@ not that they look good, so each shipped theme still needs the manual pass
 ```css
 [data-theme="evergreen"] {
   color-scheme: dark;
-  --color-ink: #0e1714;           /* page background */
+  --color-page: #0e1714;          /* page background */
   --color-surface: #141f1b;       /* panels, rail, cards */
   --color-raised: #1d2c26;        /* hover, selected, input fill */
   --color-slate: #46605a;         /* borders at /20-/50 */
-  --color-ivory: #e8f0ea;         /* primary text */
+  --color-fg: #e8f0ea;            /* primary text */
   --color-muted: #9db3a8;         /* secondary text */
-  --color-teal: #5cc9a7;          /* primary accent */
-  --color-violet: #d6936f;        /* secondary accent */
+  --color-brand: #5cc9a7;         /* primary accent */
+  --color-brand-2: #d6936f;       /* secondary accent */
   --color-danger: #f0716f;        /* errors, blocked */
   --color-warning: #f2c14e;       /* idle, caution */
   --color-online: #8bd450;        /* online dot */
@@ -932,33 +972,33 @@ not that they look good, so each shipped theme still needs the manual pass
 
 **Reference.** Discord Light surfaces (#ffffff, #f2f3f5, #e3e5e8; community-extracted) and the blurple brand accent. Text color and the fuchsia pairing are ours.
 
-| Token | Hex | Role | Contrast (min over ink, surface, raised) |
+| Token | Hex | Role | Contrast (min over page, surface, raised) |
 |---|---|---|---|
-| `ink` | `#f2f3f5` | page background | - |
+| `page` | `#f2f3f5` | page background | - |
 | `surface` | `#ffffff` | panels, rail, cards | - |
 | `raised` | `#e3e5e8` | hover, selected, input fill | - |
 | `slate` | `#80848e` | borders and chrome, used at /20-/50 | - |
-| `ivory` | `#313338` | primary text | 10.0:1 min |
+| `fg` | `#313338` | primary text | 10.0:1 min |
 | `muted` | `#5c5e66` | secondary text (solid) | 5.1:1 min |
-| `teal` | `#3e4df0` | primary accent | 4.7:1 min; button 5.4:1, hover 4.5:1 |
-| `violet` | `#c31572` | secondary accent | 4.5:1 min |
+| `brand` | `#3e4df0` | primary accent | 4.7:1 min; button 5.4:1, hover 4.5:1 |
+| `brand-2` | `#c31572` | secondary accent | 4.5:1 min |
 | `danger` | `#c42429` | errors, blocked | 4.6:1 min |
 | `warning` | `#ad790d` | idle, caution | 3.0:1 min (dot) |
 | `online` | `#209652` | online dot | 3.0:1 min (dot) |
 
-**Tuned for contrast** (lightness only, hue and saturation kept): `teal` #5865f2 -> #3e4df0; `violet` #eb459e -> #c31572; `danger` #da373c -> #c42429; `warning` #f0b232 -> #ad790d; `online` #23a55a -> #209652.
+**Tuned for contrast** (lightness only, hue and saturation kept): `brand` #5865f2 -> #3e4df0; `brand-2` #eb459e -> #c31572; `danger` #da373c -> #c42429; `warning` #f0b232 -> #ad790d; `online` #23a55a -> #209652.
 
 ```css
 [data-theme="chalk"] {
   color-scheme: light;
-  --color-ink: #f2f3f5;           /* page background */
+  --color-page: #f2f3f5;          /* page background */
   --color-surface: #ffffff;       /* panels, rail, cards */
   --color-raised: #e3e5e8;        /* hover, selected, input fill */
   --color-slate: #80848e;         /* borders at /20-/50 */
-  --color-ivory: #313338;         /* primary text */
+  --color-fg: #313338;            /* primary text */
   --color-muted: #5c5e66;         /* secondary text */
-  --color-teal: #3e4df0;          /* primary accent */
-  --color-violet: #c31572;        /* secondary accent */
+  --color-brand: #3e4df0;         /* primary accent */
+  --color-brand-2: #c31572;       /* secondary accent */
   --color-danger: #c42429;        /* errors, blocked */
   --color-warning: #ad790d;       /* idle, caution */
   --color-online: #209652;        /* online dot */
@@ -975,33 +1015,33 @@ not that they look good, so each shipped theme still needs the manual pass
 
 **Reference.** Pantone Cloud Dancer #F0EEE9 as the page color (confirmed). Charcoal text, the Transformative-Teal-inspired accent and the walnut secondary are ours.
 
-| Token | Hex | Role | Contrast (min over ink, surface, raised) |
+| Token | Hex | Role | Contrast (min over page, surface, raised) |
 |---|---|---|---|
-| `ink` | `#f0eee9` | page background | - |
+| `page` | `#f0eee9` | page background | - |
 | `surface` | `#faf9f6` | panels, rail, cards | - |
 | `raised` | `#e6e3dc` | hover, selected, input fill | - |
 | `slate` | `#8a857b` | borders and chrome, used at /20-/50 | - |
-| `ivory` | `#26241f` | primary text | 12.1:1 min |
+| `fg` | `#26241f` | primary text | 12.1:1 min |
 | `muted` | `#5f5b52` | secondary text (solid) | 5.3:1 min |
-| `teal` | `#116871` | primary accent | 5.1:1 min; button 5.6:1, hover 4.6:1 |
-| `violet` | `#9c512d` | secondary accent | 4.5:1 min |
+| `brand` | `#116871` | primary accent | 5.1:1 min; button 5.6:1, hover 4.6:1 |
+| `brand-2` | `#9c512d` | secondary accent | 4.5:1 min |
 | `danger` | `#b83729` | errors, blocked | 4.5:1 min |
 | `warning` | `#b0741e` | idle, caution | 3.1:1 min (dot) |
 | `online` | `#2f8f5b` | online dot | 3.2:1 min (dot) |
 
-**Tuned for contrast** (lightness only, hue and saturation kept): `teal` #13747d -> #116871; `violet` #a4552f -> #9c512d; `danger` #c0392b -> #b83729; `warning` #b7791f -> #b0741e.
+**Tuned for contrast** (lightness only, hue and saturation kept): `brand` #13747d -> #116871; `brand-2` #a4552f -> #9c512d; `danger` #c0392b -> #b83729; `warning` #b7791f -> #b0741e.
 
 ```css
 [data-theme="cloud"] {
   color-scheme: light;
-  --color-ink: #f0eee9;           /* page background */
+  --color-page: #f0eee9;          /* page background */
   --color-surface: #faf9f6;       /* panels, rail, cards */
   --color-raised: #e6e3dc;        /* hover, selected, input fill */
   --color-slate: #8a857b;         /* borders at /20-/50 */
-  --color-ivory: #26241f;         /* primary text */
+  --color-fg: #26241f;            /* primary text */
   --color-muted: #5f5b52;         /* secondary text */
-  --color-teal: #116871;          /* primary accent */
-  --color-violet: #9c512d;        /* secondary accent */
+  --color-brand: #116871;         /* primary accent */
+  --color-brand-2: #9c512d;       /* secondary accent */
   --color-danger: #b83729;        /* errors, blocked */
   --color-warning: #b0741e;       /* idle, caution */
   --color-online: #2f8f5b;        /* online dot */
@@ -1018,33 +1058,33 @@ not that they look good, so each shipped theme still needs the manual pass
 
 **Reference.** Catppuccin Latte, read from the official palette.json: mantle #e6e9ef, base #eff1f5, crust #dce0e8, text #4c4f69, subtext0 #6c6f85, mauve #8839ef, blue #1e66f5, red #d20f39, yellow #df8e1d, green #40a02b.
 
-| Token | Hex | Role | Contrast (min over ink, surface, raised) |
+| Token | Hex | Role | Contrast (min over page, surface, raised) |
 |---|---|---|---|
-| `ink` | `#e6e9ef` | page background | - |
+| `page` | `#e6e9ef` | page background | - |
 | `surface` | `#eff1f5` | panels, rail, cards | - |
 | `raised` | `#dce0e8` | hover, selected, input fill | - |
 | `slate` | `#9ca0b0` | borders and chrome, used at /20-/50 | - |
-| `ivory` | `#484b63` | primary text | 6.4:1 min |
+| `fg` | `#484b63` | primary text | 6.4:1 min |
 | `muted` | `#5f6275` | secondary text (solid) | 4.5:1 min |
-| `teal` | `#7c24ed` | primary accent | 4.8:1 min; button 5.2:1, hover 4.5:1 |
-| `violet` | `#0a55ea` | secondary accent | 4.5:1 min |
+| `brand` | `#7c24ed` | primary accent | 4.8:1 min; button 5.2:1, hover 4.5:1 |
+| `brand-2` | `#0a55ea` | secondary accent | 4.5:1 min |
 | `danger` | `#c50e35` | errors, blocked | 4.5:1 min |
 | `warning` | `#b27117` | idle, caution | 3.0:1 min (dot) |
 | `online` | `#3a9027` | online dot | 3.1:1 min (dot) |
 
-**Tuned for contrast** (lightness only, hue and saturation kept): `ivory` #4c4f69 -> #484b63; `muted` #6c6f85 -> #5f6275; `teal` #8839ef -> #7c24ed; `violet` #1e66f5 -> #0a55ea; `danger` #d20f39 -> #c50e35; `warning` #df8e1d -> #b27117; `online` #40a02b -> #3a9027.
+**Tuned for contrast** (lightness only, hue and saturation kept): `fg` #4c4f69 -> #484b63; `muted` #6c6f85 -> #5f6275; `brand` #8839ef -> #7c24ed; `brand-2` #1e66f5 -> #0a55ea; `danger` #d20f39 -> #c50e35; `warning` #df8e1d -> #b27117; `online` #40a02b -> #3a9027.
 
 ```css
 [data-theme="latte"] {
   color-scheme: light;
-  --color-ink: #e6e9ef;           /* page background */
+  --color-page: #e6e9ef;          /* page background */
   --color-surface: #eff1f5;       /* panels, rail, cards */
   --color-raised: #dce0e8;        /* hover, selected, input fill */
   --color-slate: #9ca0b0;         /* borders at /20-/50 */
-  --color-ivory: #484b63;         /* primary text */
+  --color-fg: #484b63;            /* primary text */
   --color-muted: #5f6275;         /* secondary text */
-  --color-teal: #7c24ed;          /* primary accent */
-  --color-violet: #0a55ea;        /* secondary accent */
+  --color-brand: #7c24ed;         /* primary accent */
+  --color-brand-2: #0a55ea;       /* secondary accent */
   --color-danger: #c50e35;        /* errors, blocked */
   --color-warning: #b27117;       /* idle, caution */
   --color-online: #3a9027;        /* online dot */
@@ -1061,33 +1101,33 @@ not that they look good, so each shipped theme still needs the manual pass
 
 **Reference.** Rose Pine Dawn, read from the official palette: base #faf4ed, surface #fffaf3, overlay #f2e9e1, subtle #797593, text #464261, iris #907aa9, rose #d7827e, love #b4637a, gold #ea9d34. Rose Pine has no green, so the online color is ours.
 
-| Token | Hex | Role | Contrast (min over ink, surface, raised) |
+| Token | Hex | Role | Contrast (min over page, surface, raised) |
 |---|---|---|---|
-| `ink` | `#faf4ed` | page background | - |
+| `page` | `#faf4ed` | page background | - |
 | `surface` | `#fffaf3` | panels, rail, cards | - |
 | `raised` | `#f2e9e1` | hover, selected, input fill | - |
 | `slate` | `#9893a5` | borders and chrome, used at /20-/50 | - |
-| `ivory` | `#464261` | primary text | 7.9:1 min |
+| `fg` | `#464261` | primary text | 7.9:1 min |
 | `muted` | `#6a6683` | secondary text (solid) | 4.6:1 min |
-| `teal` | `#6e5888` | primary accent | 5.1:1 min; button 5.6:1, hover 4.5:1 |
-| `violet` | `#ba3f3a` | secondary accent | 4.5:1 min |
+| `brand` | `#6e5888` | primary accent | 5.1:1 min; button 5.6:1, hover 4.5:1 |
+| `brand-2` | `#ba3f3a` | secondary accent | 4.5:1 min |
 | `danger` | `#a44f67` | errors, blocked | 4.5:1 min |
 | `warning` | `#bf7614` | idle, caution | 3.0:1 min (dot) |
 | `online` | `#2f8f68` | online dot | 3.3:1 min (dot) |
 
-**Tuned for contrast** (lightness only, hue and saturation kept): `muted` #797593 -> #6a6683; `teal` #907aa9 -> #6e5888; `violet` #d7827e -> #ba3f3a; `danger` #b4637a -> #a44f67; `warning` #ea9d34 -> #bf7614.
+**Tuned for contrast** (lightness only, hue and saturation kept): `muted` #797593 -> #6a6683; `brand` #907aa9 -> #6e5888; `brand-2` #d7827e -> #ba3f3a; `danger` #b4637a -> #a44f67; `warning` #ea9d34 -> #bf7614.
 
 ```css
 [data-theme="dawn"] {
   color-scheme: light;
-  --color-ink: #faf4ed;           /* page background */
+  --color-page: #faf4ed;          /* page background */
   --color-surface: #fffaf3;       /* panels, rail, cards */
   --color-raised: #f2e9e1;        /* hover, selected, input fill */
   --color-slate: #9893a5;         /* borders at /20-/50 */
-  --color-ivory: #464261;         /* primary text */
+  --color-fg: #464261;            /* primary text */
   --color-muted: #6a6683;         /* secondary text */
-  --color-teal: #6e5888;          /* primary accent */
-  --color-violet: #ba3f3a;        /* secondary accent */
+  --color-brand: #6e5888;         /* primary accent */
+  --color-brand-2: #ba3f3a;       /* secondary accent */
   --color-danger: #a44f67;        /* errors, blocked */
   --color-warning: #bf7614;       /* idle, caution */
   --color-online: #2f8f68;        /* online dot */
@@ -1104,33 +1144,33 @@ not that they look good, so each shipped theme still needs the manual pass
 
 **Reference.** Gruvbox Light, read from the official repository: light0 #fbf1c7, light1 #ebdbb2, light2 #d5c4a1, dark1 #3c3836, faded_blue #076678, faded_purple #8f3f71, faded_red #9d0006, faded_yellow #b57614, faded_green #79740e.
 
-| Token | Hex | Role | Contrast (min over ink, surface, raised) |
+| Token | Hex | Role | Contrast (min over page, surface, raised) |
 |---|---|---|---|
-| `ink` | `#ebdbb2` | page background | - |
+| `page` | `#ebdbb2` | page background | - |
 | `surface` | `#fbf1c7` | panels, rail, cards | - |
 | `raised` | `#d5c4a1` | hover, selected, input fill | - |
 | `slate` | `#928374` | borders and chrome, used at /20-/50 | - |
-| `ivory` | `#3c3836` | primary text | 6.8:1 min |
+| `fg` | `#3c3836` | primary text | 6.8:1 min |
 | `muted` | `#5a514a` | secondary text (solid) | 4.5:1 min |
-| `teal` | `#065b6b` | primary accent | 4.5:1 min; button 5.6:1, hover 4.7:1 |
-| `violet` | `#813966` | secondary accent | 4.5:1 min |
+| `brand` | `#065b6b` | primary accent | 4.5:1 min; button 5.6:1, hover 4.7:1 |
+| `brand-2` | `#813966` | secondary accent | 4.5:1 min |
 | `danger` | `#9d0006` | errors, blocked | 5.0:1 min |
 | `warning` | `#966211` | idle, caution | 3.0:1 min (dot) |
 | `online` | `#746f0d` | online dot | 3.0:1 min (dot) |
 
-**Tuned for contrast** (lightness only, hue and saturation kept): `muted` #665c54 -> #5a514a; `teal` #076678 -> #065b6b; `violet` #8f3f71 -> #813966; `warning` #b57614 -> #966211; `online` #79740e -> #746f0d.
+**Tuned for contrast** (lightness only, hue and saturation kept): `muted` #665c54 -> #5a514a; `brand` #076678 -> #065b6b; `brand-2` #8f3f71 -> #813966; `warning` #b57614 -> #966211; `online` #79740e -> #746f0d.
 
 ```css
 [data-theme="parchment"] {
   color-scheme: light;
-  --color-ink: #ebdbb2;           /* page background */
+  --color-page: #ebdbb2;          /* page background */
   --color-surface: #fbf1c7;       /* panels, rail, cards */
   --color-raised: #d5c4a1;        /* hover, selected, input fill */
   --color-slate: #928374;         /* borders at /20-/50 */
-  --color-ivory: #3c3836;         /* primary text */
+  --color-fg: #3c3836;            /* primary text */
   --color-muted: #5a514a;         /* secondary text */
-  --color-teal: #065b6b;          /* primary accent */
-  --color-violet: #813966;        /* secondary accent */
+  --color-brand: #065b6b;         /* primary accent */
+  --color-brand-2: #813966;       /* secondary accent */
   --color-danger: #9d0006;        /* errors, blocked */
   --color-warning: #966211;       /* idle, caution */
   --color-online: #746f0d;        /* online dot */
@@ -1154,7 +1194,7 @@ six, chosen for range at modest QA cost:
 
 Later: Midnight, Evergreen, Ash, Chalk, Latte, Dawn, Parchment, in any order.
 Evergreen and Parchment exercise the most unusual hue choices, so they are good
-candidates to ship only after the token rename and the themed `<Mark>` land.
+candidates to ship only after the themed `<Mark>` lands.
 
 ### 7.17 Picker and system mode [Proposed]
 
@@ -1183,6 +1223,12 @@ candidates to ship only after the token rename and the themed `<Mark>` land.
 - Any new logo file is added to the table in 1.2 in the same PR.
 - A token or typography change updates this document and `CHANGELOG.md` in
   the same PR.
+- **No two utilities of the same property in one `className`** (for example
+  `text-fg/70` and `text-brand`) unless they are mutually exclusive branches of
+  a condition. Tailwind emits rules in an order that depends on class names, so
+  which one wins can change when a class is renamed (PR #63 hit this once).
+  Worth adding to `CLAUDE.md`; a lint rule for conflicting utilities is worth
+  investigating for Tailwind v4.
 - The PDF export (`brand-guidelines.pdf`) is a presentation copy, never the
   source. Regenerate it from this file.
 
@@ -1190,16 +1236,20 @@ candidates to ship only after the token rename and the themed `<Mark>` land.
 
 ## 9. Open decisions
 
+**Decided since the first draft:** the token names `page`, `fg`, `brand`,
+`brand-2` (PR #63); the guild icon fix (PR #61); the charter is versioned in
+`docs/design/` with a `CLAUDE.md` row (PR #62).
+
 | # | Decision | Recommendation |
 |---|---|---|
 | 1 | Name and id for the neutral light theme | `daylight` (alternatives: `paper`, `light`) |
 | 2 | Adopt the v0.2 tokens `raised`, `muted`, `warning`, and `danger` / `online` as tokens (2.7) | Yes. `muted` is the one that fixes the contrast finding. |
-| 3 | Informational text uses `ivory` or `muted`; opacity tiers decorative only | Adopt, and migrate the roughly 60 `/40` to `/70` uses in a small PR with a visual check (it changes hierarchy in Abyss and Ember too). |
+| 3 | Informational text uses `fg` or `muted`; opacity tiers decorative only | Adopt, and migrate the roughly 60 `/40` to `/70` uses in a small PR with a visual check (it changes hierarchy in Abyss and Ember too). |
 | 4 | Chat message body 14px to 16px, inputs to 16px (3.1) | Yes for both. Check message density in the lobby after. |
-| 5 | Rename `teal`, `violet`, `ink`, `ivory` to `accent`, `accent-2`, `page`, `text` | Yes, before the catalog ships. It is mechanical but wide. |
-| 6 | First batch of themes (7.16) | Abyss, Ember, Onyx, Mocha, Daylight, Cloud. |
-| 7 | Logo strategy: static swap (A) or inline themed mark (B) | B for the header and rail. |
-| 8 | Retire `lockup.svg` / `lockup.png` | Yes: replace with the new lockups. |
-| 9 | System mode and its first-paint behavior (7.17) | Decide after the first batch ships; do not block themes on it. |
-| 10 | Clear space and minimum sizes (1.4) | Accept as written; revisit after seeing the mark at 24px in the UI. |
-| 11 | Where this lives | Version it in `docs/design/`: it shows the system, like CLAUDE.md. Or keep it local with `.git/info/exclude`. |
+| 5 | `color-scheme: dark` on the default theme (2.6, item 6) | Yes, in the PR that adds the new tokens. |
+| 6 | Drift guard test for `themes.ts` swatches and `DEFAULT_ACCENT` vs `globals.css` (5.3, item 8) | Yes, before the catalog ships. |
+| 7 | First batch of themes (7.16) | Abyss, Ember, Onyx, Mocha, Daylight, Cloud. |
+| 8 | Logo strategy: static swap (A) or inline themed mark (B) | B for the header and rail. |
+| 9 | Retire `lockup.svg` / `lockup.png` | Yes: replace with the new lockups. |
+| 10 | System mode and its first-paint behavior (7.17) | Decide after the first batch ships; do not block themes on it. |
+| 11 | Clear space and minimum sizes (1.4) | Accept as written; revisit after seeing the mark at 24px in the UI. |
