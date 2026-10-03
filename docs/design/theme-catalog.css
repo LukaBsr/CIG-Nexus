@@ -1,0 +1,210 @@
+/* CIG Nexus theme catalog v0.2. Keep in sync with docs/design/brand-guidelines.md section 7.
+   Abyss is the @theme default in globals.css; its block is listed here for reference only. */
+
+/* Abyss (dark) - CIG Nexus brand palette (globals.css) + v0.2 additions */
+[data-theme="abyss"] {
+  color-scheme: dark;
+  --color-ink: #0d0e18;           /* page background */
+  --color-surface: #1a1c2e;       /* panels, rail, cards */
+  --color-raised: #252840;        /* hover, selected, input fill */
+  --color-slate: #4a4e72;         /* borders at /20-/50 */
+  --color-ivory: #edeffb;         /* primary text */
+  --color-muted: #9aa0c8;         /* secondary text */
+  --color-teal: #5eead4;          /* primary accent */
+  --color-violet: #a079f8;        /* secondary accent */
+  --color-danger: #f87171;        /* errors, blocked */
+  --color-warning: #fbbf24;       /* idle, caution */
+  --color-online: #4ade80;        /* online dot */
+}
+
+/* Ember (dark) - CIG Nexus brand palette (themes.ts) + v0.2 additions */
+[data-theme="ember"] {
+  color-scheme: dark;
+  --color-ink: #0d0e18;           /* page background */
+  --color-surface: #1a1c2e;       /* panels, rail, cards */
+  --color-raised: #252840;        /* hover, selected, input fill */
+  --color-slate: #4a4e72;         /* borders at /20-/50 */
+  --color-ivory: #edeffb;         /* primary text */
+  --color-muted: #9aa0c8;         /* secondary text */
+  --color-teal: #f87171;          /* primary accent */
+  --color-violet: #fb923c;        /* secondary accent */
+  --color-danger: #ff4d79;        /* errors, blocked */
+  --color-warning: #fbbf24;       /* idle, caution */
+  --color-online: #4ade80;        /* online dot */
+}
+
+/* Daylight (light) - Exact inversion of Abyss (ink and ivory swapped) */
+[data-theme="daylight"] {
+  color-scheme: light;
+  --color-ink: #edeffb;           /* page background */
+  --color-surface: #ffffff;       /* panels, rail, cards */
+  --color-raised: #e2e5f6;        /* hover, selected, input fill */
+  --color-slate: #4a4e72;         /* borders at /20-/50 */
+  --color-ivory: #0d0e18;         /* primary text */
+  --color-muted: #4d5278;         /* secondary text */
+  --color-teal: #0d6b63;          /* primary accent */
+  --color-violet: #6d28d9;        /* secondary accent */
+  --color-danger: #b91c1c;        /* errors, blocked */
+  --color-warning: #b45309;       /* idle, caution */
+  --color-online: #15803d;        /* online dot */
+}
+
+/* Onyx (dark) - Discord Onyx (true black, OLED) and Discord status colors */
+[data-theme="onyx"] {
+  color-scheme: dark;
+  --color-ink: #000000;           /* page background */
+  --color-surface: #111214;       /* panels, rail, cards */
+  --color-raised: #1e1f22;        /* hover, selected, input fill */
+  --color-slate: #4e5058;         /* borders at /20-/50 */
+  --color-ivory: #f2f3f5;         /* primary text */
+  --color-muted: #b5bac1;         /* secondary text */
+  --color-teal: #6f7af4;          /* primary accent */
+  --color-violet: #eb459e;        /* secondary accent */
+  --color-danger: #f3474a;        /* errors, blocked */
+  --color-warning: #f0b232;       /* idle, caution */
+  --color-online: #23a55a;        /* online dot */
+}
+
+/* Ash (dark) - Discord Ash (the original mid-gray dark theme) */
+[data-theme="ash"] {
+  color-scheme: dark;
+  --color-ink: #2f3136;           /* page background */
+  --color-surface: #36393f;       /* panels, rail, cards */
+  --color-raised: #40444b;        /* hover, selected, input fill */
+  --color-slate: #72767d;         /* borders at /20-/50 */
+  --color-ivory: #dcddde;         /* primary text */
+  --color-muted: #b9bbbe;         /* secondary text */
+  --color-teal: #9fafe6;          /* primary accent */
+  --color-violet: #32bbff;        /* secondary accent */
+  --color-danger: #f69696;        /* errors, blocked */
+  --color-warning: #faa61a;       /* idle, caution */
+  --color-online: #43b581;        /* online dot */
+}
+
+/* Midnight (dark) - Tokyo Night (night variant) by enkia / folke */
+[data-theme="midnight"] {
+  color-scheme: dark;
+  --color-ink: #16161e;           /* page background */
+  --color-surface: #1a1b26;       /* panels, rail, cards */
+  --color-raised: #292e42;        /* hover, selected, input fill */
+  --color-slate: #565f89;         /* borders at /20-/50 */
+  --color-ivory: #c0caf5;         /* primary text */
+  --color-muted: #a9b1d6;         /* secondary text */
+  --color-teal: #7aa2f7;          /* primary accent */
+  --color-violet: #bb9af7;        /* secondary accent */
+  --color-danger: #f7768e;        /* errors, blocked */
+  --color-warning: #e0af68;       /* idle, caution */
+  --color-online: #9ece6a;        /* online dot */
+}
+
+/* Mocha (dark) - Catppuccin Mocha */
+[data-theme="mocha"] {
+  color-scheme: dark;
+  --color-ink: #181825;           /* page background */
+  --color-surface: #1e1e2e;       /* panels, rail, cards */
+  --color-raised: #313244;        /* hover, selected, input fill */
+  --color-slate: #585b70;         /* borders at /20-/50 */
+  --color-ivory: #cdd6f4;         /* primary text */
+  --color-muted: #a6adc8;         /* secondary text */
+  --color-teal: #cba6f7;          /* primary accent */
+  --color-violet: #f5c2e7;        /* secondary accent */
+  --color-danger: #f38ba8;        /* errors, blocked */
+  --color-warning: #f9e2af;       /* idle, caution */
+  --color-online: #a6e3a1;        /* online dot */
+}
+
+/* Evergreen (dark) - Original, from the 2026 calm-earth trend (jade, khaki, walnut, teal) */
+[data-theme="evergreen"] {
+  color-scheme: dark;
+  --color-ink: #0e1714;           /* page background */
+  --color-surface: #141f1b;       /* panels, rail, cards */
+  --color-raised: #1d2c26;        /* hover, selected, input fill */
+  --color-slate: #46605a;         /* borders at /20-/50 */
+  --color-ivory: #e8f0ea;         /* primary text */
+  --color-muted: #9db3a8;         /* secondary text */
+  --color-teal: #5cc9a7;          /* primary accent */
+  --color-violet: #d6936f;        /* secondary accent */
+  --color-danger: #f0716f;        /* errors, blocked */
+  --color-warning: #f2c14e;       /* idle, caution */
+  --color-online: #8bd450;        /* online dot */
+}
+
+/* Chalk (light) - Discord Light */
+[data-theme="chalk"] {
+  color-scheme: light;
+  --color-ink: #f2f3f5;           /* page background */
+  --color-surface: #ffffff;       /* panels, rail, cards */
+  --color-raised: #e3e5e8;        /* hover, selected, input fill */
+  --color-slate: #80848e;         /* borders at /20-/50 */
+  --color-ivory: #313338;         /* primary text */
+  --color-muted: #5c5e66;         /* secondary text */
+  --color-teal: #3e4df0;          /* primary accent */
+  --color-violet: #c31572;        /* secondary accent */
+  --color-danger: #c42429;        /* errors, blocked */
+  --color-warning: #ad790d;       /* idle, caution */
+  --color-online: #209652;        /* online dot */
+}
+
+/* Cloud (light) - Pantone Cloud Dancer 11-4201 (#F0EEE9) with Transformative Teal */
+[data-theme="cloud"] {
+  color-scheme: light;
+  --color-ink: #f0eee9;           /* page background */
+  --color-surface: #faf9f6;       /* panels, rail, cards */
+  --color-raised: #e6e3dc;        /* hover, selected, input fill */
+  --color-slate: #8a857b;         /* borders at /20-/50 */
+  --color-ivory: #26241f;         /* primary text */
+  --color-muted: #5f5b52;         /* secondary text */
+  --color-teal: #116871;          /* primary accent */
+  --color-violet: #9c512d;        /* secondary accent */
+  --color-danger: #b83729;        /* errors, blocked */
+  --color-warning: #b0741e;       /* idle, caution */
+  --color-online: #2f8f5b;        /* online dot */
+}
+
+/* Latte (light) - Catppuccin Latte */
+[data-theme="latte"] {
+  color-scheme: light;
+  --color-ink: #e6e9ef;           /* page background */
+  --color-surface: #eff1f5;       /* panels, rail, cards */
+  --color-raised: #dce0e8;        /* hover, selected, input fill */
+  --color-slate: #9ca0b0;         /* borders at /20-/50 */
+  --color-ivory: #484b63;         /* primary text */
+  --color-muted: #5f6275;         /* secondary text */
+  --color-teal: #7c24ed;          /* primary accent */
+  --color-violet: #0a55ea;        /* secondary accent */
+  --color-danger: #c50e35;        /* errors, blocked */
+  --color-warning: #b27117;       /* idle, caution */
+  --color-online: #3a9027;        /* online dot */
+}
+
+/* Dawn (light) - Rose Pine Dawn */
+[data-theme="dawn"] {
+  color-scheme: light;
+  --color-ink: #faf4ed;           /* page background */
+  --color-surface: #fffaf3;       /* panels, rail, cards */
+  --color-raised: #f2e9e1;        /* hover, selected, input fill */
+  --color-slate: #9893a5;         /* borders at /20-/50 */
+  --color-ivory: #464261;         /* primary text */
+  --color-muted: #6a6683;         /* secondary text */
+  --color-teal: #6e5888;          /* primary accent */
+  --color-violet: #ba3f3a;        /* secondary accent */
+  --color-danger: #a44f67;        /* errors, blocked */
+  --color-warning: #bf7614;       /* idle, caution */
+  --color-online: #2f8f68;        /* online dot */
+}
+
+/* Parchment (light) - Gruvbox Light */
+[data-theme="parchment"] {
+  color-scheme: light;
+  --color-ink: #ebdbb2;           /* page background */
+  --color-surface: #fbf1c7;       /* panels, rail, cards */
+  --color-raised: #d5c4a1;        /* hover, selected, input fill */
+  --color-slate: #928374;         /* borders at /20-/50 */
+  --color-ivory: #3c3836;         /* primary text */
+  --color-muted: #5a514a;         /* secondary text */
+  --color-teal: #065b6b;          /* primary accent */
+  --color-violet: #813966;        /* secondary accent */
+  --color-danger: #9d0006;        /* errors, blocked */
+  --color-warning: #966211;       /* idle, caution */
+  --color-online: #746f0d;        /* online dot */
+}
