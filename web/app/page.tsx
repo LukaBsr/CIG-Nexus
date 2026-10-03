@@ -196,7 +196,7 @@ export default function Home() {
         />
 
         {lastError && (
-          <div className="flex shrink-0 items-center justify-between gap-2 border-b border-slate/20 bg-red-400/10 px-5 py-1.5 font-mono text-xs text-red-300">
+          <div className="flex shrink-0 items-center justify-between gap-2 border-b border-slate/20 bg-danger/10 px-5 py-1.5 font-mono text-xs text-red-300">
             <span className="truncate">{lastError}</span>
             <button onClick={clearError} className="shrink-0 font-semibold text-red-300/70 hover:text-red-300">
               &times;

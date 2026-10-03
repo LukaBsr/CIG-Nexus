@@ -13,7 +13,7 @@ export interface ThemeDefinition {
 }
 
 export const THEMES: ThemeDefinition[] = [
-  { id: "abyss", label: "Abyss (default)", swatch: { accent: "#5eead4", secondary: "#8b5cf6" } },
+  { id: "abyss", label: "Abyss (default)", swatch: { accent: "#5eead4", secondary: "#a079f8" } },
   { id: "ember", label: "Ember", swatch: { accent: "#f87171", secondary: "#fb923c" } }
 ];
 

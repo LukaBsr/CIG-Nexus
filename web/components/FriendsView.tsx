@@ -161,7 +161,7 @@ export function FriendsView({
                   </button>
                   <button
                     onClick={() => onBlock(f.userId)}
-                    className="shrink-0 font-mono text-xs text-fg/25 transition-colors hover:text-red-400"
+                    className="shrink-0 font-mono text-xs text-fg/25 transition-colors hover:text-danger"
                   >
                     Block
                   </button>
