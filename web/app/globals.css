@@ -12,22 +12,41 @@
    (docs/settings/appearance-design.md §2.1). No [data-theme="abyss"] block
    exists below because these @theme defaults already are that theme —
    declaring them a second time would just be a second place for the same
-   values to drift out of sync. */
+   values to drift out of sync.
+
+   Roles of the v0.2 tokens (docs/design/brand-guidelines.md §2.7):
+   raised = hover, selected rows and input fill (one step above surface);
+   muted = secondary text, a solid color for AA on every surface;
+   warning = idle and caution states; danger = errors and blocked states;
+   online = the online presence dot. danger and online are oklch because
+   they are Tailwind's red-400 and green-400, unchanged from before they
+   became tokens. :root declares color-scheme: dark so native scrollbars,
+   form controls and autofill follow the dark base. */
 @theme {
   --color-page: #0d0e18; /* page background */
   --color-surface: #1a1c2e; /* panel / rail / card background */
+  --color-raised: #252840; /* hover, selected rows, input fill */
   --color-slate: #4a4e72; /* borders, dividers, muted chrome */
-  --color-brand: #5eead4; /* primary accent — "connected" */
-  --color-brand-2: #8b5cf6; /* secondary accent — ownership, emphasis */
   --color-fg: #edeffb; /* primary text */
+  --color-muted: #9aa0c8; /* secondary text (solid, AA by construction) */
+  --color-brand: #5eead4; /* primary accent — "connected" */
+  --color-brand-2: #a079f8; /* secondary accent — ownership, emphasis */
+  --color-danger: oklch(70.4% 0.191 22.216); /* errors, blocked (Tailwind's red-400) */
+  --color-warning: #fbbf24; /* idle, caution */
+  --color-online: oklch(79.2% 0.209 151.711); /* online presence dot (Tailwind's green-400) */
 
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
 
+:root {
+  color-scheme: dark;
+}
+
 [data-theme="ember"] {
   --color-brand: #f87171;
   --color-brand-2: #fb923c;
+  --color-danger: #ff4d79; /* distinct from Ember's coral brand */
 }
 
 body {

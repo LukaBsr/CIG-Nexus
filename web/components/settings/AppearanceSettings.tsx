@@ -102,7 +102,7 @@ export function AppearanceSettings(_props: SettingsSectionProps) {
             ? "This device's theme is saved to your account and applied on every device where sync is on."
             : "This theme only applies on this device."}
         </p>
-        {syncError && <p className="font-mono text-xs text-red-400">{syncError}</p>}
+        {syncError && <p className="font-mono text-xs text-danger">{syncError}</p>}
       </div>
     </div>
   );

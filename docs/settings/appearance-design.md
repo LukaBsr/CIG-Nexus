@@ -10,6 +10,7 @@ limiting on `PATCH /api/user/appearance` (and, on the same
 the checklist item below.
 
 > **Naming note:** `teal` -> `brand`, `violet` -> `brand-2`, `ink` -> `page`, `ivory` -> `fg` (utilities and `--color-*`); names below are the pre-rename originals.
+> **Value note:** Abyss `brand-2` is now `#a079f8` (v0.2); the hex values below are the originals.
 
 ## Scope
 

@@ -154,7 +154,7 @@ export function ProfileSettings({ userId }: SettingsSectionProps) {
               <button
                 onClick={() => void handleRemoveAvatar()}
                 disabled={avatarPending}
-                className="rounded-md border border-slate/40 px-3 py-1 font-mono text-xs text-fg/60 transition-colors hover:border-red-400 hover:text-red-400"
+                className="rounded-md border border-slate/40 px-3 py-1 font-mono text-xs text-fg/60 transition-colors hover:border-danger hover:text-danger"
               >
                 Remove
               </button>
@@ -167,7 +167,7 @@ export function ProfileSettings({ userId }: SettingsSectionProps) {
             className="hidden"
             onChange={(e) => void handleAvatarSelect(e.target.files?.[0])}
           />
-          {avatarError && <p className="font-mono text-xs text-red-400">{avatarError}</p>}
+          {avatarError && <p className="font-mono text-xs text-danger">{avatarError}</p>}
         </div>
       </div>
 
@@ -232,7 +232,7 @@ export function ProfileSettings({ userId }: SettingsSectionProps) {
         >
           {saving ? "Saving…" : "Save"}
         </button>
-        {saveError && <p className="font-mono text-xs text-red-400">{saveError}</p>}
+        {saveError && <p className="font-mono text-xs text-danger">{saveError}</p>}
       </div>
     </div>
   );

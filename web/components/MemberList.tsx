@@ -64,7 +64,7 @@ export function MemberList({ members, onlineUserIds, myUserId, onBlock, onViewPr
                 onClick={() => onBlock(m.userId)}
                 aria-label={`Block ${m.displayName ?? m.username}`}
                 title="Block"
-                className="shrink-0 font-mono text-xs text-fg/25 transition-colors hover:text-red-400"
+                className="shrink-0 font-mono text-xs text-fg/25 transition-colors hover:text-danger"
               >
                 &times;
               </button>

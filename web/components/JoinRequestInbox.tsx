@@ -50,7 +50,7 @@ export function JoinRequestInbox({ requests, onApprove, onReject }: JoinRequestI
       >
         <InboxIcon />
         {requests.length > 0 && (
-          <span className="absolute -right-1 -top-1 flex h-3.5 min-w-3.5 items-center justify-center rounded-full bg-red-400 px-1 font-mono text-[9px] font-bold text-page">
+          <span className="absolute -right-1 -top-1 flex h-3.5 min-w-3.5 items-center justify-center rounded-full bg-danger px-1 font-mono text-[9px] font-bold text-page">
             {requests.length}
           </span>
         )}
@@ -85,7 +85,7 @@ export function JoinRequestInbox({ requests, onApprove, onReject }: JoinRequestI
                     </button>
                     <button
                       onClick={() => onReject(r.userId)}
-                      className="rounded-md bg-red-400/15 px-2 py-1 font-mono text-xs font-semibold text-red-300 transition-colors hover:bg-red-400/25"
+                      className="rounded-md bg-danger/15 px-2 py-1 font-mono text-xs font-semibold text-red-300 transition-colors hover:bg-danger/25"
                     >
                       Reject
                     </button>

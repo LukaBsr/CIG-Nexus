@@ -25,6 +25,9 @@
 
 **Changed**
 - Color tokens renamed with no visual change: `teal` -> `brand`, `violet` -> `brand-2`, `ink` -> `page`, `ivory` -> `fg`, in `web/app/globals.css` and every utility class that used them (`text-`, `bg-`, `border-`, `accent-`). Custom properties follow the same mapping (`--color-brand`, etc.). Theme ids and the Abyss/Ember palettes are unchanged
+- Design tokens v0.2 (`web/app/globals.css`): new `raised`, `muted`, `warning`, `danger` and `online` tokens. Status colors that were literal `red-400`/`green-400` utilities (presence dot, connection indicator, error text) now use `danger` and `online`, with the same computed colors.
+- Visible changes, intentional: Abyss `brand-2` (usernames, emphasis) is lighter, `#8b5cf6` -> `#a079f8`, for 4.5:1 contrast on panels; Ember has its own `danger` color (`#ff4d79`), distinct from its coral brand; the page declares `color-scheme: dark`, so native scrollbars, form controls and autofill follow the dark base.
+- A token test (`web/lib/appearance/tokens.test.ts`) reads `globals.css` and checks that the eleven tokens are declared and that text and accent colors meet contrast minimums in Abyss and Ember.**Docs & CI**
 
 **Docs & CI**
 - Documented the OpenSSL/libcurl build prerequisites for non-Docker server builds (#28)
