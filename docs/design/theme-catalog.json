@@ -6,40 +6,40 @@
     "family": "CIG brand",
     "status": "As-built",
     "source": "CIG Nexus brand palette (globals.css) + v0.2 additions",
-    "reference_note": "All values from globals.css and themes.ts. New in v0.2: raised, muted, warning, and a lightened violet (4.0:1 on surface as-built).",
+    "reference_note": "All values from globals.css and themes.ts. New in v0.2: raised, muted, warning, and a lightened brand-2 (4.0:1 on surface as-built).",
     "mood": "Ink-navy instrument panel, teal signal. The default.",
     "swatch": {
       "accent": "#5eead4",
       "secondary": "#a079f8"
     },
     "tokens": {
-      "ink": "#0d0e18",
+      "page": "#0d0e18",
       "surface": "#1a1c2e",
       "raised": "#252840",
       "slate": "#4a4e72",
-      "ivory": "#edeffb",
+      "fg": "#edeffb",
       "muted": "#9aa0c8",
-      "teal": "#5eead4",
-      "violet": "#a079f8",
+      "brand": "#5eead4",
+      "brand-2": "#a079f8",
       "danger": "#f87171",
       "warning": "#fbbf24",
       "online": "#4ade80"
     },
     "tuned_from_reference": {
-      "violet": {
+      "brand-2": {
         "reference": "#8b5cf6",
         "final": "#a079f8"
       }
     },
     "contrast": {
-      "ivory_ink": 16.78,
-      "ivory_min": 12.59,
+      "fg_page": 16.78,
+      "fg_min": 12.59,
       "muted_min": 5.66,
       "t60_min": 5.51,
       "t50_min": 4.33,
       "t40_min": 3.31,
-      "teal_min": 9.75,
-      "violet_min": 4.52,
+      "brand_min": 9.75,
+      "brand_2_min": 4.52,
       "danger_min": 5.21,
       "warning_min": 8.64,
       "online_min": 8.28,
@@ -56,34 +56,34 @@
     "status": "As-built",
     "source": "CIG Nexus brand palette (themes.ts) + v0.2 additions",
     "reference_note": "Accent values from themes.ts. New in v0.2: raised, muted, warning, and a distinct danger (as-built danger shares the accent hue).",
-    "mood": "Same ink base with a warm coral and orange accent.",
+    "mood": "Same dark navy base with a warm coral and orange accent.",
     "swatch": {
       "accent": "#f87171",
       "secondary": "#fb923c"
     },
     "tokens": {
-      "ink": "#0d0e18",
+      "page": "#0d0e18",
       "surface": "#1a1c2e",
       "raised": "#252840",
       "slate": "#4a4e72",
-      "ivory": "#edeffb",
+      "fg": "#edeffb",
       "muted": "#9aa0c8",
-      "teal": "#f87171",
-      "violet": "#fb923c",
+      "brand": "#f87171",
+      "brand-2": "#fb923c",
       "danger": "#ff4d79",
       "warning": "#fbbf24",
       "online": "#4ade80"
     },
     "tuned_from_reference": {},
     "contrast": {
-      "ivory_ink": 16.78,
-      "ivory_min": 12.59,
+      "fg_page": 16.78,
+      "fg_min": 12.59,
       "muted_min": 5.66,
       "t60_min": 5.51,
       "t50_min": 4.33,
       "t40_min": 3.31,
-      "teal_min": 5.21,
-      "violet_min": 6.37,
+      "brand_min": 5.21,
+      "brand_2_min": 6.37,
       "danger_min": 4.53,
       "warning_min": 8.64,
       "online_min": 8.28,
@@ -99,35 +99,35 @@
     "family": "CIG brand",
     "status": "Proposed",
     "source": "Exact inversion of Abyss (ink and ivory swapped)",
-    "reference_note": "Our own design: ink and ivory swapped from Abyss; teal and violet deepened for contrast.",
+    "reference_note": "Our own design: page and fg swapped from Abyss; brand and brand-2 deepened for contrast.",
     "mood": "Cool lavender-white page, deep teal and violet. The neutral light theme.",
     "swatch": {
       "accent": "#0d6b63",
       "secondary": "#6d28d9"
     },
     "tokens": {
-      "ink": "#edeffb",
+      "page": "#edeffb",
       "surface": "#ffffff",
       "raised": "#e2e5f6",
       "slate": "#4a4e72",
-      "ivory": "#0d0e18",
+      "fg": "#0d0e18",
       "muted": "#4d5278",
-      "teal": "#0d6b63",
-      "violet": "#6d28d9",
+      "brand": "#0d6b63",
+      "brand-2": "#6d28d9",
       "danger": "#b91c1c",
       "warning": "#b45309",
       "online": "#15803d"
     },
     "tuned_from_reference": {},
     "contrast": {
-      "ivory_ink": 16.78,
-      "ivory_min": 15.34,
+      "fg_page": 16.78,
+      "fg_min": 15.34,
       "muted_min": 6.0,
       "t60_min": 4.68,
       "t50_min": 3.4,
       "t40_min": 2.56,
-      "teal_min": 5.08,
-      "violet_min": 5.67,
+      "brand_min": 5.08,
+      "brand_2_min": 5.67,
       "danger_min": 5.17,
       "warning_min": 4.01,
       "online_min": 4.01,
@@ -150,20 +150,20 @@
       "secondary": "#eb459e"
     },
     "tokens": {
-      "ink": "#000000",
+      "page": "#000000",
       "surface": "#111214",
       "raised": "#1e1f22",
       "slate": "#4e5058",
-      "ivory": "#f2f3f5",
+      "fg": "#f2f3f5",
       "muted": "#b5bac1",
-      "teal": "#6f7af4",
-      "violet": "#eb459e",
+      "brand": "#6f7af4",
+      "brand-2": "#eb459e",
       "danger": "#f3474a",
       "warning": "#f0b232",
       "online": "#23a55a"
     },
     "tuned_from_reference": {
-      "teal": {
+      "brand": {
         "reference": "#5865f2",
         "final": "#6f7af4"
       },
@@ -173,14 +173,14 @@
       }
     },
     "contrast": {
-      "ivory_ink": 18.91,
-      "ivory_min": 14.84,
+      "fg_page": 18.91,
+      "fg_min": 14.84,
       "muted_min": 8.44,
       "t60_min": 6.15,
       "t50_min": 4.71,
       "t40_min": 3.39,
-      "teal_min": 4.52,
-      "violet_min": 4.61,
+      "brand_min": 4.52,
+      "brand_2_min": 4.61,
       "danger_min": 4.56,
       "warning_min": 8.73,
       "online_min": 5.18,
@@ -203,24 +203,24 @@
       "secondary": "#32bbff"
     },
     "tokens": {
-      "ink": "#2f3136",
+      "page": "#2f3136",
       "surface": "#36393f",
       "raised": "#40444b",
       "slate": "#72767d",
-      "ivory": "#dcddde",
+      "fg": "#dcddde",
       "muted": "#b9bbbe",
-      "teal": "#9fafe6",
-      "violet": "#32bbff",
+      "brand": "#9fafe6",
+      "brand-2": "#32bbff",
       "danger": "#f69696",
       "warning": "#faa61a",
       "online": "#43b581"
     },
     "tuned_from_reference": {
-      "teal": {
+      "brand": {
         "reference": "#7289da",
         "final": "#9fafe6"
       },
-      "violet": {
+      "brand-2": {
         "reference": "#00a8fc",
         "final": "#32bbff"
       },
@@ -230,14 +230,14 @@
       }
     },
     "contrast": {
-      "ivory_ink": 9.57,
-      "ivory_min": 7.19,
+      "fg_page": 9.57,
+      "fg_min": 7.19,
       "muted_min": 5.08,
       "t60_min": 3.73,
       "t50_min": 3.06,
       "t40_min": 2.5,
-      "teal_min": 4.54,
-      "violet_min": 4.51,
+      "brand_min": 4.54,
+      "brand_2_min": 4.51,
       "danger_min": 4.53,
       "warning_min": 4.91,
       "online_min": 3.8,
@@ -260,28 +260,28 @@
       "secondary": "#bb9af7"
     },
     "tokens": {
-      "ink": "#16161e",
+      "page": "#16161e",
       "surface": "#1a1b26",
       "raised": "#292e42",
       "slate": "#565f89",
-      "ivory": "#c0caf5",
+      "fg": "#c0caf5",
       "muted": "#a9b1d6",
-      "teal": "#7aa2f7",
-      "violet": "#bb9af7",
+      "brand": "#7aa2f7",
+      "brand-2": "#bb9af7",
       "danger": "#f7768e",
       "warning": "#e0af68",
       "online": "#9ece6a"
     },
     "tuned_from_reference": {},
     "contrast": {
-      "ivory_ink": 11.14,
-      "ivory_min": 8.32,
+      "fg_page": 11.14,
+      "fg_min": 8.32,
       "muted_min": 6.36,
       "t60_min": 4.05,
       "t50_min": 3.27,
       "t40_min": 2.6,
-      "teal_min": 5.33,
-      "violet_min": 5.81,
+      "brand_min": 5.33,
+      "brand_2_min": 5.81,
       "danger_min": 5.08,
       "warning_min": 6.72,
       "online_min": 7.35,
@@ -304,28 +304,28 @@
       "secondary": "#f5c2e7"
     },
     "tokens": {
-      "ink": "#181825",
+      "page": "#181825",
       "surface": "#1e1e2e",
       "raised": "#313244",
       "slate": "#585b70",
-      "ivory": "#cdd6f4",
+      "fg": "#cdd6f4",
       "muted": "#a6adc8",
-      "teal": "#cba6f7",
-      "violet": "#f5c2e7",
+      "brand": "#cba6f7",
+      "brand-2": "#f5c2e7",
       "danger": "#f38ba8",
       "warning": "#f9e2af",
       "online": "#a6e3a1"
     },
     "tuned_from_reference": {},
     "contrast": {
-      "ivory_ink": 12.14,
-      "ivory_min": 8.69,
+      "fg_page": 12.14,
+      "fg_min": 8.69,
       "muted_min": 5.65,
       "t60_min": 4.2,
       "t50_min": 3.4,
       "t40_min": 2.72,
-      "teal_min": 6.19,
-      "violet_min": 8.23,
+      "brand_min": 6.19,
+      "brand_2_min": 8.23,
       "danger_min": 5.43,
       "warning_min": 9.89,
       "online_min": 8.46,
@@ -348,28 +348,28 @@
       "secondary": "#d6936f"
     },
     "tokens": {
-      "ink": "#0e1714",
+      "page": "#0e1714",
       "surface": "#141f1b",
       "raised": "#1d2c26",
       "slate": "#46605a",
-      "ivory": "#e8f0ea",
+      "fg": "#e8f0ea",
       "muted": "#9db3a8",
-      "teal": "#5cc9a7",
-      "violet": "#d6936f",
+      "brand": "#5cc9a7",
+      "brand-2": "#d6936f",
       "danger": "#f0716f",
       "warning": "#f2c14e",
       "online": "#8bd450"
     },
     "tuned_from_reference": {},
     "contrast": {
-      "ivory_ink": 15.71,
-      "ivory_min": 12.55,
+      "fg_page": 15.71,
+      "fg_min": 12.55,
       "muted_min": 6.56,
       "t60_min": 5.53,
       "t50_min": 4.29,
       "t40_min": 3.26,
-      "teal_min": 7.2,
-      "violet_min": 5.74,
+      "brand_min": 7.2,
+      "brand_2_min": 5.74,
       "danger_min": 5.07,
       "warning_min": 8.69,
       "online_min": 8.07,
@@ -392,24 +392,24 @@
       "secondary": "#c31572"
     },
     "tokens": {
-      "ink": "#f2f3f5",
+      "page": "#f2f3f5",
       "surface": "#ffffff",
       "raised": "#e3e5e8",
       "slate": "#80848e",
-      "ivory": "#313338",
+      "fg": "#313338",
       "muted": "#5c5e66",
-      "teal": "#3e4df0",
-      "violet": "#c31572",
+      "brand": "#3e4df0",
+      "brand-2": "#c31572",
       "danger": "#c42429",
       "warning": "#ad790d",
       "online": "#209652"
     },
     "tuned_from_reference": {
-      "teal": {
+      "brand": {
         "reference": "#5865f2",
         "final": "#3e4df0"
       },
-      "violet": {
+      "brand-2": {
         "reference": "#eb459e",
         "final": "#c31572"
       },
@@ -427,14 +427,14 @@
       }
     },
     "contrast": {
-      "ivory_ink": 11.39,
-      "ivory_min": 10.02,
+      "fg_page": 11.39,
+      "fg_min": 10.02,
       "muted_min": 5.12,
       "t60_min": 3.41,
       "t50_min": 2.67,
       "t40_min": 2.13,
-      "teal_min": 4.72,
-      "violet_min": 4.53,
+      "brand_min": 4.72,
+      "brand_2_min": 4.53,
       "danger_min": 4.58,
       "warning_min": 3.02,
       "online_min": 3.0,
@@ -457,24 +457,24 @@
       "secondary": "#9c512d"
     },
     "tokens": {
-      "ink": "#f0eee9",
+      "page": "#f0eee9",
       "surface": "#faf9f6",
       "raised": "#e6e3dc",
       "slate": "#8a857b",
-      "ivory": "#26241f",
+      "fg": "#26241f",
       "muted": "#5f5b52",
-      "teal": "#116871",
-      "violet": "#9c512d",
+      "brand": "#116871",
+      "brand-2": "#9c512d",
       "danger": "#b83729",
       "warning": "#b0741e",
       "online": "#2f8f5b"
     },
     "tuned_from_reference": {
-      "teal": {
+      "brand": {
         "reference": "#13747d",
         "final": "#116871"
       },
-      "violet": {
+      "brand-2": {
         "reference": "#a4552f",
         "final": "#9c512d"
       },
@@ -488,14 +488,14 @@
       }
     },
     "contrast": {
-      "ivory_ink": 13.37,
-      "ivory_min": 12.1,
+      "fg_page": 13.37,
+      "fg_min": 12.1,
       "muted_min": 5.28,
       "t60_min": 3.85,
       "t50_min": 2.92,
       "t40_min": 2.28,
-      "teal_min": 5.05,
-      "violet_min": 4.52,
+      "brand_min": 5.05,
+      "brand_2_min": 4.52,
       "danger_min": 4.53,
       "warning_min": 3.06,
       "online_min": 3.15,
@@ -518,20 +518,20 @@
       "secondary": "#0a55ea"
     },
     "tokens": {
-      "ink": "#e6e9ef",
+      "page": "#e6e9ef",
       "surface": "#eff1f5",
       "raised": "#dce0e8",
       "slate": "#9ca0b0",
-      "ivory": "#484b63",
+      "fg": "#484b63",
       "muted": "#5f6275",
-      "teal": "#7c24ed",
-      "violet": "#0a55ea",
+      "brand": "#7c24ed",
+      "brand-2": "#0a55ea",
       "danger": "#c50e35",
       "warning": "#b27117",
       "online": "#3a9027"
     },
     "tuned_from_reference": {
-      "ivory": {
+      "fg": {
         "reference": "#4c4f69",
         "final": "#484b63"
       },
@@ -539,11 +539,11 @@
         "reference": "#6c6f85",
         "final": "#5f6275"
       },
-      "teal": {
+      "brand": {
         "reference": "#8839ef",
         "final": "#7c24ed"
       },
-      "violet": {
+      "brand-2": {
         "reference": "#1e66f5",
         "final": "#0a55ea"
       },
@@ -561,14 +561,14 @@
       }
     },
     "contrast": {
-      "ivory_ink": 7.01,
-      "ivory_min": 6.45,
+      "fg_page": 7.01,
+      "fg_min": 6.45,
       "muted_min": 4.55,
       "t60_min": 2.7,
       "t50_min": 2.22,
       "t40_min": 1.87,
-      "teal_min": 4.76,
-      "violet_min": 4.53,
+      "brand_min": 4.76,
+      "brand_2_min": 4.53,
       "danger_min": 4.55,
       "warning_min": 3.01,
       "online_min": 3.05,
@@ -591,14 +591,14 @@
       "secondary": "#ba3f3a"
     },
     "tokens": {
-      "ink": "#faf4ed",
+      "page": "#faf4ed",
       "surface": "#fffaf3",
       "raised": "#f2e9e1",
       "slate": "#9893a5",
-      "ivory": "#464261",
+      "fg": "#464261",
       "muted": "#6a6683",
-      "teal": "#6e5888",
-      "violet": "#ba3f3a",
+      "brand": "#6e5888",
+      "brand-2": "#ba3f3a",
       "danger": "#a44f67",
       "warning": "#bf7614",
       "online": "#2f8f68"
@@ -608,11 +608,11 @@
         "reference": "#797593",
         "final": "#6a6683"
       },
-      "teal": {
+      "brand": {
         "reference": "#907aa9",
         "final": "#6e5888"
       },
-      "violet": {
+      "brand-2": {
         "reference": "#d7827e",
         "final": "#ba3f3a"
       },
@@ -626,14 +626,14 @@
       }
     },
     "contrast": {
-      "ivory_ink": 8.69,
-      "ivory_min": 7.92,
+      "fg_page": 8.69,
+      "fg_min": 7.92,
       "muted_min": 4.56,
       "t60_min": 2.98,
       "t50_min": 2.4,
       "t40_min": 1.98,
-      "teal_min": 5.13,
-      "violet_min": 4.54,
+      "brand_min": 5.13,
+      "brand_2_min": 4.54,
       "danger_min": 4.5,
       "warning_min": 3.01,
       "online_min": 3.34,
@@ -656,14 +656,14 @@
       "secondary": "#813966"
     },
     "tokens": {
-      "ink": "#ebdbb2",
+      "page": "#ebdbb2",
       "surface": "#fbf1c7",
       "raised": "#d5c4a1",
       "slate": "#928374",
-      "ivory": "#3c3836",
+      "fg": "#3c3836",
       "muted": "#5a514a",
-      "teal": "#065b6b",
-      "violet": "#813966",
+      "brand": "#065b6b",
+      "brand-2": "#813966",
       "danger": "#9d0006",
       "warning": "#966211",
       "online": "#746f0d"
@@ -673,11 +673,11 @@
         "reference": "#665c54",
         "final": "#5a514a"
       },
-      "teal": {
+      "brand": {
         "reference": "#076678",
         "final": "#065b6b"
       },
-      "violet": {
+      "brand-2": {
         "reference": "#8f3f71",
         "final": "#813966"
       },
@@ -691,14 +691,14 @@
       }
     },
     "contrast": {
-      "ivory_ink": 8.45,
-      "ivory_min": 6.76,
+      "fg_page": 8.45,
+      "fg_min": 6.76,
       "muted_min": 4.52,
       "t60_min": 2.84,
       "t50_min": 2.33,
       "t40_min": 1.93,
-      "teal_min": 4.51,
-      "violet_min": 4.52,
+      "brand_min": 4.51,
+      "brand_2_min": 4.52,
       "danger_min": 5.02,
       "warning_min": 3.02,
       "online_min": 3.04,

@@ -36,6 +36,8 @@
 - `server-ci.yml`'s formatting check now pins `clang-format==18.1.8` via a pip-installed venv instead of apt's version, so it no longer drifts with the runner image; the same pinned-venv recipe is documented in `CLAUDE.md` and `server/README.md` for local use (#40)
 - Documented first-run secrets setup: generating the RSA keypair and its required file modes (`private.pem` 600, `public.pem` 644) before the first `docker compose up`, and how to recover if Docker already created root-owned directories in their place; fixed `CLAUDE.md`'s server test binary path (#50)
 - Brand and design system charter v0.2 (`docs/design/brand-guidelines.md`): logo family, color tokens, typography, and a 13-theme catalog (`docs/design/theme-catalog.css` and `.json`); light and dark logo variants (`mark-dark`, `mark-light`, `icon-light`, `lockup-dark`, `lockup-light`) added to `web/public/branding/`. Documentation only — no theme is applied by this change
+- Brand charter updated to v0.2.1 to describe `main` after #61–#63: final token names are `page`, `fg`, `brand` and `brand-2` (replacing `ink`, `ivory`, `teal` and `violet`); the guild icon fix (#61) is recorded as shipped; the theme catalog CSS and JSON use the final token names. New findings: no theme declares `color-scheme` yet, and a rule is added against conflicting same-property utilities in one `className` (the cascade-order issue found while renaming). A drift-guard test that keeps the catalog and `globals.css` in step is a follow-up. (`docs/design/brand-guidelines.md`, `docs/design/theme-catalog.css`, `docs/design/theme-catalog.json`)
+
 
 ## v0.7.0 — 2026-08-16
 
