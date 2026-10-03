@@ -88,7 +88,7 @@ export function ProfileView({ userId, onClose, myUserId, onEditProfile }: Profil
   const accent = profile?.accent_color ?? DEFAULT_ACCENT;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink/70 p-4" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-page/70 p-4" onClick={onClose}>
       <div
         className="w-full max-w-sm overflow-hidden rounded-lg border border-slate/40 bg-surface shadow-xl"
         onClick={(e) => e.stopPropagation()}
@@ -100,38 +100,38 @@ export function ProfileView({ userId, onClose, myUserId, onEditProfile }: Profil
           <button
             onClick={onClose}
             aria-label="Close profile"
-            className="shrink-0 font-mono text-lg leading-none text-ivory/50 transition-colors hover:text-ivory"
+            className="shrink-0 font-mono text-lg leading-none text-fg/50 transition-colors hover:text-fg"
           >
             &times;
           </button>
         </div>
 
         {profile === undefined && (
-          <p className="px-5 pb-6 font-mono text-sm text-ivory/40">Loading…</p>
+          <p className="px-5 pb-6 font-mono text-sm text-fg/40">Loading…</p>
         )}
 
         {profile === null && (
-          <p className="px-5 pb-6 font-mono text-sm text-ivory/40">Profile unavailable.</p>
+          <p className="px-5 pb-6 font-mono text-sm text-fg/40">Profile unavailable.</p>
         )}
 
         {profile && (
           <div className="flex flex-col items-center gap-3 px-5 pb-6 text-center">
             <Avatar url={profile.avatar_url} name={profile.display_name} size={64} />
             <div>
-              <h2 className="font-mono text-base font-semibold text-ivory">{profile.display_name}</h2>
+              <h2 className="font-mono text-base font-semibold text-fg">{profile.display_name}</h2>
               {profile.status_message && (
-                <p className="mt-0.5 font-mono text-xs text-ivory/50">{profile.status_message}</p>
+                <p className="mt-0.5 font-mono text-xs text-fg/50">{profile.status_message}</p>
               )}
             </div>
             {profile.bio && (
-              <p className="w-full whitespace-pre-wrap break-words border-t border-slate/20 pt-3 text-left font-sans text-sm text-ivory/80">
+              <p className="w-full whitespace-pre-wrap break-words border-t border-slate/20 pt-3 text-left font-sans text-sm text-fg/80">
                 {profile.bio}
               </p>
             )}
             {userId === myUserId && (
               <button
                 onClick={onEditProfile}
-                className="mt-1 rounded-md border border-teal bg-teal/10 px-4 py-1.5 font-mono text-sm text-teal transition-colors hover:bg-teal/20"
+                className="mt-1 rounded-md border border-brand bg-brand/10 px-4 py-1.5 font-mono text-sm text-brand transition-colors hover:bg-brand/20"
               >
                 Edit profile
               </button>

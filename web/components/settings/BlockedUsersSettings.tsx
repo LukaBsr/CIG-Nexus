@@ -10,7 +10,7 @@ import { Avatar } from "../Avatar";
 // are optional on SettingsSectionProps).
 export function BlockedUsersSettings({ blockedUsers = [], onUnblock }: SettingsSectionProps) {
   if (blockedUsers.length === 0) {
-    return <p className="font-mono text-sm text-ivory/40">You haven&apos;t blocked anyone.</p>;
+    return <p className="font-mono text-sm text-fg/40">You haven&apos;t blocked anyone.</p>;
   }
 
   return (
@@ -18,17 +18,17 @@ export function BlockedUsersSettings({ blockedUsers = [], onUnblock }: SettingsS
       {blockedUsers.map((b) => (
         <li
           key={b.userId}
-          className="flex items-center justify-between gap-2 rounded-md bg-ink/40 px-3 py-2"
+          className="flex items-center justify-between gap-2 rounded-md bg-page/40 px-3 py-2"
         >
           <span className="flex min-w-0 flex-1 items-center gap-2">
             <Avatar url={b.avatarUrl} name={b.displayName ?? b.username} size={24} />
-            <span className="min-w-0 flex-1 truncate font-mono text-sm text-ivory">
+            <span className="min-w-0 flex-1 truncate font-mono text-sm text-fg">
               {b.displayName ?? b.username}
             </span>
           </span>
           <button
             onClick={() => onUnblock?.(b.userId)}
-            className="shrink-0 rounded-md border border-slate/40 px-3 py-1 font-mono text-xs text-ivory transition-colors hover:border-teal hover:text-teal"
+            className="shrink-0 rounded-md border border-slate/40 px-3 py-1 font-mono text-xs text-fg transition-colors hover:border-brand hover:text-brand"
           >
             Unblock
           </button>

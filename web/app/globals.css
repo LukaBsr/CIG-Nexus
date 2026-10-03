@@ -14,23 +14,23 @@
    declaring them a second time would just be a second place for the same
    values to drift out of sync. */
 @theme {
-  --color-ink: #0d0e18; /* page background */
+  --color-page: #0d0e18; /* page background */
   --color-surface: #1a1c2e; /* panel / rail / card background */
   --color-slate: #4a4e72; /* borders, dividers, muted chrome */
-  --color-teal: #5eead4; /* primary accent — "connected" */
-  --color-violet: #8b5cf6; /* secondary accent — ownership, emphasis */
-  --color-ivory: #edeffb; /* primary text */
+  --color-brand: #5eead4; /* primary accent — "connected" */
+  --color-brand-2: #8b5cf6; /* secondary accent — ownership, emphasis */
+  --color-fg: #edeffb; /* primary text */
 
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
 
 [data-theme="ember"] {
-  --color-teal: #f87171;
-  --color-violet: #fb923c;
+  --color-brand: #f87171;
+  --color-brand-2: #fb923c;
 }
 
 body {
-  background-color: var(--color-ink);
-  color: var(--color-ivory);
+  background-color: var(--color-page);
+  color: var(--color-fg);
 }

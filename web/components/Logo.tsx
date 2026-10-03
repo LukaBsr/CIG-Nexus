@@ -23,7 +23,7 @@ export function Logo({ size = "sm", withWordmark = false, className = "" }: Logo
         <span
           className={`font-mono font-bold tracking-[0.2em] ${size === "lg" ? "text-3xl" : "text-sm"}`}
         >
-          <span className="text-ivory">CIG</span> <span className="text-teal">NEXUS</span>
+          <span className="text-fg">CIG</span> <span className="text-brand">NEXUS</span>
         </span>
       )}
     </div>

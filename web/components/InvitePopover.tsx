@@ -46,7 +46,7 @@ export function InvitePopover({ onSubmit, lastCreatedInvite, onClearLastCreatedI
         aria-label="Create invite"
         title="Create invite"
         className={`rounded-md p-1.5 transition-colors ${
-          open ? "bg-surface text-teal" : "text-ivory/50 hover:text-ivory"
+          open ? "bg-surface text-brand" : "text-fg/50 hover:text-fg"
         }`}
       >
         <LinkIcon />
@@ -54,18 +54,18 @@ export function InvitePopover({ onSubmit, lastCreatedInvite, onClearLastCreatedI
 
       {open && (
         <div className="absolute right-0 top-full z-40 mt-2 w-72 rounded-lg border border-slate/40 bg-surface p-3 shadow-xl">
-          <h3 className="mb-2 font-mono text-xs font-semibold tracking-wider text-ivory/40 uppercase">
+          <h3 className="mb-2 font-mono text-xs font-semibold tracking-wider text-fg/40 uppercase">
             Create Invite
           </h3>
           <CreateInviteForm onSubmit={onSubmit} />
           {lastCreatedInvite && (
-            <div className="mt-2 flex items-center justify-between gap-2 rounded-md border border-teal/30 bg-teal/10 px-3 py-2 font-mono text-xs text-teal">
+            <div className="mt-2 flex items-center justify-between gap-2 rounded-md border border-brand/30 bg-brand/10 px-3 py-2 font-mono text-xs text-brand">
               <span>
                 Code: <span className="font-semibold">{lastCreatedInvite.code}</span>
               </span>
               <button
                 onClick={onClearLastCreatedInvite}
-                className="font-semibold text-teal/70 hover:text-teal"
+                className="font-semibold text-brand/70 hover:text-brand"
               >
                 &times;
               </button>

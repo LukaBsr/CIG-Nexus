@@ -67,7 +67,7 @@ export function GuildBrowsePopover({
         aria-label="Browse or create a guild"
         title="Browse or create a guild"
         className={`flex h-11 w-11 items-center justify-center rounded-full transition-colors ${
-          open ? "bg-teal text-ink" : "bg-surface text-teal hover:rounded-xl hover:bg-teal/20"
+          open ? "bg-brand text-page" : "bg-surface text-brand hover:rounded-xl hover:bg-brand/20"
         }`}
       >
         <PlusIcon />
@@ -83,11 +83,11 @@ export function GuildBrowsePopover({
         // (web/components/FriendsView.tsx), just the vertical axis here
         // instead of the horizontal one.
         <div className="absolute bottom-0 left-full z-40 ml-2 w-72 rounded-lg border border-slate/40 bg-surface p-3 shadow-xl">
-          <h3 className="mb-2 font-mono text-xs font-semibold tracking-wider text-ivory/40 uppercase">
+          <h3 className="mb-2 font-mono text-xs font-semibold tracking-wider text-fg/40 uppercase">
             All Guilds
           </h3>
           {discoverable.length === 0 ? (
-            <p className="font-mono text-xs text-ivory/40">No other guilds to discover yet.</p>
+            <p className="font-mono text-xs text-fg/40">No other guilds to discover yet.</p>
           ) : (
             <ul className="flex list-none flex-col gap-1 p-0">
               {discoverable.map((g) => {
@@ -95,14 +95,14 @@ export function GuildBrowsePopover({
                 return (
                   <li
                     key={g.guildId}
-                    className="flex items-center justify-between gap-2 rounded-md bg-ink/40 px-2 py-1.5"
+                    className="flex items-center justify-between gap-2 rounded-md bg-page/40 px-2 py-1.5"
                   >
                     <span className="flex min-w-0 flex-1 items-center gap-2">
                       <GuildIcon guildId={g.guildId} name={g.name} size={20} className="rounded-full" />
-                      <span className="min-w-0 flex-1 truncate font-mono text-sm text-ivory">{g.name}</span>
+                      <span className="min-w-0 flex-1 truncate font-mono text-sm text-fg">{g.name}</span>
                     </span>
                     {isPending ? (
-                      <span className="shrink-0 rounded-full border border-slate/40 px-2.5 py-1 font-mono text-xs text-ivory/40">
+                      <span className="shrink-0 rounded-full border border-slate/40 px-2.5 py-1 font-mono text-xs text-fg/40">
                         Requested
                       </span>
                     ) : (
@@ -110,7 +110,7 @@ export function GuildBrowsePopover({
                         onClick={() =>
                           g.visibility === "application" ? onRequestJoin(g.guildId) : onJoinGuild(g.guildId)
                         }
-                        className="shrink-0 rounded-full bg-teal/15 px-2.5 py-1 font-mono text-xs font-semibold text-teal transition-colors hover:bg-teal/25"
+                        className="shrink-0 rounded-full bg-brand/15 px-2.5 py-1 font-mono text-xs font-semibold text-brand transition-colors hover:bg-brand/25"
                       >
                         {g.visibility === "application" ? "Request" : "Join"}
                       </button>
@@ -121,7 +121,7 @@ export function GuildBrowsePopover({
             </ul>
           )}
 
-          <h3 className="mt-3 mb-2 border-t border-slate/20 pt-3 font-mono text-xs font-semibold tracking-wider text-ivory/40 uppercase">
+          <h3 className="mt-3 mb-2 border-t border-slate/20 pt-3 font-mono text-xs font-semibold tracking-wider text-fg/40 uppercase">
             Create a Guild
           </h3>
           <TextInputWithSubmit

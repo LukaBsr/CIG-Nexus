@@ -88,7 +88,7 @@ export function FriendsView({
             auto" rule), which was cutting the two popovers' panels off —
             they need to render outside any overflow-y-auto ancestor. */}
         <div className="flex shrink-0 items-center justify-between p-3 pb-2">
-          <h2 className="font-mono text-xs font-semibold tracking-wider text-ivory/40 uppercase">
+          <h2 className="font-mono text-xs font-semibold tracking-wider text-fg/40 uppercase">
             Friends — {friends.length}
           </h2>
           <div className="flex shrink-0 items-center gap-1">
@@ -106,7 +106,7 @@ export function FriendsView({
         <div className="flex-1 overflow-y-auto p-3 pt-0">
           {sortedConversations.length > 0 && (
             <>
-              <h3 className="mb-1 px-1 font-mono text-xs font-semibold tracking-wider text-ivory/40 uppercase">
+              <h3 className="mb-1 px-1 font-mono text-xs font-semibold tracking-wider text-fg/40 uppercase">
                 Direct Messages
               </h3>
               <ul className="mb-3 flex list-none flex-col gap-0.5 p-0">
@@ -124,7 +124,7 @@ export function FriendsView({
                     <button
                       onClick={() => onOpenDm(c.peerId)}
                       className={`min-w-0 flex-1 truncate text-left font-mono text-sm ${
-                        c.peerId === activeDmPeerId ? "text-teal" : "text-ivory/90"
+                        c.peerId === activeDmPeerId ? "text-brand" : "text-fg/90"
                       }`}
                     >
                       {c.displayName ?? c.username}
@@ -135,11 +135,11 @@ export function FriendsView({
             </>
           )}
 
-          <h3 className="mb-1 px-1 font-mono text-xs font-semibold tracking-wider text-ivory/40 uppercase">
+          <h3 className="mb-1 px-1 font-mono text-xs font-semibold tracking-wider text-fg/40 uppercase">
             Friends
           </h3>
           {sortedFriends.length === 0 ? (
-            <p className="px-1 font-mono text-xs text-ivory/40">
+            <p className="px-1 font-mono text-xs text-fg/40">
               No friends yet — add one by code above.
             </p>
           ) : (
@@ -155,13 +155,13 @@ export function FriendsView({
                   </button>
                   <button
                     onClick={() => onOpenDm(f.userId)}
-                    className="min-w-0 flex-1 truncate text-left font-mono text-sm text-ivory/90"
+                    className="min-w-0 flex-1 truncate text-left font-mono text-sm text-fg/90"
                   >
                     {f.displayName ?? f.username}
                   </button>
                   <button
                     onClick={() => onBlock(f.userId)}
-                    className="shrink-0 font-mono text-xs text-ivory/25 transition-colors hover:text-red-400"
+                    className="shrink-0 font-mono text-xs text-fg/25 transition-colors hover:text-red-400"
                   >
                     Block
                   </button>
@@ -174,7 +174,7 @@ export function FriendsView({
 
       {!activeDmPeerId ? (
         <section className="flex flex-1 items-center justify-center">
-          <p className="font-mono text-sm text-ivory/40">Select a friend to message.</p>
+          <p className="font-mono text-sm text-fg/40">Select a friend to message.</p>
         </section>
       ) : (
         <section className="flex flex-1 flex-col overflow-hidden">
@@ -184,7 +184,7 @@ export function FriendsView({
                 <Avatar url={activePeer?.avatarUrl} name={activePeer?.displayName ?? activePeer?.username ?? "?"} size={20} />
               </button>
             )}
-            <h2 className="min-w-0 truncate font-mono text-sm font-semibold text-ivory">
+            <h2 className="min-w-0 truncate font-mono text-sm font-semibold text-fg">
               {activePeer?.displayName ?? activePeer?.username ?? activeDmPeerId}
             </h2>
           </div>

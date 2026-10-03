@@ -58,7 +58,7 @@ export function AppearanceSettings(_props: SettingsSectionProps) {
   return (
     <div className="flex flex-col gap-5">
       <div className="flex flex-col gap-3">
-        <p className="font-mono text-xs font-semibold tracking-wider text-ivory/40 uppercase">Theme</p>
+        <p className="font-mono text-xs font-semibold tracking-wider text-fg/40 uppercase">Theme</p>
         <div className="flex flex-col gap-2">
           {THEMES.map((theme) => (
             <button
@@ -66,21 +66,21 @@ export function AppearanceSettings(_props: SettingsSectionProps) {
               onClick={() => handleSelect(theme.id)}
               className={`flex items-center gap-3 rounded-md border px-3 py-2 text-left transition-colors ${
                 theme.id === selected
-                  ? "border-teal bg-teal/10"
+                  ? "border-brand bg-brand/10"
                   : "border-slate/40 hover:border-slate"
               }`}
             >
               <span className="flex shrink-0 gap-1">
                 <span
-                  className="h-4 w-4 rounded-full border border-ink/20"
+                  className="h-4 w-4 rounded-full border border-page/20"
                   style={{ backgroundColor: theme.swatch.accent }}
                 />
                 <span
-                  className="h-4 w-4 rounded-full border border-ink/20"
+                  className="h-4 w-4 rounded-full border border-page/20"
                   style={{ backgroundColor: theme.swatch.secondary }}
                 />
               </span>
-              <span className="font-mono text-sm text-ivory">{theme.label}</span>
+              <span className="font-mono text-sm text-fg">{theme.label}</span>
             </button>
           ))}
         </div>
@@ -88,16 +88,16 @@ export function AppearanceSettings(_props: SettingsSectionProps) {
 
       <div className="flex flex-col gap-2 border-t border-slate/20 pt-4">
         <label className="flex cursor-pointer items-center justify-between gap-3">
-          <span className="font-mono text-sm text-ivory">Sync across devices</span>
+          <span className="font-mono text-sm text-fg">Sync across devices</span>
           <input
             type="checkbox"
             checked={syncEnabled}
             disabled={syncPending}
             onChange={(e) => void handleToggleSync(e.target.checked)}
-            className="h-4 w-4 accent-teal"
+            className="h-4 w-4 accent-brand"
           />
         </label>
-        <p className="font-mono text-xs text-ivory/40">
+        <p className="font-mono text-xs text-fg/40">
           {syncEnabled
             ? "This device's theme is saved to your account and applied on every device where sync is on."
             : "This theme only applies on this device."}

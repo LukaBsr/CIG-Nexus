@@ -152,7 +152,7 @@ export default function Home() {
   }
 
   return (
-    <div className="flex h-screen bg-ink text-ivory">
+    <div className="flex h-screen bg-page text-fg">
       <GuildRail
         guilds={guilds}
         myGuildIds={myGuildIds}
@@ -207,8 +207,8 @@ export default function Home() {
         {view === "lobby" && (
           <div className="flex flex-1 flex-col overflow-hidden">
             <div className="shrink-0 px-5 py-2">
-              <h2 className="font-mono text-sm font-semibold text-ivory">Global Lobby</h2>
-              <p className="font-mono text-xs text-ivory/40">Broadcast to every connected client.</p>
+              <h2 className="font-mono text-sm font-semibold text-fg">Global Lobby</h2>
+              <p className="font-mono text-xs text-fg/40">Broadcast to every connected client.</p>
             </div>
 
             <div className="flex-1 overflow-y-auto px-3">
@@ -240,14 +240,14 @@ export default function Home() {
           <section className="flex flex-1 flex-col overflow-hidden">
             {!activeGuild ? (
               <div className="flex flex-1 items-center justify-center">
-                <p className="font-mono text-sm text-ivory/40">
+                <p className="font-mono text-sm text-fg/40">
                   Select a guild from the rail, or use + to browse or create one.
                 </p>
               </div>
             ) : (
               <>
                 <div className="flex shrink-0 items-center justify-between gap-3 border-b border-slate/20 px-4 py-2">
-                  <h2 className="min-w-0 truncate font-mono text-sm font-semibold text-ivory">
+                  <h2 className="min-w-0 truncate font-mono text-sm font-semibold text-fg">
                     {activeGuild.name}
                   </h2>
                   {isOfficerOrAbove && (
@@ -257,7 +257,7 @@ export default function Home() {
                         aria-label="Create channel"
                         title="Create channel"
                         className={`rounded-md p-1.5 transition-colors ${
-                          isCreatingChannel ? "bg-surface text-teal" : "text-ivory/50 hover:text-ivory"
+                          isCreatingChannel ? "bg-surface text-brand" : "text-fg/50 hover:text-fg"
                         }`}
                       >
                         <PlusIcon />
@@ -284,7 +284,7 @@ export default function Home() {
 
                 <div className="flex shrink-0 flex-wrap items-center gap-1.5 border-b border-slate/20 px-4 py-2">
                   {channels.length === 0 && !isCreatingChannel ? (
-                    <p className="font-mono text-xs text-ivory/40">
+                    <p className="font-mono text-xs text-fg/40">
                       {isOfficerOrAbove
                         ? "No channels yet — use + to create one."
                         : "This guild has no channels yet."}
@@ -296,8 +296,8 @@ export default function Home() {
                         onClick={() => joinChannel(c.channelId)}
                         className={`rounded-full px-3 py-1 font-mono text-xs transition-colors ${
                           c.channelId === activeChannelId
-                            ? "bg-teal font-semibold text-ink"
-                            : "bg-surface text-ivory/70 hover:text-ivory"
+                            ? "bg-brand font-semibold text-page"
+                            : "bg-surface text-fg/70 hover:text-fg"
                         }`}
                       >
                         #{c.name}
@@ -321,7 +321,7 @@ export default function Home() {
                   <div className="flex flex-1 flex-col overflow-hidden">
                     {!activeChannelId ? (
                       <div className="flex flex-1 items-center justify-center">
-                        <p className="font-mono text-sm text-ivory/40">Select a channel to start chatting.</p>
+                        <p className="font-mono text-sm text-fg/40">Select a channel to start chatting.</p>
                       </div>
                     ) : (
                       <>

@@ -25,7 +25,7 @@ interface GuildRailProps {
 // Friends) — factored out so all three use the exact same indicator
 // rather than three near-identical inline spans.
 function RailActiveIndicator() {
-  return <span className="absolute -left-[10px] h-6 w-1 rounded-r-full bg-ivory" aria-hidden="true" />;
+  return <span className="absolute -left-[10px] h-6 w-1 rounded-r-full bg-fg" aria-hidden="true" />;
 }
 
 function PeopleIcon() {
@@ -118,8 +118,8 @@ export function GuildRail({
         onClick={onSelectFriends}
         aria-label="Friends"
         title="Friends"
-        className={`relative flex h-11 w-11 shrink-0 items-center justify-center text-ivory/70 transition-all ${
-          activeView === "friends" ? "rounded-xl bg-teal/20 text-teal" : "rounded-full bg-surface hover:rounded-xl hover:text-ivory"
+        className={`relative flex h-11 w-11 shrink-0 items-center justify-center transition-all ${
+          activeView === "friends" ? "rounded-xl bg-brand/20 text-brand" : "rounded-full bg-surface text-fg/70 hover:rounded-xl hover:text-fg"
         }`}
       >
         {activeView === "friends" && <RailActiveIndicator />}
