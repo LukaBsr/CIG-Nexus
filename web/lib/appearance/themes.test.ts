@@ -19,4 +19,21 @@ describe("resolveThemeId", () => {
   it("DEFAULT_THEME_ID is itself a registered theme", () => {
     expect(THEMES.some((theme) => theme.id === DEFAULT_THEME_ID)).toBe(true);
   });
+
+  for (const id of ["onyx", "mocha", "amethyst", "espresso"]) {
+    it(`returns the dark-batch-1 id "${id}" unchanged`, () => {
+      expect(resolveThemeId(id)).toBe(id);
+    });
+  }
+
+  it("resolves every registered id to itself", () => {
+    for (const theme of THEMES) {
+      expect(resolveThemeId(theme.id)).toBe(theme.id);
+    }
+  });
+
+  it("registers unique ids", () => {
+    const ids = THEMES.map((theme) => theme.id);
+    expect(new Set(ids).size).toBe(ids.length);
+  });
 });

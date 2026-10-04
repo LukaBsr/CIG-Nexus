@@ -1,12 +1,19 @@
 "use client";
 
-import { useState } from "react";
+import { Fragment, useState } from "react";
 
 import { patchAppearance } from "@/lib/appearance/api";
 import { applyTheme } from "@/lib/appearance/applyTheme";
 import { readClientCookie, THEME_SYNC_COOKIE, writeClientCookie } from "@/lib/appearance/cookie";
-import { DEFAULT_THEME_ID, THEMES } from "@/lib/appearance/themes";
+import { DEFAULT_THEME_ID, THEMES, type ThemeMode } from "@/lib/appearance/themes";
 import type { SettingsSectionProps } from "@/lib/settings/sections";
+
+// Picker groups, in the order their first theme appears in the registry.
+// Headings only render once there is more than one group: every theme is
+// dark today, so the picker looks exactly as it did before modes existed.
+const MODES: ThemeMode[] = [...new Set(THEMES.map((theme) => theme.mode))];
+const MODE_LABELS: Record<ThemeMode, string> = { dark: "Dark", light: "Light" };
+const showModeHeadings = MODES.length > 1;
 
 // docs/settings/appearance-design.md §5 step 4. Local application (§3.1)
 // stays unconditional regardless of sync state — the toggle only ever
@@ -60,28 +67,37 @@ export function AppearanceSettings(_props: SettingsSectionProps) {
       <div className="flex flex-col gap-3">
         <p className="font-mono text-xs font-semibold tracking-wider text-muted uppercase">Theme</p>
         <div className="flex flex-col gap-2">
-          {THEMES.map((theme) => (
-            <button
-              key={theme.id}
-              onClick={() => handleSelect(theme.id)}
-              className={`flex items-center gap-3 rounded-md border px-3 py-2 text-left transition-colors ${
-                theme.id === selected
-                  ? "border-brand bg-brand/10"
-                  : "border-slate/40 hover:border-slate"
-              }`}
-            >
-              <span className="flex shrink-0 gap-1">
-                <span
-                  className="h-4 w-4 rounded-full border border-page/20"
-                  style={{ backgroundColor: theme.swatch.accent }}
-                />
-                <span
-                  className="h-4 w-4 rounded-full border border-page/20"
-                  style={{ backgroundColor: theme.swatch.secondary }}
-                />
-              </span>
-              <span className="font-mono text-sm text-fg">{theme.label}</span>
-            </button>
+          {MODES.map((mode) => (
+            <Fragment key={mode}>
+              {showModeHeadings && (
+                <p className="mt-1 font-mono text-xs font-semibold tracking-wider text-muted uppercase">
+                  {MODE_LABELS[mode]}
+                </p>
+              )}
+              {THEMES.filter((theme) => theme.mode === mode).map((theme) => (
+                <button
+                  key={theme.id}
+                  onClick={() => handleSelect(theme.id)}
+                  className={`flex items-center gap-3 rounded-md border px-3 py-2 text-left transition-colors ${
+                    theme.id === selected
+                      ? "border-brand bg-brand/10"
+                      : "border-slate/40 hover:border-slate"
+                  }`}
+                >
+                  <span className="flex shrink-0 gap-1">
+                    <span
+                      className="h-4 w-4 rounded-full border border-page/20"
+                      style={{ backgroundColor: theme.swatch.accent }}
+                    />
+                    <span
+                      className="h-4 w-4 rounded-full border border-page/20"
+                      style={{ backgroundColor: theme.swatch.secondary }}
+                    />
+                  </span>
+                  <span className="font-mono text-sm text-fg">{theme.label}</span>
+                </button>
+              ))}
+            </Fragment>
           ))}
         </div>
       </div>

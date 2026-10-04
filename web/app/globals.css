@@ -49,6 +49,68 @@
   --color-danger: #ff4d79; /* distinct from Ember's coral brand */
 }
 
+/* Dark themes batch 1 (docs/design/theme-catalog.css, values copied verbatim).
+   Unlike Ember, these redeclare every token, so none inherits from Abyss. */
+[data-theme="onyx"] {
+  color-scheme: dark;
+  --color-page: #000000;
+  --color-surface: #111214;
+  --color-raised: #1e1f22;
+  --color-slate: #4e5058;
+  --color-fg: #f2f3f5;
+  --color-muted: #b5bac1;
+  --color-brand: #6f7af4;
+  --color-brand-2: #eb459e;
+  --color-danger: #f3474a;
+  --color-warning: #f0b232;
+  --color-online: #23a55a;
+}
+
+[data-theme="mocha"] {
+  color-scheme: dark;
+  --color-page: #181825;
+  --color-surface: #1e1e2e;
+  --color-raised: #313244;
+  --color-slate: #585b70;
+  --color-fg: #cdd6f4;
+  --color-muted: #a6adc8;
+  --color-brand: #cba6f7;
+  --color-brand-2: #f5c2e7;
+  --color-danger: #f38ba8;
+  --color-warning: #f9e2af;
+  --color-online: #a6e3a1;
+}
+
+[data-theme="amethyst"] {
+  color-scheme: dark;
+  --color-page: #130b24;
+  --color-surface: #1c1336;
+  --color-raised: #2a1d4d;
+  --color-slate: #4b3b7a;
+  --color-fg: #f1ebff;
+  --color-muted: #b3a5d9;
+  --color-brand: #b794ff;
+  --color-brand-2: #f472b6;
+  --color-danger: #ff5f5f;
+  --color-warning: #fbbf24;
+  --color-online: #4ade80;
+}
+
+[data-theme="espresso"] {
+  color-scheme: dark;
+  --color-page: #371b1a;
+  --color-surface: #3c3034;
+  --color-raised: #483b32;
+  --color-slate: #6e5a48;
+  --color-fg: #f1e8d8;
+  --color-muted: #b1a696;
+  --color-brand: #c3b090;
+  --color-brand-2: #db94a3;
+  --color-danger: #ff846c;
+  --color-warning: #f2b93b;
+  --color-online: #6fcf6a;
+}
+
 body {
   background-color: var(--color-page);
   color: var(--color-fg);

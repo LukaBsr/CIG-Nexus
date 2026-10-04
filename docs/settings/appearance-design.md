@@ -9,6 +9,12 @@ limiting on `PATCH /api/user/appearance` (and, on the same
 §4's profile PATCH and avatar upload/delete routes) was added later — see
 the checklist item below.
 
+> **Update (dark theme batch 1):** the registry now has six themes: Abyss,
+> Ember, Onyx, Mocha, Amethyst and Espresso, all dark (§2.4). The picker
+> groups themes by `mode` and shows a Dark/Light heading per group once
+> there is more than one mode; today there is one group, so no heading is
+> shown. Light themes remain out of scope.
+
 > **Naming note:** `teal` -> `brand`, `violet` -> `brand-2`, `ink` -> `page`, `ivory` -> `fg` (utilities and `--color-*`); names below are the pre-rename originals.
 > **Value note:** Abyss `brand-2` is now `#a079f8` (v0.2); the hex values below are the originals.
 
@@ -248,6 +254,40 @@ application both fall back to `DEFAULT_THEME_ID` rather than rendering
 broken/unstyled UI or throwing. Same "a display gap should degrade, not
 break the response" principle `docs/guilds/social-presence-design.md` §2.2
 applies to an unmapped `role_rank`/`role_theme` combination.
+
+### 2.4 Shipped themes (dark batch 1)
+
+The registry in `web/lib/appearance/themes.ts` is the list of themes the
+app accepts. Each entry has a matching block in `web/app/globals.css`:
+
+| id | label | mode | swatch accent / secondary | CSS block |
+|---|---|---|---|---|
+| `abyss` | Abyss (default) | dark | `#5eead4` / `#a079f8` | the `@theme` defaults (no block) |
+| `ember` | Ember | dark | `#f87171` / `#fb923c` | overrides brand, brand-2, danger |
+| `onyx` | Onyx | dark | `#6f7af4` / `#eb459e` | all 11 tokens |
+| `mocha` | Mocha | dark | `#cba6f7` / `#f5c2e7` | all 11 tokens |
+| `amethyst` | Amethyst | dark | `#b794ff` / `#f472b6` | all 11 tokens |
+| `espresso` | Espresso | dark | `#c3b090` / `#db94a3` | all 11 tokens |
+
+Values come from `docs/design/theme-catalog.css` and
+`docs/design/theme-catalog.json` (the catalog is the source for the new
+palettes; `globals.css` is what the app runs). Each non-Abyss block sets
+`color-scheme: dark`. Ember's block redeclares only three tokens and
+inherits the rest from `@theme`; the new blocks redeclare all eleven.
+
+Two checks keep the pieces in step (`web/lib/appearance/*.test.ts`):
+a drift guard (every registry entry has a block with all eleven tokens,
+a `color-scheme` matching its mode, and a swatch equal to its brand and
+brand-2; every block is registered; the profile accent fallbacks equal
+Abyss's brand) and a contrast check for every theme against the
+brand-guidelines §7.1 targets. Non-hex tokens (the oklch `danger` and
+`online` that Abyss and Ember inherit) are reported as skipped, not
+measured.
+
+**Picker:** `AppearanceSettings` groups the registry by `mode`, in the
+order each mode first appears. A Dark/Light heading renders only when
+there is more than one mode. Light themes are not in this batch and
+remain out of scope (§Scope).
 
 ---
 
