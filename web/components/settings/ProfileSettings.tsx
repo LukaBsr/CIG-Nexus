@@ -181,7 +181,7 @@ export function ProfileSettings({ userId }: SettingsSectionProps) {
           maxLength={DISPLAY_NAME_MAX_LENGTH}
           onChange={(e) => setDisplayName(e.target.value)}
           placeholder="Falls back to your Discord name"
-          className="rounded-md border border-slate/40 bg-page px-3 py-1.5 font-mono text-sm text-fg outline-none focus:border-brand"
+          className="rounded-md border border-slate/40 bg-page px-3 py-1.5 font-mono text-base text-fg outline-none focus:border-brand"
         />
       </label>
 
@@ -194,7 +194,7 @@ export function ProfileSettings({ userId }: SettingsSectionProps) {
           value={statusMessage}
           maxLength={STATUS_MESSAGE_MAX_LENGTH}
           onChange={(e) => setStatusMessage(e.target.value)}
-          className="rounded-md border border-slate/40 bg-page px-3 py-1.5 font-mono text-sm text-fg outline-none focus:border-brand"
+          className="rounded-md border border-slate/40 bg-page px-3 py-1.5 font-mono text-base text-fg outline-none focus:border-brand"
         />
       </label>
 
