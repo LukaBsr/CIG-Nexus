@@ -54,7 +54,7 @@ export function InvitePopover({ onSubmit, lastCreatedInvite, onClearLastCreatedI
 
       {open && (
         <div className="absolute right-0 top-full z-40 mt-2 w-72 rounded-lg border border-slate/40 bg-surface p-3 shadow-xl">
-          <h3 className="mb-2 font-mono text-xs font-semibold tracking-wider text-fg/40 uppercase">
+          <h3 className="mb-2 font-mono text-xs font-semibold tracking-wider text-muted uppercase">
             Create Invite
           </h3>
           <CreateInviteForm onSubmit={onSubmit} />

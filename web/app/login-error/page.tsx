@@ -21,7 +21,7 @@ export default function LoginErrorPage() {
         <h1 className="font-mono text-2xl font-bold tracking-tight text-fg">
           Sign-in didn&apos;t go through
         </h1>
-        <p className="font-sans text-sm text-fg/60">
+        <p className="font-sans text-sm text-muted">
           That Discord sign-in was cancelled or couldn&apos;t be completed. No harm done — you can
           try again.
         </p>

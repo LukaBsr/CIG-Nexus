@@ -58,11 +58,11 @@ export function JoinRequestInbox({ requests, onApprove, onReject }: JoinRequestI
 
       {open && (
         <div className="absolute right-0 top-full z-40 mt-2 w-72 rounded-lg border border-slate/40 bg-surface p-3 shadow-xl">
-          <h3 className="mb-2 font-mono text-xs font-semibold tracking-wider text-fg/40 uppercase">
+          <h3 className="mb-2 font-mono text-xs font-semibold tracking-wider text-muted uppercase">
             Join Requests
           </h3>
           {requests.length === 0 ? (
-            <p className="font-mono text-xs text-fg/40">No pending requests.</p>
+            <p className="font-mono text-xs text-muted">No pending requests.</p>
           ) : (
             <ul className="flex list-none flex-col gap-1 p-0">
               {requests.map((r) => (

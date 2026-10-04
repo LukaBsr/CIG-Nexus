@@ -63,9 +63,9 @@ export function FriendRequestsPopover({ incoming, outgoing, onAccept, onReject, 
         // left-0, not right-0 — see AddFriendPopover's comment; same
         // narrow-sidebar overflow concern applies here.
         <div className="absolute left-0 top-full z-40 mt-2 w-72 rounded-lg border border-slate/40 bg-surface p-3 shadow-xl">
-          <h3 className="mb-2 font-mono text-xs font-semibold tracking-wider text-fg/40 uppercase">Incoming</h3>
+          <h3 className="mb-2 font-mono text-xs font-semibold tracking-wider text-muted uppercase">Incoming</h3>
           {incoming.length === 0 ? (
-            <p className="font-mono text-xs text-fg/40">No incoming requests.</p>
+            <p className="font-mono text-xs text-muted">No incoming requests.</p>
           ) : (
             <ul className="flex list-none flex-col gap-1 p-0">
               {incoming.map((r) => (
@@ -95,11 +95,11 @@ export function FriendRequestsPopover({ incoming, outgoing, onAccept, onReject, 
             </ul>
           )}
 
-          <h3 className="mt-3 mb-2 border-t border-slate/20 pt-3 font-mono text-xs font-semibold tracking-wider text-fg/40 uppercase">
+          <h3 className="mt-3 mb-2 border-t border-slate/20 pt-3 font-mono text-xs font-semibold tracking-wider text-muted uppercase">
             Outgoing
           </h3>
           {outgoing.length === 0 ? (
-            <p className="font-mono text-xs text-fg/40">No outgoing requests.</p>
+            <p className="font-mono text-xs text-muted">No outgoing requests.</p>
           ) : (
             <ul className="flex list-none flex-col gap-1 p-0">
               {outgoing.map((r) => (
@@ -112,7 +112,7 @@ export function FriendRequestsPopover({ incoming, outgoing, onAccept, onReject, 
                   </span>
                   <button
                     onClick={() => onCancel(r.userId)}
-                    className="shrink-0 rounded-md border border-slate/40 px-2 py-1 font-mono text-xs text-fg/60 transition-colors hover:border-danger hover:text-danger"
+                    className="shrink-0 rounded-md border border-slate/40 px-2 py-1 font-mono text-xs text-muted transition-colors hover:border-danger hover:text-danger"
                   >
                     Cancel
                   </button>

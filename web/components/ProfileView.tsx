@@ -107,11 +107,11 @@ export function ProfileView({ userId, onClose, myUserId, onEditProfile }: Profil
         </div>
 
         {profile === undefined && (
-          <p className="px-5 pb-6 font-mono text-sm text-fg/40">Loading…</p>
+          <p className="px-5 pb-6 font-mono text-sm text-muted">Loading…</p>
         )}
 
         {profile === null && (
-          <p className="px-5 pb-6 font-mono text-sm text-fg/40">Profile unavailable.</p>
+          <p className="px-5 pb-6 font-mono text-sm text-muted">Profile unavailable.</p>
         )}
 
         {profile && (
@@ -120,7 +120,7 @@ export function ProfileView({ userId, onClose, myUserId, onEditProfile }: Profil
             <div>
               <h2 className="font-mono text-base font-semibold text-fg">{profile.display_name}</h2>
               {profile.status_message && (
-                <p className="mt-0.5 font-mono text-xs text-fg/50">{profile.status_message}</p>
+                <p className="mt-0.5 font-mono text-xs text-muted">{profile.status_message}</p>
               )}
             </div>
             {profile.bio && (

@@ -58,7 +58,7 @@ export function SettingsModal({ userId, onClose, blockedUsers, onUnblock, initia
         onClick={(e) => e.stopPropagation()}
       >
         <aside className="w-40 shrink-0 border-r border-slate/20 p-3">
-          <h2 className="mb-3 px-2 font-mono text-xs font-semibold tracking-wider text-fg/40 uppercase">
+          <h2 className="mb-3 px-2 font-mono text-xs font-semibold tracking-wider text-muted uppercase">
             Settings
           </h2>
           <ul className="flex list-none flex-col gap-1 p-0">
@@ -69,7 +69,7 @@ export function SettingsModal({ userId, onClose, blockedUsers, onUnblock, initia
                   className={`w-full rounded-md px-3 py-1.5 text-left font-mono text-sm transition-colors ${
                     section.id === activeSectionId
                       ? "bg-brand/15 font-semibold text-brand"
-                      : "text-fg/60 hover:text-fg"
+                      : "text-muted hover:text-fg"
                   }`}
                 >
                   {section.label}

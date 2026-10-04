@@ -208,7 +208,7 @@ export default function Home() {
           <div className="flex flex-1 flex-col overflow-hidden">
             <div className="shrink-0 px-5 py-2">
               <h2 className="font-mono text-sm font-semibold text-fg">Global Lobby</h2>
-              <p className="font-mono text-xs text-fg/40">Broadcast to every connected client.</p>
+              <p className="font-mono text-xs text-muted">Broadcast to every connected client.</p>
             </div>
 
             <div className="flex-1 overflow-y-auto px-3">
@@ -240,7 +240,7 @@ export default function Home() {
           <section className="flex flex-1 flex-col overflow-hidden">
             {!activeGuild ? (
               <div className="flex flex-1 items-center justify-center">
-                <p className="font-mono text-sm text-fg/40">
+                <p className="font-mono text-sm text-muted">
                   Select a guild from the rail, or use + to browse or create one.
                 </p>
               </div>
@@ -284,7 +284,7 @@ export default function Home() {
 
                 <div className="flex shrink-0 flex-wrap items-center gap-1.5 border-b border-slate/20 px-4 py-2">
                   {channels.length === 0 && !isCreatingChannel ? (
-                    <p className="font-mono text-xs text-fg/40">
+                    <p className="font-mono text-xs text-muted">
                       {isOfficerOrAbove
                         ? "No channels yet — use + to create one."
                         : "This guild has no channels yet."}
@@ -297,7 +297,7 @@ export default function Home() {
                         className={`rounded-full px-3 py-1 font-mono text-xs transition-colors ${
                           c.channelId === activeChannelId
                             ? "bg-brand font-semibold text-page"
-                            : "bg-surface text-fg/70 hover:text-fg"
+                            : "bg-surface text-muted hover:text-fg"
                         }`}
                       >
                         #{c.name}
@@ -321,7 +321,7 @@ export default function Home() {
                   <div className="flex flex-1 flex-col overflow-hidden">
                     {!activeChannelId ? (
                       <div className="flex flex-1 items-center justify-center">
-                        <p className="font-mono text-sm text-fg/40">Select a channel to start chatting.</p>
+                        <p className="font-mono text-sm text-muted">Select a channel to start chatting.</p>
                       </div>
                     ) : (
                       <>

@@ -15,7 +15,7 @@ interface MemberListProps {
 function roleLabelColor(roleRank: number): string {
   if (roleRank >= OWNER_RANK) return "text-brand-2";
   if (roleRank >= OFFICER_RANK) return "text-brand";
-  return "text-fg/40";
+  return "text-muted";
 }
 
 // The roster panel — data has existed since docs/guilds/social-presence-design.md
@@ -33,7 +33,7 @@ export function MemberList({ members, onlineUserIds, myUserId, onBlock, onViewPr
 
   return (
     <aside className="flex w-52 shrink-0 flex-col overflow-y-auto border-l border-slate/20 p-3">
-      <h2 className="mb-2 px-1 font-mono text-xs font-semibold tracking-wider text-fg/40 uppercase">
+      <h2 className="mb-2 px-1 font-mono text-xs font-semibold tracking-wider text-muted uppercase">
         Members — {members.length}
       </h2>
       <ul className="flex list-none flex-col gap-0.5 p-0">

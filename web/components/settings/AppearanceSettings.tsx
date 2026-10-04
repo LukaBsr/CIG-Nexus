@@ -58,7 +58,7 @@ export function AppearanceSettings(_props: SettingsSectionProps) {
   return (
     <div className="flex flex-col gap-5">
       <div className="flex flex-col gap-3">
-        <p className="font-mono text-xs font-semibold tracking-wider text-fg/40 uppercase">Theme</p>
+        <p className="font-mono text-xs font-semibold tracking-wider text-muted uppercase">Theme</p>
         <div className="flex flex-col gap-2">
           {THEMES.map((theme) => (
             <button
@@ -97,7 +97,7 @@ export function AppearanceSettings(_props: SettingsSectionProps) {
             className="h-4 w-4 accent-brand"
           />
         </label>
-        <p className="font-mono text-xs text-fg/40">
+        <p className="font-mono text-xs text-muted">
           {syncEnabled
             ? "This device's theme is saved to your account and applied on every device where sync is on."
             : "This theme only applies on this device."}
