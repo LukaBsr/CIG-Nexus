@@ -75,7 +75,7 @@ export function GuildRail({
         }`}
       >
         {activeView === "lobby" && <RailActiveIndicator />}
-        <Image src="/branding/icon.svg" width={26} height={26} alt="" className="shrink-0" />
+        <Image src="/branding/mark-dark.svg" width={26} height={26} alt="" className="shrink-0" />
       </button>
 
       <div className="h-px w-8 shrink-0 bg-slate/30" />

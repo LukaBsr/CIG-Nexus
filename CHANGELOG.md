@@ -7,6 +7,7 @@
 - `GUILD_LIST` entries carry `is_member`, so a returning user's guild rail and Join buttons are correct after a page load (#31)
 - `ProfileView` falls back to its existing "Profile unavailable" state when `fetchProfile()` rejects (a network failure, or a malformed response body); previously an unhandled rejection left the modal stuck on "Loading…" indefinitely
 - Guild icon initials are a fixed light color (`#edeffb`) instead of the `text-ivory` theme token, and the background lightness is 30% instead of 32%, so the initials keep at least 4.5:1 contrast at every hue. Previously the worst hue fell to 4.2:1 (`docs/design/brand-guidelines.md` §2.5–2.6)
+- The in-app logo (header, landing and login-error navs, and the Lobby home button in the server rail) no longer shows a baked dark navy tile. It uses the transparent `mark-dark.svg`, so the mark sits directly on the page or panel. The favicon and metadata still use `icon.svg`
 
 **Features**
 - Dark themes Onyx, Mocha, Amethyst and Espresso, selectable in Settings → Appearance (`web/app/globals.css`, `web/lib/appearance/themes.ts`; values from `docs/design/theme-catalog.json`). Each redeclares all eleven color tokens and sets `color-scheme: dark`. The picker groups themes by mode, with a Dark/Light heading once more than one mode exists. Light themes are not included. Drift and contrast tests check every registered theme against its CSS block and the §7.1 targets
