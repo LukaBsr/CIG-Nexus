@@ -205,7 +205,7 @@ export function ProfileSettings({ userId }: SettingsSectionProps) {
           maxLength={BIO_MAX_LENGTH}
           onChange={(e) => setBio(e.target.value)}
           rows={3}
-          className="resize-none rounded-md border border-slate/40 bg-page px-3 py-1.5 font-mono text-sm text-fg outline-none focus:border-brand"
+          className="resize-none rounded-md border border-slate/40 bg-page px-3 py-1.5 font-mono text-base text-fg outline-none focus:border-brand"
         />
       </label>
 
