@@ -4,8 +4,13 @@ import { THEMES } from "./themes";
 import { effectiveTokens, hexToRgb } from "./themeStylesheet";
 
 // Targets from docs/design/brand-guidelines.md §7.1, applied to every
-// registered theme's sRGB hex tokens. Non-hex values (oklch, used by Abyss's
-// danger and online) are reported as skipped, not silently passed.
+// registered theme's sRGB hex tokens. Non-hex values are reported as skipped,
+// not silently passed. That includes the oklch danger and online that Abyss
+// declares, and the online that Ember inherits from it. Those two status
+// colors are not verified here; their contrast is checked only through the
+// charter's sRGB approximations (the danger/online hex values in
+// docs/design/theme-catalog.json). Revisit this test when the status colors
+// are touched.
 // Surfaces mirror tokens.test.ts; brand/90 is composited over page, the same
 // backdrop the catalog's btn90 figure uses.
 

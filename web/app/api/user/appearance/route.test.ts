@@ -4,6 +4,7 @@ import { afterEach, describe, expect, it } from "vitest";
 
 import { db } from "@/db/client";
 import { sessions, users } from "@/db/schema";
+import { THEMES } from "@/lib/appearance/themes";
 import { createSession } from "@/lib/auth/session";
 
 import { PATCH } from "./route";
@@ -79,6 +80,24 @@ describe("PATCH /api/user/appearance", () => {
 
     const [row] = await db.select().from(users).where(sql`${users.id} = ${user.id}`);
     expect(row.theme).toBe("ember");
+  });
+
+  it("accepts and persists every registered theme id", async () => {
+    // One user and one session for all of them: six PATCHes stay well under
+    // the per-user limit exercised below.
+    const user = await insertUser("10");
+    const { refreshToken } = await createSession(user.id, {});
+    const cookie = `__session=${refreshToken}`;
+
+    for (const theme of THEMES) {
+      const response = await PATCH(patchRequest({ theme: theme.id }, cookie));
+      expect(response.status, theme.id).toBe(200);
+      const body = (await response.json()) as { theme: string | null };
+      expect(body.theme, theme.id).toBe(theme.id);
+
+      const [row] = await db.select().from(users).where(sql`${users.id} = ${user.id}`);
+      expect(row.theme, theme.id).toBe(theme.id);
+    }
   });
 
   it("updates sync_enabled independently of theme", async () => {
