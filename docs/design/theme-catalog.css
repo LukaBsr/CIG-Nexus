@@ -2,7 +2,7 @@
    Token names match web/app/globals.css since PR #63 (page, fg, brand, brand-2).
    Abyss is the @theme default in globals.css; its block is listed here for reference only. */
 
-/* Abyss (dark) - CIG Nexus brand palette (globals.css) + v0.2 additions */
+/* Abyss (dark) - CIG Nexus palette as on main (globals.css, PR #65) */
 [data-theme="abyss"] {
   color-scheme: dark;
   --color-page: #0d0e18;          /* page background */
@@ -13,12 +13,12 @@
   --color-muted: #9aa0c8;         /* secondary text */
   --color-brand: #5eead4;         /* primary accent */
   --color-brand-2: #a079f8;       /* secondary accent */
-  --color-danger: #f87171;        /* errors, blocked */
+  --color-danger: #ff6467;        /* errors, blocked; globals.css has oklch(70.4% 0.191 22.216), Tailwind red-400 */
   --color-warning: #fbbf24;       /* idle, caution */
-  --color-online: #4ade80;        /* online dot */
+  --color-online: #05df72;        /* online dot; globals.css has oklch(79.2% 0.209 151.711), Tailwind green-400 */
 }
 
-/* Ember (dark) - CIG Nexus brand palette (themes.ts) + v0.2 additions */
+/* Ember (dark) - CIG Nexus palette as on main (globals.css, PR #65) */
 [data-theme="ember"] {
   color-scheme: dark;
   --color-page: #0d0e18;          /* page background */
@@ -31,7 +31,7 @@
   --color-brand-2: #fb923c;       /* secondary accent */
   --color-danger: #ff4d79;        /* errors, blocked */
   --color-warning: #fbbf24;       /* idle, caution */
-  --color-online: #4ade80;        /* online dot */
+  --color-online: #05df72;        /* online dot; inherits oklch(79.2% 0.209 151.711), Tailwind green-400 */
 }
 
 /* Daylight (light) - Exact inversion of Abyss (ink and ivory swapped) */
@@ -128,6 +128,70 @@
   --color-danger: #f0716f;        /* errors, blocked */
   --color-warning: #f2c14e;       /* idle, caution */
   --color-online: #8bd450;        /* online dot */
+}
+
+/* Tar (dark) - Brown palette chart (image), sampled: Tar, Walnut, Stewed, Milk, Tan */
+[data-theme="tar"] {
+  color-scheme: dark;
+  --color-page: #280b0d;          /* page background */
+  --color-surface: #34120e;       /* panels, rail, cards */
+  --color-raised: #491f11;        /* hover, selected, input fill */
+  --color-slate: #6f2f16;         /* borders at /20-/50 */
+  --color-fg: #f1e5d7;            /* primary text */
+  --color-muted: #bda083;         /* secondary text */
+  --color-brand: #cf9154;         /* primary accent */
+  --color-brand-2: #da7663;       /* secondary accent */
+  --color-danger: #f2677f;        /* errors, blocked */
+  --color-warning: #f2b93b;       /* idle, caution */
+  --color-online: #6fcf6a;        /* online dot */
+}
+
+/* Chocolate (dark) - Brown names chart (image), sampled: Chocolate, Dark Chocolate, Dark Brown, Camel, Chestnut */
+[data-theme="chocolate"] {
+  color-scheme: dark;
+  --color-page: #3f0110;          /* page background */
+  --color-surface: #3c1321;       /* panels, rail, cards */
+  --color-raised: #492529;        /* hover, selected, input fill */
+  --color-slate: #5c4034;         /* borders at /20-/50 */
+  --color-fg: #efe3d0;            /* primary text */
+  --color-muted: #c0a182;         /* secondary text */
+  --color-brand: #c09a6b;         /* primary accent */
+  --color-brand-2: #cd8577;       /* secondary accent */
+  --color-danger: #f16b80;        /* errors, blocked */
+  --color-warning: #f2b93b;       /* idle, caution */
+  --color-online: #6fcf6a;        /* online dot */
+}
+
+/* Espresso (dark) - Brown names chart (image), sampled: Espresso, Dark Mocha, French Mole, Khaki, Hershey's */
+[data-theme="espresso"] {
+  color-scheme: dark;
+  --color-page: #371b1a;          /* page background */
+  --color-surface: #3c3034;       /* panels, rail, cards */
+  --color-raised: #483b32;        /* hover, selected, input fill */
+  --color-slate: #6e5a48;         /* borders at /20-/50 */
+  --color-fg: #f1e8d8;            /* primary text */
+  --color-muted: #b1a696;         /* secondary text */
+  --color-brand: #c3b090;         /* primary accent */
+  --color-brand-2: #db94a3;       /* secondary accent */
+  --color-danger: #ff846c;        /* errors, blocked */
+  --color-warning: #f2b93b;       /* idle, caution */
+  --color-online: #6fcf6a;        /* online dot */
+}
+
+/* Amethyst (dark) - Original: purple-black surfaces with lilac and rose accents */
+[data-theme="amethyst"] {
+  color-scheme: dark;
+  --color-page: #130b24;          /* page background */
+  --color-surface: #1c1336;       /* panels, rail, cards */
+  --color-raised: #2a1d4d;        /* hover, selected, input fill */
+  --color-slate: #4b3b7a;         /* borders at /20-/50 */
+  --color-fg: #f1ebff;            /* primary text */
+  --color-muted: #b3a5d9;         /* secondary text */
+  --color-brand: #b794ff;         /* primary accent */
+  --color-brand-2: #f472b6;       /* secondary accent */
+  --color-danger: #ff5f5f;        /* errors, blocked */
+  --color-warning: #fbbf24;       /* idle, caution */
+  --color-online: #4ade80;        /* online dot */
 }
 
 /* Chalk (light) - Discord Light */

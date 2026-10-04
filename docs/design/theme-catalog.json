@@ -5,8 +5,8 @@
     "mode": "dark",
     "family": "CIG brand",
     "status": "As-built",
-    "source": "CIG Nexus brand palette (globals.css) + v0.2 additions",
-    "reference_note": "All values from globals.css and themes.ts. New in v0.2: raised, muted, warning, and a lightened brand-2 (4.0:1 on surface as-built).",
+    "source": "CIG Nexus palette as on main (globals.css, PR #65)",
+    "reference_note": "All values from globals.css on main (PR #65): the six original tokens (brand-2 lightened from #8b5cf6, which was 4.0:1 on surface), plus raised, muted, warning and the status tokens danger and online. Those two carry Tailwind v4's red-400 and green-400, defined in OKLCH; the hex shown is the sRGB approximation (the red slightly exceeds the sRGB gamut).",
     "mood": "Ink-navy instrument panel, teal signal. The default.",
     "swatch": {
       "accent": "#5eead4",
@@ -21,16 +21,11 @@
       "muted": "#9aa0c8",
       "brand": "#5eead4",
       "brand-2": "#a079f8",
-      "danger": "#f87171",
+      "danger": "#ff6467",
       "warning": "#fbbf24",
-      "online": "#4ade80"
+      "online": "#05df72"
     },
-    "tuned_from_reference": {
-      "brand-2": {
-        "reference": "#8b5cf6",
-        "final": "#a079f8"
-      }
-    },
+    "tuned_from_reference": {},
     "contrast": {
       "fg_page": 16.78,
       "fg_min": 12.59,
@@ -40,9 +35,9 @@
       "t40_min": 3.31,
       "brand_min": 9.75,
       "brand_2_min": 4.52,
-      "danger_min": 5.21,
+      "danger_min": 4.99,
       "warning_min": 8.64,
-      "online_min": 8.28,
+      "online_min": 8.11,
       "btn": 12.99,
       "btn90": 10.6
     },
@@ -54,8 +49,8 @@
     "mode": "dark",
     "family": "CIG brand",
     "status": "As-built",
-    "source": "CIG Nexus brand palette (themes.ts) + v0.2 additions",
-    "reference_note": "Accent values from themes.ts. New in v0.2: raised, muted, warning, and a distinct danger (as-built danger shares the accent hue).",
+    "source": "CIG Nexus palette as on main (globals.css, PR #65)",
+    "reference_note": "As on main (PR #65): Ember overrides only brand, brand-2 and danger; every other token inherits Abyss. Its own danger (#ff4d79) replaces the red-400 that was nearly identical to its coral brand.",
     "mood": "Same dark navy base with a warm coral and orange accent.",
     "swatch": {
       "accent": "#f87171",
@@ -72,7 +67,7 @@
       "brand-2": "#fb923c",
       "danger": "#ff4d79",
       "warning": "#fbbf24",
-      "online": "#4ade80"
+      "online": "#05df72"
     },
     "tuned_from_reference": {},
     "contrast": {
@@ -86,7 +81,7 @@
       "brand_2_min": 6.37,
       "danger_min": 4.53,
       "warning_min": 8.64,
-      "online_min": 8.28,
+      "online_min": 8.11,
       "btn": 6.95,
       "btn90": 5.8
     },
@@ -375,6 +370,209 @@
       "online_min": 8.07,
       "btn": 9.0,
       "btn90": 7.47
+    },
+    "meets_targets": true
+  },
+  {
+    "id": "tar",
+    "label": "Tar",
+    "mode": "dark",
+    "family": "Browns",
+    "status": "Proposed",
+    "source": "Brown palette chart (image), sampled: Tar, Walnut, Stewed, Milk, Tan",
+    "reference_note": "Sampled from the brown palette chart you shared (a JPEG): Tar #280b0d (the chart prints it as Pantone 4975 CP, but a sampled JPEG is not an official Pantone value), Walnut #491f11, Stewed #6f2f16, Milk #f1e5d7, Tan #cf9154. page = Tar, raised = Walnut, slate = Stewed, fg = Milk, brand = Tan. The surface step (a Tar and Walnut blend), muted, brand-2 (Mahogany's hue, lightened) and the status colors are ours.",
+    "mood": "Near-black red-brown, cream text, orange-tan. Warm, dense, a little cinematic.",
+    "swatch": {
+      "accent": "#cf9154",
+      "secondary": "#da7663"
+    },
+    "tokens": {
+      "page": "#280b0d",
+      "surface": "#34120e",
+      "raised": "#491f11",
+      "slate": "#6f2f16",
+      "fg": "#f1e5d7",
+      "muted": "#bda083",
+      "brand": "#cf9154",
+      "brand-2": "#da7663",
+      "danger": "#f2677f",
+      "warning": "#f2b93b",
+      "online": "#6fcf6a"
+    },
+    "tuned_from_reference": {
+      "brand-2": {
+        "reference": "#d4604a",
+        "final": "#da7663"
+      }
+    },
+    "contrast": {
+      "fg_page": 14.8,
+      "fg_min": 11.38,
+      "muted_min": 5.73,
+      "t60_min": 5.05,
+      "t50_min": 3.95,
+      "t40_min": 3.04,
+      "brand_min": 5.27,
+      "brand_2_min": 4.54,
+      "danger_min": 4.72,
+      "warning_min": 7.92,
+      "online_min": 7.27,
+      "btn": 6.85,
+      "btn90": 5.77
+    },
+    "meets_targets": true
+  },
+  {
+    "id": "chocolate",
+    "label": "Chocolate",
+    "mode": "dark",
+    "family": "Browns",
+    "status": "Proposed",
+    "source": "Brown names chart (image), sampled: Chocolate, Dark Chocolate, Dark Brown, Camel, Chestnut",
+    "reference_note": "Sampled from the brown names chart you shared (a JPEG): Chocolate #3f0110, Dark Chocolate #3c1321, Dark Brown #5c4034, Camel #c09a6b, Chestnut #944536. page = Chocolate, surface = Dark Chocolate, slate = Dark Brown, brand = Camel, brand-2 = Chestnut. raised is a Dark Chocolate and Dark Brown blend; fg, muted and the status colors are ours.",
+    "mood": "Wine-dark chocolate with camel. Rich and a little plummy.",
+    "swatch": {
+      "accent": "#c09a6b",
+      "secondary": "#cd8577"
+    },
+    "tokens": {
+      "page": "#3f0110",
+      "surface": "#3c1321",
+      "raised": "#492529",
+      "slate": "#5c4034",
+      "fg": "#efe3d0",
+      "muted": "#c0a182",
+      "brand": "#c09a6b",
+      "brand-2": "#cd8577",
+      "danger": "#f16b80",
+      "warning": "#f2b93b",
+      "online": "#6fcf6a"
+    },
+    "tuned_from_reference": {
+      "brand-2": {
+        "reference": "#944536",
+        "final": "#cd8577"
+      },
+      "danger": {
+        "reference": "#f0647a",
+        "final": "#f16b80"
+      }
+    },
+    "contrast": {
+      "fg_page": 13.55,
+      "fg_min": 10.49,
+      "muted_min": 5.48,
+      "t60_min": 4.8,
+      "t50_min": 3.8,
+      "t40_min": 2.96,
+      "brand_min": 5.11,
+      "brand_2_min": 4.57,
+      "danger_min": 4.53,
+      "warning_min": 7.45,
+      "online_min": 6.84,
+      "btn": 6.6,
+      "btn90": 5.55
+    },
+    "meets_targets": true
+  },
+  {
+    "id": "espresso",
+    "label": "Espresso",
+    "mode": "dark",
+    "family": "Browns",
+    "status": "Proposed",
+    "source": "Brown names chart (image), sampled: Espresso, Dark Mocha, French Mole, Khaki, Hershey's",
+    "reference_note": "Sampled from the same chart: Espresso #371b1a, Dark Mocha #3c3034, French Mole #483b32, Khaki #c3b090, Hershey's #43141a. page = Espresso, surface = Dark Mocha, raised = French Mole, brand = Khaki (low-chroma on purpose). brand-2 takes Hershey's hue, lightened; fg, muted, slate and the status colors are ours.",
+    "mood": "Neutral mocha-gray browns with sand and a rose accent. Calm and low-chroma.",
+    "swatch": {
+      "accent": "#c3b090",
+      "secondary": "#db94a3"
+    },
+    "tokens": {
+      "page": "#371b1a",
+      "surface": "#3c3034",
+      "raised": "#483b32",
+      "slate": "#6e5a48",
+      "fg": "#f1e8d8",
+      "muted": "#b1a696",
+      "brand": "#c3b090",
+      "brand-2": "#db94a3",
+      "danger": "#ff846c",
+      "warning": "#f2b93b",
+      "online": "#6fcf6a"
+    },
+    "tuned_from_reference": {
+      "muted": {
+        "reference": "#a89c8a",
+        "final": "#b1a696"
+      },
+      "brand-2": {
+        "reference": "#cf6f84",
+        "final": "#db94a3"
+      },
+      "danger": {
+        "reference": "#ff6a4d",
+        "final": "#ff846c"
+      }
+    },
+    "contrast": {
+      "fg_page": 12.95,
+      "fg_min": 8.87,
+      "muted_min": 4.5,
+      "t60_min": 4.34,
+      "t50_min": 3.52,
+      "t40_min": 2.8,
+      "brand_min": 5.1,
+      "brand_2_min": 4.51,
+      "danger_min": 4.5,
+      "warning_min": 6.05,
+      "online_min": 5.55,
+      "btn": 7.45,
+      "btn90": 6.29
+    },
+    "meets_targets": true
+  },
+  {
+    "id": "amethyst",
+    "label": "Amethyst",
+    "mode": "dark",
+    "family": "Original (purple)",
+    "status": "Proposed",
+    "source": "Original: purple-black surfaces with lilac and rose accents",
+    "reference_note": "Original palette, no third-party source: purple-black surfaces with a lilac primary and a rose secondary, the violet-forward counterpart to Abyss's navy and teal.",
+    "mood": "Violet-forward dark: deep purple surfaces, lilac primary, rose secondary.",
+    "swatch": {
+      "accent": "#b794ff",
+      "secondary": "#f472b6"
+    },
+    "tokens": {
+      "page": "#130b24",
+      "surface": "#1c1336",
+      "raised": "#2a1d4d",
+      "slate": "#4b3b7a",
+      "fg": "#f1ebff",
+      "muted": "#b3a5d9",
+      "brand": "#b794ff",
+      "brand-2": "#f472b6",
+      "danger": "#ff5f5f",
+      "warning": "#fbbf24",
+      "online": "#4ade80"
+    },
+    "tuned_from_reference": {},
+    "contrast": {
+      "fg_page": 16.41,
+      "fg_min": 13.08,
+      "muted_min": 6.73,
+      "t60_min": 5.62,
+      "t50_min": 4.34,
+      "t40_min": 3.28,
+      "brand_min": 6.29,
+      "brand_2_min": 5.74,
+      "danger_min": 5.11,
+      "warning_min": 9.11,
+      "online_min": 8.72,
+      "btn": 7.9,
+      "btn90": 6.57
     },
     "meets_targets": true
   },
