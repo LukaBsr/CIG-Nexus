@@ -10,7 +10,7 @@ import { Avatar } from "../Avatar";
 // are optional on SettingsSectionProps).
 export function BlockedUsersSettings({ blockedUsers = [], onUnblock }: SettingsSectionProps) {
   if (blockedUsers.length === 0) {
-    return <p className="font-mono text-sm text-fg/40">You haven&apos;t blocked anyone.</p>;
+    return <p className="font-mono text-sm text-muted">You haven&apos;t blocked anyone.</p>;
   }
 
   return (

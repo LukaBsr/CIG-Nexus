@@ -83,11 +83,11 @@ export function GuildBrowsePopover({
         // (web/components/FriendsView.tsx), just the vertical axis here
         // instead of the horizontal one.
         <div className="absolute bottom-0 left-full z-40 ml-2 w-72 rounded-lg border border-slate/40 bg-surface p-3 shadow-xl">
-          <h3 className="mb-2 font-mono text-xs font-semibold tracking-wider text-fg/40 uppercase">
+          <h3 className="mb-2 font-mono text-xs font-semibold tracking-wider text-muted uppercase">
             All Guilds
           </h3>
           {discoverable.length === 0 ? (
-            <p className="font-mono text-xs text-fg/40">No other guilds to discover yet.</p>
+            <p className="font-mono text-xs text-muted">No other guilds to discover yet.</p>
           ) : (
             <ul className="flex list-none flex-col gap-1 p-0">
               {discoverable.map((g) => {
@@ -102,7 +102,7 @@ export function GuildBrowsePopover({
                       <span className="min-w-0 flex-1 truncate font-mono text-sm text-fg">{g.name}</span>
                     </span>
                     {isPending ? (
-                      <span className="shrink-0 rounded-full border border-slate/40 px-2.5 py-1 font-mono text-xs text-fg/40">
+                      <span className="shrink-0 rounded-full border border-slate/40 px-2.5 py-1 font-mono text-xs text-muted">
                         Requested
                       </span>
                     ) : (
@@ -121,7 +121,7 @@ export function GuildBrowsePopover({
             </ul>
           )}
 
-          <h3 className="mt-3 mb-2 border-t border-slate/20 pt-3 font-mono text-xs font-semibold tracking-wider text-fg/40 uppercase">
+          <h3 className="mt-3 mb-2 border-t border-slate/20 pt-3 font-mono text-xs font-semibold tracking-wider text-muted uppercase">
             Create a Guild
           </h3>
           <TextInputWithSubmit

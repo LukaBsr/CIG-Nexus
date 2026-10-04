@@ -77,7 +77,7 @@ export function AddFriendPopover({ friendCode, onAddByCode, onRegenerateCode }: 
         // this trigger sits inside a narrow left sidebar near the screen
         // edge, so a right-aligned w-72 panel would overflow off-screen.
         <div className="absolute left-0 top-full z-40 mt-2 w-72 rounded-lg border border-slate/40 bg-surface p-3 shadow-xl">
-          <h3 className="mb-2 font-mono text-xs font-semibold tracking-wider text-fg/40 uppercase">
+          <h3 className="mb-2 font-mono text-xs font-semibold tracking-wider text-muted uppercase">
             Add Friend by Code
           </h3>
           <TextInputWithSubmit
@@ -89,7 +89,7 @@ export function AddFriendPopover({ friendCode, onAddByCode, onRegenerateCode }: 
           />
 
           <div className="mt-3 border-t border-slate/20 pt-3">
-            <h3 className="mb-2 font-mono text-xs font-semibold tracking-wider text-fg/40 uppercase">
+            <h3 className="mb-2 font-mono text-xs font-semibold tracking-wider text-muted uppercase">
               Your Code
             </h3>
             {friendCode ? (
@@ -102,7 +102,7 @@ export function AddFriendPopover({ friendCode, onAddByCode, onRegenerateCode }: 
                 </div>
               </div>
             ) : (
-              <p className="font-mono text-xs text-fg/40">Loading…</p>
+              <p className="font-mono text-xs text-muted">Loading…</p>
             )}
             <Button variant="secondary" onClick={onRegenerateCode} className="mt-2 w-full">
               Regenerate

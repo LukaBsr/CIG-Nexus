@@ -32,7 +32,7 @@ export function SignalIndicator({ status }: SignalIndicatorProps) {
   const config = STATUS_CONFIG[status];
 
   return (
-    <div className="flex items-center gap-2 font-mono text-xs text-fg/70">
+    <div className="flex items-center gap-2 font-mono text-xs text-muted">
       <span className="relative flex h-2.5 w-2.5">
         {config.pulse && (
           <span

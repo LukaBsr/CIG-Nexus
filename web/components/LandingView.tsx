@@ -10,7 +10,7 @@ function FeatureCard({ title, description }: FeatureCardProps) {
   return (
     <div className="rounded-lg border border-slate/20 bg-surface/60 p-5">
       <h3 className="font-mono text-sm font-semibold text-brand">{title}</h3>
-      <p className="mt-2 font-sans text-sm text-fg/60">{description}</p>
+      <p className="mt-2 font-sans text-sm text-muted">{description}</p>
     </div>
   );
 }
@@ -29,7 +29,7 @@ export function LandingView() {
         <Logo withWordmark />
         <div className="flex items-center gap-6">
           <SignalIndicator status="unauthenticated" />
-          <a href="/api/auth/discord/login" className="font-mono text-sm text-fg/70 hover:text-fg">
+          <a href="/api/auth/discord/login" className="font-mono text-sm text-muted hover:text-fg">
             Sign in
           </a>
         </div>
@@ -40,7 +40,7 @@ export function LandingView() {
           Chat, organized around <span className="text-brand">guilds</span> and{" "}
           <span className="text-brand-2">channels</span>.
         </h1>
-        <p className="max-w-xl font-sans text-base text-fg/60">
+        <p className="max-w-xl font-sans text-base text-muted">
           CIG Nexus is a real-time chat platform built on its own protocol — a lightweight
           WebSocket-to-TCP bridge that carries every guild, channel, and message as a typed frame,
           live.

@@ -17,7 +17,7 @@ interface MessageListProps {
 // timestamp) plus a content div, so one component covers both.
 export function MessageList({ messages, emptyText, onViewProfile }: MessageListProps) {
   if (messages.length === 0) {
-    return <p className="px-3 py-6 text-center font-mono text-sm text-fg/40">{emptyText}</p>;
+    return <p className="px-3 py-6 text-center font-mono text-sm text-muted">{emptyText}</p>;
   }
 
   return (
@@ -55,7 +55,7 @@ function MessageListItem({ message, onViewProfile }: MessageListItemProps) {
         <Avatar url={message.avatarUrl} name={message.displayName ?? message.username} size={28} className="mt-0.5" />
       )}
       <div className="min-w-0 flex-1">
-        <div className="flex items-baseline gap-2 font-mono text-xs text-fg/50">
+        <div className="flex items-baseline gap-2 font-mono text-xs text-muted">
           <span className="font-semibold text-brand-2">{message.displayName ?? message.username}</span>
           <span>{new Date(message.timestamp * 1000).toLocaleTimeString()}</span>
         </div>

@@ -123,11 +123,11 @@ export function ProfileSettings({ userId }: SettingsSectionProps) {
   };
 
   if (!userId) {
-    return <p className="font-mono text-sm text-fg/40">Connecting…</p>;
+    return <p className="font-mono text-sm text-muted">Connecting…</p>;
   }
 
   if (profile === undefined) {
-    return <p className="font-mono text-sm text-fg/40">Loading…</p>;
+    return <p className="font-mono text-sm text-muted">Loading…</p>;
   }
 
   return (
@@ -138,7 +138,7 @@ export function ProfileSettings({ userId }: SettingsSectionProps) {
             // eslint-disable-next-line @next/next/no-img-element -- user-uploaded/Discord-CDN URLs, not build-time-known assets
             <img src={profile.avatar_url} alt="" className="h-full w-full object-cover" />
           ) : (
-            <span className="font-mono text-lg text-fg/40">{displayName.charAt(0).toUpperCase() || "?"}</span>
+            <span className="font-mono text-lg text-fg/50">{displayName.charAt(0).toUpperCase() || "?"}</span>
           )}
         </div>
         <div className="flex flex-col gap-1.5">
@@ -154,7 +154,7 @@ export function ProfileSettings({ userId }: SettingsSectionProps) {
               <button
                 onClick={() => void handleRemoveAvatar()}
                 disabled={avatarPending}
-                className="rounded-md border border-slate/40 px-3 py-1 font-mono text-xs text-fg/60 transition-colors hover:border-danger hover:text-danger"
+                className="rounded-md border border-slate/40 px-3 py-1 font-mono text-xs text-muted transition-colors hover:border-danger hover:text-danger"
               >
                 Remove
               </button>
@@ -172,7 +172,7 @@ export function ProfileSettings({ userId }: SettingsSectionProps) {
       </div>
 
       <label className="flex flex-col gap-1">
-        <span className="font-mono text-xs font-semibold tracking-wider text-fg/40 uppercase">
+        <span className="font-mono text-xs font-semibold tracking-wider text-muted uppercase">
           Display name
         </span>
         <input
@@ -186,7 +186,7 @@ export function ProfileSettings({ userId }: SettingsSectionProps) {
       </label>
 
       <label className="flex flex-col gap-1">
-        <span className="font-mono text-xs font-semibold tracking-wider text-fg/40 uppercase">
+        <span className="font-mono text-xs font-semibold tracking-wider text-muted uppercase">
           Status message
         </span>
         <input
@@ -199,7 +199,7 @@ export function ProfileSettings({ userId }: SettingsSectionProps) {
       </label>
 
       <label className="flex flex-col gap-1">
-        <span className="font-mono text-xs font-semibold tracking-wider text-fg/40 uppercase">Bio</span>
+        <span className="font-mono text-xs font-semibold tracking-wider text-muted uppercase">Bio</span>
         <textarea
           value={bio}
           maxLength={BIO_MAX_LENGTH}
@@ -210,7 +210,7 @@ export function ProfileSettings({ userId }: SettingsSectionProps) {
       </label>
 
       <label className="flex items-center gap-3">
-        <span className="font-mono text-xs font-semibold tracking-wider text-fg/40 uppercase">
+        <span className="font-mono text-xs font-semibold tracking-wider text-muted uppercase">
           Accent color
         </span>
         <input
