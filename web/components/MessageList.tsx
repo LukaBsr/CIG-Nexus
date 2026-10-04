@@ -59,7 +59,7 @@ function MessageListItem({ message, onViewProfile }: MessageListItemProps) {
           <span className="font-semibold text-brand-2">{message.displayName ?? message.username}</span>
           <span>{new Date(message.timestamp * 1000).toLocaleTimeString()}</span>
         </div>
-        <div className="mt-0.5 break-words font-sans text-sm text-fg">{message.content}</div>
+        <div className="mt-0.5 break-words font-sans text-base leading-[1.375] text-fg">{message.content}</div>
       </div>
     </li>
   );
