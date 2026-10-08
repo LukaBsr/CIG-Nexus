@@ -115,3 +115,13 @@ body {
   background-color: var(--color-page);
   color: var(--color-fg);
 }
+
+/* components/Mark.tsx (docs/design/brand-guidelines.md §5.4): the shard's
+   glow suits dark themes and muddies light ones, so it's disabled per
+   data-mode rather than baked into the SVG. The class selector's
+   specificity beats the filter="..." presentation attribute Mark always
+   sets, so no light theme needs its own override. No shipped theme is
+   light yet, so this rule has no visible effect today. */
+[data-mode="light"] .cig-mark-glow {
+  filter: none;
+}

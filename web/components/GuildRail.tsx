@@ -1,9 +1,8 @@
-import Image from "next/image";
-
 import type { Guild } from "@/lib/types";
 
 import { GuildBrowsePopover } from "./GuildBrowsePopover";
 import { GuildIcon } from "./GuildIcon";
+import { Mark } from "./Mark";
 
 export type RailView = "lobby" | "guild" | "friends";
 
@@ -75,7 +74,7 @@ export function GuildRail({
         }`}
       >
         {activeView === "lobby" && <RailActiveIndicator />}
-        <Image src="/branding/mark-dark.svg" width={26} height={26} alt="" className="shrink-0" />
+        <Mark size={26} className="shrink-0" />
       </button>
 
       <div className="h-px w-8 shrink-0 bg-slate/30" />

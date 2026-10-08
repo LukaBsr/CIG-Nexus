@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { DEFAULT_THEME_ID, resolveThemeId, THEMES } from "./themes";
+import { DEFAULT_THEME_ID, resolveThemeId, resolveThemeMode, THEMES } from "./themes";
 
 describe("resolveThemeId", () => {
   it("returns a known theme id unchanged", () => {
@@ -35,5 +35,20 @@ describe("resolveThemeId", () => {
   it("registers unique ids", () => {
     const ids = THEMES.map((theme) => theme.id);
     expect(new Set(ids).size).toBe(ids.length);
+  });
+});
+
+describe("resolveThemeMode", () => {
+  it("returns the mode of a known theme id", () => {
+    for (const theme of THEMES) {
+      expect(resolveThemeMode(theme.id)).toBe(theme.mode);
+    }
+  });
+
+  it("falls back to the default theme's mode for an unknown id", () => {
+    const defaultMode = THEMES.find((theme) => theme.id === DEFAULT_THEME_ID)!.mode;
+    expect(resolveThemeMode("not-a-real-theme")).toBe(defaultMode);
+    expect(resolveThemeMode(null)).toBe(defaultMode);
+    expect(resolveThemeMode(undefined)).toBe(defaultMode);
   });
 });
