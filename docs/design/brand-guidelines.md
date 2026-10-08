@@ -1,13 +1,15 @@
 # CIG Nexus — Brand and Design System
 
-**Status: draft v0.3 (2026-10-03) — first brand charter, revised after research.** It documents the visual
+**Status: draft v0.4 (2026-10-03) — first brand charter, revised after research.** It documents the visual
 system the web client ships (including the v0.2 token set, on `main` since PR #65),
 then proposes a revised type scale, a light theme and a catalog of 17 themes
 (11 dark, 6 light) with full palettes, informed by Discord's current
-design and 2026 color and type trends. v0.3 adds four themes from the directions
-you picked (Tar, Chocolate and Espresso from the brown palette charts, and the
-purple-forward Amethyst) and **corrects the status-color values**: Tailwind v4
-defines them in OKLCH, and the earlier drafts used Tailwind v3 hex values.
+design and 2026 color and type trends. v0.4 describes `main` after PR #70: the
+`muted` migration, the first dark theme batch (Onyx, Mocha, Amethyst, Espresso),
+the transparent logo and 16px text are now as-built, and the light-theme readiness
+work is laid out in 5.4. It also corrects two earlier errors: the status colors
+(Tailwind v4 defines them in OKLCH, the earlier drafts used v3 hex values) and the
+author-name size in a chat message (12px, not 14px).
 
 How to read it:
 
@@ -29,9 +31,14 @@ the logo variants, PR #63 renamed the four color tokens (`ink` to `page`,
 `ivory` to `fg`, `teal` to `brand`, `violet` to `brand-2`), PR #64 updated the
 charter, and PR #65 added the tokens `raised`, `muted`, `warning`, `danger` and
 `online`, lightened Abyss's `brand-2` to `#a079f8`, gave Ember its own `danger`
-and declared `color-scheme: dark`. Everything below uses the current names.
+and declared `color-scheme: dark`. PR #66 updated the charter to v0.3. PR #67
+migrated informational secondary text to `muted` (49 uses) and added a guard
+test. PR #68 shipped the dark themes Onyx, Mocha, Amethyst and Espresso, with
+`mode` in the registry and drift-guard and contrast tests. PR #69 replaced the
+baked logo tile with the transparent mark in the UI, and PR #70 set chat message
+bodies and text inputs to 16px. Everything below uses the current names.
 
-**Companion files** (produced from the same dataset as section 7, so all three agree at v0.3; keep them in sync when editing):
+**Companion files** (produced from the same dataset as section 7, so all three agree at v0.4; keep them in sync when editing):
 
 - `docs/design/theme-catalog.css` — one `[data-theme]` block per theme, ready to paste into `web/app/globals.css`.
 - `docs/design/theme-catalog.json` — the same tokens plus swatches, contrast figures and the reference-to-final tuning of every color.
@@ -60,9 +67,9 @@ All marks share the same 512x512 canvas and geometry, so any `mark-*` or
 
 | File | Background | Status | Use |
 |---|---|---|---|
-| `icon.svg` | baked dark tile | As-built | favicon, app icon, social avatar, dark-theme tile |
-| `icon-light.svg` | baked light tile | **New** | light-theme tile (rail, home button) |
-| `mark-dark.svg` | transparent | **New** | inline on dark surfaces |
+| `icon.svg` | baked dark tile | As-built | favicon only since PR #69, plus app icon and social avatar |
+| `icon-light.svg` | baked light tile | **New**, unused so far | light-theme tile; the themed `<Mark>` of 5.4 is the plan for light themes |
+| `mark-dark.svg` | transparent | In use since PR #69 | the header, rail, landing and login-error logo on every shipped (dark) theme |
 | `mark-light.svg` | transparent | **New** | inline on light surfaces |
 | `lockup-dark.svg` | transparent | **New** | landing page, README header, social card on dark |
 | `lockup-light.svg` | transparent | **New** | same, on light surfaces |
@@ -149,10 +156,10 @@ redeclares tokens re-skins the whole app with no component changes. There is
 deliberately no `[data-theme="abyss"]` block: the `@theme` defaults are Abyss.
 The active theme is a `data-theme` attribute on `<html>`, set server-side
 from a cookie (no flash), with ids registered in `web/lib/appearance/themes.ts`.
-Section 2.7 lists them. `raised`, `muted` and `warning` are defined but no
-component uses them yet: Tailwind v4 emits a theme variable only when a utility
-uses it, so they are absent from the compiled CSS until the migrations of
-section 9 land (confirmed in PR #65).
+Section 2.7 lists them. `raised` and `warning` are defined but no component uses
+them yet: Tailwind v4 emits a theme variable only when a utility uses it, so they
+are absent from the compiled CSS until a migration uses them. `muted` has been
+emitted since PR #67.
 
 **Renamed in PR #63.** The old names described colors, and in a light theme or
 in Ember they were wrong (a `teal` that is coral, an `ink` that is white).
@@ -166,10 +173,10 @@ in Ember they were wrong (a `teal` that is coral, an `ink` that is white).
 
 `accent` and `text` were rejected: `accent` collides with Tailwind's native
 `accent-*` utility (it would read `accent-accent`) and `text` would read
-`text-text`. Usage on `main`: 221 token-utility uses (`fg` 109, `brand` 63
-including one `accent-brand`, `page` 23, `danger` 18, `online` 5, `brand-2` 3;
-`raised`, `muted` and `warning` 0), all literal class strings, none built by
-concatenation.
+`text-text`. Usage on `main` (after PR #70): 222 token-utility uses (`fg` 60,
+`brand` 63 including one `accent-brand`, `muted` 50, `page` 23, `danger` 18,
+`online` 5, `brand-2` 3; `raised` and `warning` 0), all literal class strings, none
+built by concatenation.
 
 **One hazard the rename exposed.** Tailwind emits rules in an order that
 depends on class names, so a rename can change which of two same-property
@@ -232,26 +239,28 @@ Contrast (WCAG 2.x), accent text on the page background:
 
 ### 2.3 Text opacity tiers [As-built]
 
-Text hierarchy is made with opacity on `fg`, not with extra tokens.
-Contrast is measured on the page background (`page`).
+Text hierarchy was made with opacity on `fg` before PR #67. Counts below are on
+`main` after PR #70; contrast is measured on the page background (`page`).
 
 | Utility | Uses | Typical role | Abyss | Daylight |
 |---|---|---|---|---|
 | `text-fg` | 38x | primary text | 16.8 | 16.8 |
 | `text-fg/90` | 3x | list-row names | 13.6 | 13.4 |
 | `text-fg/80` | 1x | bio / long-form | 10.8 | 9.7 |
-| `text-fg/70` | 4x | secondary icons and text | 8.4 | 6.8 |
-| `text-fg/60` | 6x | descriptions | 6.4 | 4.8 |
-| `text-fg/50` | 10x | timestamps, icon buttons, tertiary text | 4.8 | 3.5 |
-| `text-fg/40` | 40x | uppercase section labels (18), empty states, helper text | 3.5 | 2.6 |
-| `text-fg/30` | 4x | placeholders | 2.5 | 2.0 |
+| `text-fg/70` | 1x | one icon | 8.4 | 6.8 |
+| `text-fg/60` | 0x | none left (migrated to muted in PR #67) | 6.4 | 4.8 |
+| `text-fg/50` | 10x | icons only (8, plus 2 raised from /40) | 4.8 | 3.5 |
+| `text-fg/40` | 0x | none left (migrated to muted in PR #67) | 3.5 | 2.6 |
+| `text-fg/30` | 4x | placeholders, disabled | 2.5 | 2.0 |
 
-**Proposed rule (replaces the earlier "/60 or stronger" idea):** informational
-text is `fg` or the new solid `muted` token, both guaranteed AA in every
-theme. The opacity tiers (`/90` ... `/30`) are for decoration: placeholders,
-disabled states, hover tints, dividers. About 60 current uses of `/40` to
-`/70` (40 + 10 + 6 + 4) would be reviewed for migration to `text-muted`. See
-2.6 for why a solid token beats a stricter opacity rule.
+**Rule, as-built since PR #67:** informational text is `fg` or the solid `muted`
+token, both guaranteed AA in every theme. The opacity tiers are for decoration
+and icons: placeholders, disabled states, hover tints, dividers, and 11 icon
+uses (10 at `/50`, one at `/70`). A test scans `web/app` and `web/components`
+and fails on any `text-fg/40`, `/50`, `/60` or `/70` outside an allowlist keyed
+by file, class and count. **The allowlist is valid for dark themes only**: icons
+need 3:1, and `/50` measures 2.2 to 2.9:1 on five of the six light catalog themes
+(see 2.6, item 7). See 2.6 for why a solid token beat a stricter opacity rule.
 
 ### 2.4 Borders, tints and overlays [As-built]
 
@@ -291,10 +300,11 @@ opacity modifiers in OKLab, so those values differ by a few tenths: confirm in
 browser DevTools before locking any threshold. Solid-color figures (the
 catalog in section 7) do not have this caveat.
 
-1. **The muted tier is below AA even in Abyss.** `text-fg/40` is the most
-   used tier (40 uses) and the style of 18 of the 19 uppercase labels:
-   3.5:1 in Abyss, 2.6:1 in Daylight. `/50` is
-   4.8:1 / 3.5:1 and `/60` is 6.4:1 / 4.8:1.
+1. **The muted tier was below AA even in Abyss** [resolved in PR #67].
+   `text-fg/40` was the most used tier (40 uses) and the style of 18 of the 19
+   uppercase labels: 3.5:1 in Abyss, 2.6:1 in Daylight. `/50` is
+   4.8:1 / 3.5:1 and `/60` is 6.4:1 / 4.8:1. All 49 informational
+   uses moved to `text-muted`.
 2. **A stricter opacity rule does not scale across themes.** The first draft
    of this charter proposed "informational text at `/60` or stronger". Tested
    against the catalog, it forces soft light-theme text colors to near-black:
@@ -318,6 +328,16 @@ catalog in section 7) do not have this caveat.
    scrollbars, form controls and autofill used the browser's default (light)
    styling on the dark default. `:root` now declares `color-scheme: dark`, and
    every catalog block sets its own.
+7. **Icons at `/50` fail 3:1 on light themes** (new). The 11 icon uses kept in
+   PR #67 are fine on every dark theme (worst case 3.06:1, Ash) but measure
+   2.2:1 on Latte, 2.3 on Parchment, 2.4 on Dawn, 2.7 on Chalk and 2.9 on Cloud
+   (Daylight, 3.4, passes). Harmless while only dark themes ship; they must move
+   to a solid token before the first light theme (5.4, PR L2).
+8. **The author name is 12px**, not 14px as the earlier drafts said: the row is
+   `font-mono text-xs` and the name only adds `font-semibold text-brand-2`. With
+   message bodies at 16px (PR #70) the author-to-body ratio went from 0.86 to
+   0.75. It was left at 12px on purpose; `text-sm` (0.875) is the one-line
+   option if the author line feels small.
 
 ### 2.7 Token set v0.2 [As-built since PR #65]
 
@@ -330,7 +350,7 @@ Eleven tokens, all on `main`. Four were renamed in PR #63 (2.1); five were added
 | `raised` | hover, selected rows, input fill | added in PR #65, unused so far | Discord stacks three surface levels; CIG has two, so hover and inputs still borrow translucent tints |
 | `slate` | borders and chrome (used at /20 to /50) | as-built | unchanged |
 | `fg` | primary text | as-built (was `ivory`) | renamed in PR #63; AAA on page and surface in every catalog theme |
-| `muted` | secondary text, a solid color | added in PR #65, unused so far | replaces informational use of `fg/40` to `/70` once migrated; AA by construction |
+| `muted` | secondary text, a solid color | added in PR #65, used since PR #67 (50 uses) | replaced informational use of `fg/40` to `/70`; AA by construction |
 | `brand` | primary accent | as-built (was `teal`) | renamed in PR #63; most catalog themes use a non-teal hue |
 | `brand-2` | secondary accent | as-built (was `violet`) | renamed in PR #63; Abyss value lightened in PR #65 |
 | `danger` | errors, blocked | added in PR #65 (was the `red-400` literal) | per-theme tuning; Ember has its own |
@@ -369,9 +389,9 @@ Scale (Tailwind defaults, nothing custom):
 
 | Utility | Size / line | Uses | Where |
 |---|---|---|---|
-| `text-xs` | 12 / 16 | 50 | metadata, timestamps, uppercase labels, badges |
-| `text-sm` | 14 / 20 | 41 | default UI and body text |
-| `text-base` | 16 / 24 | 2 | landing paragraph |
+| `text-xs` | 12 / 16 | 51 | metadata, timestamps, author name, uppercase labels, badges |
+| `text-sm` | 14 / 20 | 36 | default UI text |
+| `text-base` | 16 / 24 | 7 | chat message body (with `leading-[1.375]`, 22px), text inputs including the bio, landing paragraph |
 | `text-lg` | 18 / 28 | 3 | occasional larger text |
 | `text-2xl` | 24 / 32 | 1 | error page title |
 | `text-3xl` | 30 / 36 | 1 | large inline wordmark |
@@ -383,13 +403,14 @@ Weights: `font-semibold` (600) is the default emphasis (41 uses);
 Everything else is regular.
 
 **Section label style** (8+ uses, the one fully consistent micro-pattern):
-`font-mono text-xs font-semibold tracking-wider uppercase text-fg/40`.
+`font-mono text-xs font-semibold tracking-wider uppercase text-muted` (it was
+`text-fg/40` before PR #67).
 Headlines use `tracking-tight`; the inline wordmark uses `tracking-[0.2em]`.
 
 Rule: Geist Mono for anything the product *says* (chrome, names, labels),
 Geist Sans for anything the user *reads* in sentences.
 
-### 3.1 Revisions informed by Discord and 2026 trends [Proposed]
+### 3.1 Revisions informed by Discord and 2026 trends [Partly shipped]
 
 **What the research says.**
 
@@ -411,15 +432,15 @@ Geist Sans for anything the user *reads* in sentences.
 `text-sm` (14px), the density Discord and the 16px floor both argue against for
 the main reading surface.
 
-| Role | As-built | v0.2 | Why |
+| Role | Before | Now / proposed | Status |
 |---|---|---|---|
-| Chat message body | Geist Sans 14 / 20, `fg` | Geist Sans 16 / 22 (`text-base`, `leading-[1.375]`), `fg` | 16px floor; Discord's 16 / 1.375 |
-| Text inputs | Geist Sans 14 | Geist Sans 16 | iOS Safari zooms into inputs below 16px |
-| Username | Geist Mono semibold 14, `brand-2` | unchanged | the mono voice |
-| Timestamp, metadata, helper text | Geist Mono 12, `fg/40` to `/50` | Geist Mono 12, `muted` | AA (2.3) |
-| Section label | mono 12 semibold, `tracking-wider`, uppercase, `fg/40` | same style, `muted` | AA; Discord uses +0.02em, CIG's wider tracking suits mono |
-| Bio and long-form | Geist Sans 14, `fg/80` | Geist Sans 14 / 22 (`leading-relaxed`), `fg` | line height at least 1.4 |
-| Role badge and micro labels | 10px and 9px | 12px (`text-xs`) | below the 12px floor today |
+| Chat message body | Geist Sans 14 / 20, `fg` | Geist Sans 16 / 22 (`text-base`, `leading-[1.375]`), `fg` | **shipped, PR #70** (16px floor; Discord's 16 / 1.375) |
+| Text inputs | Geist Sans 14 | Geist Sans 16, bio textarea (Geist Mono) too | **shipped, PR #70** (iOS Safari zooms into inputs below 16px) |
+| Username | Geist Mono semibold **12**, `brand-2` | unchanged | left as is; see 2.6 item 8 for the `text-sm` option |
+| Timestamp, metadata, helper text | Geist Mono 12, `fg/40` to `/50` | Geist Mono 12, `muted` | **shipped, PR #67** |
+| Section label | mono 12 semibold, `tracking-wider`, uppercase, `fg/40` | same style, `muted` | **shipped, PR #67** |
+| Bio display and long-form | Geist Sans 14, `fg/80` | Geist Sans 14 / 22 (`leading-relaxed`), `fg` | proposed |
+| Role badge and micro labels | 10px and 9px | 12px (`text-xs`) | proposed (below the 12px floor today) |
 | Everything else | as in the scale above | unchanged | |
 
 Also: keep sizes in `rem` (Tailwind already does), keep the variable font
@@ -471,7 +492,9 @@ check, not a v0.2 requirement.
 
 One CSS block plus one registry entry, never a change to a consuming
 component (`docs/settings/appearance-design.md` 2.2). An unknown id falls
-back to the default theme.
+back to the default theme. Since PR #68 the registry also carries `mode` (`dark`
+or `light`), and `users.theme` is free text with no database constraint, so a new
+theme needs no migration.
 
 ### 5.2 Daylight [Proposed]
 
@@ -514,20 +537,22 @@ hover state (`text-page` on `bg-brand/90`, 4.6:1) stay at or above
    tested at all 360 hues). Nothing left to do.
 2. **New tokens:** done in PR #65 (`raised`, `muted`, `warning`, `danger`,
    `online`). The `red-400` and `green-400` literals became `danger` and
-   `online` (23 uses); `raised`, `muted` and `warning` are defined but still
-   unused.
-3. **Migrate informational text** from `fg/40` to `/70` (about 60 uses) to
-   `text-muted`, and keep the opacity tiers for decoration (2.3).
+   `online` (23 uses); `muted` has 50 uses since PR #67, while `raised` and
+   `warning` are defined but still unused.
+3. **Migrate informational text:** done in PR #67 (49 uses to `text-muted`; 11
+   icon uses kept, with a guard test).
 4. **`color-scheme`:** done in PR #65 (`:root` declares `dark`, and each
    catalog block sets its own).
-5. **Logo in the UI** — decide between:
-   - A. Two static assets swapped by CSS (`icon.svg` / `icon-light.svg`, or
-     `mark-dark` / `mark-light`). Simple, no JS. The mark stays blue-teal
-     under every accent, which will clash with some of the 17 themes.
-   - B. One inline `<Mark>` component whose gradient reads CSS variables.
-     One source, follows every theme including Ember, no flash. Needs the
-     brand blue promoted to a token.
-   Recommendation: B for the header and rail; static files for the favicon,
+5. **Logo in the UI:** partly done. PR #69 replaced the baked navy tile with
+   the transparent `mark-dark.svg` (header, rail, landing, login-error) and kept
+   `icon.svg` for the favicon. That is right for every dark theme. Two options
+   remain for light themes and for matching each accent:
+   - A. Two static assets swapped by CSS (`mark-dark` / `mark-light`). Simple, no
+     JS, but the blue-teal gradient stays fixed under every accent and clashes
+     with some of the 17 themes.
+   - B. One inline `<Mark>` component whose gradient reads CSS variables. One
+     source, follows every theme, no flash.
+   Recommendation: B (plan in 5.4, PR L1); static files stay for the favicon,
    README and social cards.
 6. **Manual pass** on every view (lobby, guilds, DMs, friends, settings, the
    profile modal, popovers) in each theme that ships. There is no
@@ -535,10 +560,9 @@ hover state (`text-page` on `bg-brand/90`, 4.6:1) stay at or above
 7. **Docs:** update `appearance-design.md` (scope and status) in the PR that
    ships the first new theme. The `CLAUDE.md` row for this charter already
    landed in PR #62.
-8. **Drift guard:** the swatches in `themes.ts` and `DEFAULT_ACCENT`
-   (`#5eead4`, in `ProfileView` and `ProfileSettings`) copy values from
-   `globals.css`. With 17 themes that is a lot of copies to forget: add a test
-   that compares them to the CSS, as was done for the JWT issuer.
+8. **Drift guard:** done in PR #68. A test compares each registry swatch with
+   its theme block's `brand` and `brand-2`, and `DEFAULT_ACCENT` (`#5eead4`, in
+   `ProfileView` and `ProfileSettings`) with Abyss's `brand`.
 9. **`red-300` (5 uses, 3 files):** the error banner text, its dismiss `×` and
    two reject buttons use a lighter red on a red-tinted background, which is
    illegible on a light theme (1.7:1 on Daylight). Recommended: switch them to
@@ -547,7 +571,24 @@ hover state (`text-page` on `bg-brand/90`, 4.6:1) stay at or above
    `text-danger` proves too strong on dark tints. Not now: it would change
    Abyss's error styling for no benefit yet.
 
----
+### 5.4 Light-theme readiness [Proposed]
+
+The first light theme needs four things the dark themes did not. Suggested order,
+one PR each (L2 and L3 can be merged into one if the visual check is shared):
+
+| PR | Scope | Why it blocks light themes | Visible change in the dark themes |
+|---|---|---|---|
+| L1 | Inline `<Mark>` component reading `brand`, `brand-2`, `fg`, `muted`; replaces the `mark-dark.svg` image in `Logo` and the rail button | the dark mark vanishes on a light page (2.6) and cannot follow the accent | the logo's colors now follow each theme's accents (Abyss loses the blue top stop) |
+| L2 | The 11 icon uses from `/50` and `/70` to `text-muted`; empty the guard test's allowlist | `/50` is 2.2 to 2.9:1 on five of six light themes | icons slightly brighter |
+| L3 | The five `red-300` uses to `text-danger` | `red-300` is 1.7:1 on Daylight | error banner, dismiss and reject buttons slightly stronger red |
+| L4 | Daylight and Cloud: theme blocks (`color-scheme: light`), registry entries with `mode: "light"`, tests; the picker grows a second group | needs L1 to L3 | none (new themes only) |
+
+Design points for L1: a vertical gradient from `brand` to `brand-2`; the dotted
+line and top node in `muted`; the diamond in `fg`; the hub in `brand`. A soft
+glow suits dark themes and muddies light ones: either set a `data-mode`
+attribute next to `data-theme` (the registry already has `mode`) and enable the
+glow only for dark, or drop the glow. Needs a visual check in all six shipped
+themes, since the logo changes color in each.
 
 ## 6. Research basis
 
@@ -614,8 +655,9 @@ value, so the hex codes in section 7 are the sampled ones.
 
 ### 7.1 How the themes are built
 
-17 themes: 11 dark and 6 light. Abyss and Ember ship today;
-Daylight is the proposal above; the other 14 are new.
+17 themes: 11 dark and 6 light. Six ship today (Abyss and Ember,
+then Onyx, Mocha, Amethyst and Espresso since PR #68). Daylight is the proposal
+above; the other 10 are candidates.
 
 Each theme maps a reference palette onto the 11 tokens of 2.7, then colors are
 nudged **in lightness only** (hue and saturation kept) until they meet these
@@ -641,15 +683,15 @@ not that they look good, so each shipped theme still needs the manual pass
 | **Abyss** | dark | CIG brand | `#0d0e18` | `#1a1c2e` | `#edeffb` | `#5eead4` | `#a079f8` | As-built |
 | **Ember** | dark | CIG brand | `#0d0e18` | `#1a1c2e` | `#edeffb` | `#f87171` | `#fb923c` | As-built |
 | **Daylight** | light | CIG brand | `#edeffb` | `#ffffff` | `#0d0e18` | `#0d6b63` | `#6d28d9` | Proposed |
-| **Onyx** | dark | Discord | `#000000` | `#111214` | `#f2f3f5` | `#6f7af4` | `#eb459e` | Proposed |
+| **Onyx** | dark | Discord | `#000000` | `#111214` | `#f2f3f5` | `#6f7af4` | `#eb459e` | As-built |
 | **Ash** | dark | Discord | `#2f3136` | `#36393f` | `#dcddde` | `#9fafe6` | `#32bbff` | Proposed |
 | **Midnight** | dark | Tokyo Night | `#16161e` | `#1a1b26` | `#c0caf5` | `#7aa2f7` | `#bb9af7` | Proposed |
-| **Mocha** | dark | Catppuccin | `#181825` | `#1e1e2e` | `#cdd6f4` | `#cba6f7` | `#f5c2e7` | Proposed |
+| **Mocha** | dark | Catppuccin | `#181825` | `#1e1e2e` | `#cdd6f4` | `#cba6f7` | `#f5c2e7` | As-built |
 | **Evergreen** | dark | 2026 calm earth | `#0e1714` | `#141f1b` | `#e8f0ea` | `#5cc9a7` | `#d6936f` | Proposed |
 | **Tar** | dark | Browns | `#280b0d` | `#34120e` | `#f1e5d7` | `#cf9154` | `#da7663` | Proposed |
 | **Chocolate** | dark | Browns | `#3f0110` | `#3c1321` | `#efe3d0` | `#c09a6b` | `#cd8577` | Proposed |
-| **Espresso** | dark | Browns | `#371b1a` | `#3c3034` | `#f1e8d8` | `#c3b090` | `#db94a3` | Proposed |
-| **Amethyst** | dark | Original (purple) | `#130b24` | `#1c1336` | `#f1ebff` | `#b794ff` | `#f472b6` | Proposed |
+| **Espresso** | dark | Browns | `#371b1a` | `#3c3034` | `#f1e8d8` | `#c3b090` | `#db94a3` | As-built |
+| **Amethyst** | dark | Original (purple) | `#130b24` | `#1c1336` | `#f1ebff` | `#b794ff` | `#f472b6` | As-built |
 | **Chalk** | light | Discord | `#f2f3f5` | `#ffffff` | `#313338` | `#3e4df0` | `#c31572` | Proposed |
 | **Cloud** | light | Pantone 2026 | `#f0eee9` | `#faf9f6` | `#26241f` | `#116871` | `#9c512d` | Proposed |
 | **Latte** | light | Catppuccin | `#e6e9ef` | `#eff1f5` | `#484b63` | `#7c24ed` | `#0a55ea` | Proposed |
@@ -789,7 +831,7 @@ changes with the theme, which is why the token names no longer say a color
 { id: "daylight", label: "Daylight", swatch: { accent: "#0d6b63", secondary: "#6d28d9" } },
 ```
 
-### 7.6 Onyx - dark, Discord [Proposed]
+### 7.6 Onyx - dark, Discord [As-built]
 
 *Pure black page, near-black panels, blurple and fuchsia. Best on OLED.*
 
@@ -918,7 +960,7 @@ changes with the theme, which is why the token names no longer say a color
 { id: "midnight", label: "Midnight", swatch: { accent: "#7aa2f7", secondary: "#bb9af7" } },
 ```
 
-### 7.9 Mocha - dark, Catppuccin [Proposed]
+### 7.9 Mocha - dark, Catppuccin [As-built]
 
 *Warm, soft purple-brown darks with mauve and pink pastels.*
 
@@ -1090,7 +1132,7 @@ changes with the theme, which is why the token names no longer say a color
 { id: "chocolate", label: "Chocolate", swatch: { accent: "#c09a6b", secondary: "#cd8577" } },
 ```
 
-### 7.13 Espresso - dark, Browns [Proposed]
+### 7.13 Espresso - dark, Browns [As-built]
 
 *Neutral mocha-gray browns with sand and a rose accent. Calm and low-chroma.*
 
@@ -1133,7 +1175,7 @@ changes with the theme, which is why the token names no longer say a color
 { id: "espresso", label: "Espresso", swatch: { accent: "#c3b090", secondary: "#db94a3" } },
 ```
 
-### 7.14 Amethyst - dark, Original (purple) [Proposed]
+### 7.14 Amethyst - dark, Original (purple) [As-built]
 
 *Violet-forward dark: deep purple surfaces, lilac primary, rose secondary.*
 
@@ -1391,35 +1433,32 @@ changes with the theme, which is why the token names no longer say a color
 { id: "parchment", label: "Parchment", swatch: { accent: "#065b6b", secondary: "#813966" } },
 ```
 
-### 7.20 Which themes to ship first [Proposed]
+### 7.20 Shipping order
 
 Every shipped theme costs one manual pass over every view (there is no
-visual-regression suite) and a place in the picker. Recommended first batch of
-six, chosen for range at modest QA cost:
+visual-regression suite) and a place in the picker.
 
-| Mode | Themes | Why |
-|---|---|---|
-| Dark | Abyss, Ember, Onyx, Mocha | the brand default and its warm variant; true black for OLED; a soft pastel dark |
-| Light | Daylight, Cloud | the neutral inversion of the brand; the 2026 warm white |
+**Shipped (dark batch 1, PR #68):** Abyss, Ember, Onyx, Mocha, Amethyst,
+Espresso. The batch differs from the first recommendation (Abyss, Ember, Onyx,
+Mocha plus two light themes): it was chosen from the directions you preferred,
+and keeps to one brown, as advised.
 
-Later, in any order: Amethyst, Midnight, Evergreen, Ash, Chalk, Latte, Dawn,
-Parchment and the three browns. Notes:
+**Next, after the readiness work of 5.4:** the first light pair, Daylight and
+Cloud (the neutral inversion of the brand, and the 2026 warm white).
 
-- **Amethyst** is the strongest second-batch candidate: a violet-forward dark
-  that contrasts clearly with Abyss's navy and teal.
-- **The three browns are close to each other.** Tar is the red-black with an
-  orange-tan accent, Chocolate the wine-plum with camel, Espresso the neutral
-  mocha-gray with sand. Ship one or two, not all three, so the picker keeps
-  clear choices.
-- **Evergreen, Parchment and the browns** use the most unusual hues: ship them
-  after the themed `<Mark>` lands.
+**Later, in any order:** Midnight, Evergreen, Ash and the two other browns
+(Tar, Chocolate) among the dark themes; Chalk, Latte, Dawn and Parchment among the
+light ones. The browns are close to each other (Tar the red-black with an
+orange-tan accent, Chocolate the wine-plum with camel, Espresso the neutral
+mocha-gray with sand), so add at most one more. Evergreen and Parchment use the
+most unusual hues: ship them after the themed `<Mark>` lands.
 
-### 7.21 Picker and system mode [Proposed]
+### 7.21 Picker and system mode
 
-- **Picker:** group by mode (Dark, Light), show each theme's `swatch`
-  (accent and secondary), and mark the current one. The registry already
-  carries `swatch`.
-- **System mode:** Discord's "Sync with computer" with a separate choice of
+- **Picker [as-built since PR #68]:** grouped by mode (Dark, Light), with each
+  theme's `swatch` (accent and secondary). Group headings appear only once the
+  registry has more than one mode, so there are none while every theme is dark.
+- **System mode [Proposed]:** Discord's "Sync with computer" with a separate choice of
   light theme and dark theme. Data model: `theme_mode` (`manual` or `system`),
   `theme_light`, `theme_dark`, next to today's `theme` and `theme_sync_enabled`.
 - **Open problem:** `appearance-design.md` 3.2 avoids a blocking inline script
@@ -1437,8 +1476,11 @@ Parchment and the three browns. Notes:
 - `web/app/globals.css` and `web/lib/appearance/themes.ts` are the source of
   truth for colors. This document follows them.
 - The catalog files (`theme-catalog.css`, `theme-catalog.json`) and section 7
-  agree at v0.3. If a theme value changes, update all three in the same PR.
+  agree at v0.4. If a theme value changes, update all three in the same PR.
 - Any new logo file is added to the table in 1.2 in the same PR.
+- Tests guard this system: the opacity-tier allowlist (PR #67) and the theme
+  drift and contrast tests (PR #68). Adding a theme or changing a token means
+  updating them in the same PR; they fail on purpose when a value drifts.
 - A token or typography change updates this document and `CHANGELOG.md` in
   the same PR.
 - **No two utilities of the same property in one `className`** (for example
@@ -1456,18 +1498,20 @@ Parchment and the three browns. Notes:
 
 **Decided since the first draft:** the token names `page`, `fg`, `brand`,
 `brand-2` (PR #63); the guild icon fix (PR #61); the charter is versioned in
-`docs/design/` with a `CLAUDE.md` row (PR #62); the v0.2 tokens and
-`color-scheme: dark` (PR #65).
+`docs/design/` (PR #62); the v0.2 tokens and `color-scheme: dark` (PR #65); the
+`muted` migration and its guard test (PR #67); the first dark batch with drift
+and contrast tests (PR #68); the transparent mark in the UI (PR #69); 16px
+message bodies and inputs (PR #70).
 
 | # | Decision | Recommendation |
 |---|---|---|
 | 1 | Name and id for the neutral light theme | `daylight` (alternatives: `paper`, `light`) |
-| 2 | Migrate informational text from `fg/40` to `/70` (about 60 uses) to `text-muted`, which exists since PR #65 | Yes, in its own PR with a visual check (it changes hierarchy in Abyss and Ember too). |
-| 3 | Chat message body 14px to 16px, inputs to 16px (3.1) | Yes for both, in a separate PR. Check message density in the lobby after. |
-| 4 | The five `red-300` uses (5.3, item 9) | `text-danger` in the PR of the first light theme; not before. |
-| 5 | Drift guard test for `themes.ts` swatches and `DEFAULT_ACCENT` vs `globals.css` (5.3, item 8) | Yes, before the catalog ships. |
-| 6 | First batch of themes (7.20) | Abyss, Ember, Onyx, Mocha, Daylight, Cloud; second batch: Amethyst and one brown. |
-| 7 | Logo strategy: static swap (A) or inline themed mark (B) | B for the header and rail. |
+| 2 | The light-theme readiness plan of 5.4 (L1 to L4) | Adopt in that order; L2 and L3 may share a PR. |
+| 3 | Themed `<Mark>` gradient from `brand` to `brand-2` (Abyss loses the blue top stop) | Yes; judge it in all six shipped themes. If the Abyss logo matters, add a fixed third stop. |
+| 4 | Mark glow: a `data-mode` attribute for dark only, or no glow | `data-mode` if cheap (the registry has `mode`); otherwise no glow. |
+| 5 | The five `red-300` uses (5.3, item 9) | `text-danger`, in PR L3. |
+| 6 | Author name at 12px or 14px (2.6, item 8) | Keep 12px unless the author line feels small; `text-sm` is a one-line change. |
+| 7 | Bio display (14 / 22, `fg`) and the 10px and 9px micro badges (12px) from 3.1 | Yes, as a separate small PR. |
 | 8 | Retire `lockup.svg` / `lockup.png` | Yes: replace with the new lockups. |
-| 9 | System mode and its first-paint behavior (7.21) | Decide after the first batch ships; do not block themes on it. |
+| 9 | System mode and its first-paint behavior (7.21) | Decide after the first light pair ships; do not block themes on it. |
 | 10 | Clear space and minimum sizes (1.4) | Accept as written; revisit after seeing the mark at 24px in the UI. |

@@ -34,6 +34,7 @@
 - Informational secondary text (section labels, metadata, helper and empty-state text) now uses the solid `muted` token (`text-muted`) instead of the low-opacity `text-fg/40`, `/50`, `/60` and `/70` tiers. Section labels and metadata are visibly lighter in Abyss and Ember; this is intentional, to meet AA contrast (`docs/design/brand-guidelines.md` §2.6). Icons that were `text-fg/40` now use `text-fg/50`
 
 **Docs & CI**
+- Brand and design system charter v0.4 (`docs/design/brand-guidelines.md`): describes `main` after PR #70 — the transparent logo mark and 16px chat/input text are now as-built — corrects the author-name size in a chat message to 12px (not 14px, as earlier drafts said), and adds a light-theme readiness plan (§5.4)
 - Documented the OpenSSL/libcurl build prerequisites for non-Docker server builds (#28)
 - `docs/security-audit.md` §2.5 re-traced against real `npm audit` output; new weekly Dependency Advisory Watch workflow that files an issue only when a high/critical advisory ID appears or disappears (#29)
 - Consistency sweep: stale READMEs, status banners, and audit notes updated to match the code; `CLAUDE.md` is now tracked in git
