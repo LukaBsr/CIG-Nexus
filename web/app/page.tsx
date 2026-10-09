@@ -257,7 +257,7 @@ export default function Home() {
                         aria-label="Create channel"
                         title="Create channel"
                         className={`rounded-md p-1.5 transition-colors ${
-                          isCreatingChannel ? "bg-surface text-brand" : "text-fg/50 hover:text-fg"
+                          isCreatingChannel ? "bg-surface text-brand" : "text-muted hover:text-fg"
                         }`}
                       >
                         <PlusIcon />

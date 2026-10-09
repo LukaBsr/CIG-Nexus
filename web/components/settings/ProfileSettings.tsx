@@ -138,7 +138,7 @@ export function ProfileSettings({ userId }: SettingsSectionProps) {
             // eslint-disable-next-line @next/next/no-img-element -- user-uploaded/Discord-CDN URLs, not build-time-known assets
             <img src={profile.avatar_url} alt="" className="h-full w-full object-cover" />
           ) : (
-            <span className="font-mono text-lg text-fg/50">{displayName.charAt(0).toUpperCase() || "?"}</span>
+            <span className="font-mono text-lg text-muted">{displayName.charAt(0).toUpperCase() || "?"}</span>
           )}
         </div>
         <div className="flex flex-col gap-1.5">

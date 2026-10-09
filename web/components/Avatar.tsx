@@ -19,7 +19,7 @@ export function Avatar({ url, name, size = 24, className = "" }: AvatarProps) {
         // eslint-disable-next-line @next/next/no-img-element -- user-uploaded/Discord-CDN URLs, not build-time-known assets
         <img src={url} alt="" className="h-full w-full object-cover" />
       ) : (
-        <span className="font-mono text-fg/50" style={{ fontSize: size * 0.45 }}>
+        <span className="font-mono text-muted" style={{ fontSize: size * 0.45 }}>
           {name.charAt(0).toUpperCase() || "?"}
         </span>
       )}

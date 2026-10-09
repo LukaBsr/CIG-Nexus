@@ -25,7 +25,7 @@ export function Header({ status, onOpenSettings }: HeaderProps) {
         <button
           onClick={onOpenSettings}
           aria-label="Open settings"
-          className="text-fg/50 transition-colors hover:text-fg"
+          className="text-muted transition-colors hover:text-fg"
         >
           <GearIcon />
         </button>

@@ -118,7 +118,7 @@ export function GuildRail({
         aria-label="Friends"
         title="Friends"
         className={`relative flex h-11 w-11 shrink-0 items-center justify-center transition-all ${
-          activeView === "friends" ? "rounded-xl bg-brand/20 text-brand" : "rounded-full bg-surface text-fg/70 hover:rounded-xl hover:text-fg"
+          activeView === "friends" ? "rounded-xl bg-brand/20 text-brand" : "rounded-full bg-surface text-muted hover:rounded-xl hover:text-fg"
         }`}
       >
         {activeView === "friends" && <RailActiveIndicator />}
