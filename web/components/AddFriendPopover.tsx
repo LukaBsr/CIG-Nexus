@@ -66,7 +66,7 @@ export function AddFriendPopover({ friendCode, onAddByCode, onRegenerateCode }: 
         aria-label="Add friend"
         title="Add friend"
         className={`rounded-md p-1.5 transition-colors ${
-          open ? "bg-surface text-brand" : "text-fg/50 hover:text-fg"
+          open ? "bg-surface text-brand" : "text-muted hover:text-fg"
         }`}
       >
         <PersonPlusIcon />

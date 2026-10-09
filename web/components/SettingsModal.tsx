@@ -85,7 +85,7 @@ export function SettingsModal({ userId, onClose, blockedUsers, onUnblock, initia
             <button
               onClick={onClose}
               aria-label="Close settings"
-              className="font-mono text-lg leading-none text-fg/50 transition-colors hover:text-fg"
+              className="font-mono text-lg leading-none text-muted transition-colors hover:text-fg"
             >
               &times;
             </button>

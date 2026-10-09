@@ -100,7 +100,7 @@ export function ProfileView({ userId, onClose, myUserId, onEditProfile }: Profil
           <button
             onClick={onClose}
             aria-label="Close profile"
-            className="shrink-0 font-mono text-lg leading-none text-fg/50 transition-colors hover:text-fg"
+            className="shrink-0 font-mono text-lg leading-none text-muted transition-colors hover:text-fg"
           >
             &times;
           </button>

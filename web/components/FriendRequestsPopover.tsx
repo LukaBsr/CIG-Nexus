@@ -48,7 +48,7 @@ export function FriendRequestsPopover({ incoming, outgoing, onAccept, onReject, 
         aria-label="Friend requests"
         title="Friend requests"
         className={`relative rounded-md p-1.5 transition-colors ${
-          open ? "bg-surface text-brand" : "text-fg/50 hover:text-fg"
+          open ? "bg-surface text-brand" : "text-muted hover:text-fg"
         }`}
       >
         <InboxIcon />

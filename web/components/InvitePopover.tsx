@@ -46,7 +46,7 @@ export function InvitePopover({ onSubmit, lastCreatedInvite, onClearLastCreatedI
         aria-label="Create invite"
         title="Create invite"
         className={`rounded-md p-1.5 transition-colors ${
-          open ? "bg-surface text-brand" : "text-fg/50 hover:text-fg"
+          open ? "bg-surface text-brand" : "text-muted hover:text-fg"
         }`}
       >
         <LinkIcon />
