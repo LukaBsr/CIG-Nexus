@@ -85,7 +85,7 @@ export function JoinRequestInbox({ requests, onApprove, onReject }: JoinRequestI
                     </button>
                     <button
                       onClick={() => onReject(r.userId)}
-                      className="rounded-md bg-danger/15 px-2 py-1 font-mono text-xs font-semibold text-red-300 transition-colors hover:bg-danger/25"
+                      className="rounded-md bg-danger/15 px-2 py-1 font-mono text-xs font-semibold text-fg ring-1 ring-inset ring-danger/40 transition-colors hover:bg-danger/25"
                     >
                       Reject
                     </button>
