@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { THEMES } from "./themes";
-import { effectiveTokens, hexToRgb } from "./themeStylesheet";
+import { contrast, effectiveTokens, hexToRgb, over, type RGB } from "./themeStylesheet";
 
 // Targets from docs/design/brand-guidelines.md §7.1, applied to every
 // registered theme's sRGB hex tokens. Non-hex values are reported as skipped,
@@ -12,27 +12,8 @@ import { effectiveTokens, hexToRgb } from "./themeStylesheet";
 // docs/design/theme-catalog.json). Revisit this test when the status colors
 // are touched.
 // Surfaces mirror tokens.test.ts; brand/90 is composited over page, the same
-// backdrop the catalog's btn90 figure uses.
-
-type RGB = [number, number, number];
-
-function luminance([r, g, b]: RGB): number {
-  const lin = (v: number) => {
-    const s = v / 255;
-    return s <= 0.03928 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4;
-  };
-  return 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b);
-}
-
-function contrast(a: RGB, b: RGB): number {
-  const la = luminance(a);
-  const lb = luminance(b);
-  return (Math.max(la, lb) + 0.05) / (Math.min(la, lb) + 0.05);
-}
-
-function over(fg: RGB, bg: RGB, alpha: number): RGB {
-  return [0, 1, 2].map((i) => fg[i] * alpha + bg[i] * (1 - alpha)) as RGB;
-}
+// backdrop the catalog's btn90 figure uses. luminance/contrast/over live in
+// themeStylesheet.ts, shared with dangerTintContrast.test.ts.
 
 for (const theme of THEMES) {
   describe(`${theme.id} contrast`, () => {

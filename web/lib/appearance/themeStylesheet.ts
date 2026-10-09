@@ -88,6 +88,32 @@ export function hexToRgb(value: string): [number, number, number] | null {
   return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
 }
 
+// WCAG contrast math, shared by every test that checks a color against a
+// surface (themeContrast.test.ts, dangerTintContrast.test.ts). sRGB, not the
+// oklab Tailwind's color-mix actually blends in — a close approximation;
+// confirm a borderline case in DevTools rather than trusting this to the
+// last decimal.
+export type RGB = [number, number, number];
+
+export function luminance([r, g, b]: RGB): number {
+  const lin = (v: number) => {
+    const s = v / 255;
+    return s <= 0.03928 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4;
+  };
+  return 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b);
+}
+
+export function contrast(a: RGB, b: RGB): number {
+  const la = luminance(a);
+  const lb = luminance(b);
+  return (Math.max(la, lb) + 0.05) / (Math.min(la, lb) + 0.05);
+}
+
+// `fg` composited over `bg` at `alpha` (0-1), e.g. a danger tint's bg-danger/15.
+export function over(fg: RGB, bg: RGB, alpha: number): RGB {
+  return [0, 1, 2].map((i) => fg[i] * alpha + bg[i] * (1 - alpha)) as RGB;
+}
+
 export function registeredIds(): string[] {
   return THEMES.map((theme) => theme.id);
 }
