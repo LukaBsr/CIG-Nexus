@@ -37,8 +37,7 @@ export default async function RootLayout({
   const cookieValue = cookieStore.get(THEME_COOKIE)?.value;
   const theme = resolveThemeId(cookieValue);
   // data-mode (§5.4): components/Mark.tsx's glow reads this to apply only on
-  // dark themes. Every shipped theme is dark today, so this is always
-  // "dark" in practice — see resolveThemeMode's own comment.
+  // dark themes.
   const mode = resolveThemeMode(cookieValue);
 
   return (

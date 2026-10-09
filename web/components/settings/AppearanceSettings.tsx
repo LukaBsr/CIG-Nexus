@@ -9,8 +9,9 @@ import { DEFAULT_THEME_ID, THEMES, type ThemeMode } from "@/lib/appearance/theme
 import type { SettingsSectionProps } from "@/lib/settings/sections";
 
 // Picker groups, in the order their first theme appears in the registry.
-// Headings only render once there is more than one group: every theme is
-// dark today, so the picker looks exactly as it did before modes existed.
+// Headings only render once there is more than one group — true since
+// Daylight and Cloud (PR L4) added the first "light" entries; before that,
+// the picker looked exactly as it did before modes existed.
 const MODES: ThemeMode[] = [...new Set(THEMES.map((theme) => theme.mode))];
 const MODE_LABELS: Record<ThemeMode, string> = { dark: "Dark", light: "Light" };
 const showModeHeadings = MODES.length > 1;
