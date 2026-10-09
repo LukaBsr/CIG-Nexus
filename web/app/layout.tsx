@@ -4,7 +4,7 @@ import { cookies } from "next/headers";
 import "./globals.css";
 
 import { THEME_COOKIE } from "@/lib/appearance/cookie";
-import { resolveThemeId } from "@/lib/appearance/themes";
+import { resolveThemeId, resolveThemeMode } from "@/lib/appearance/themes";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -34,10 +34,15 @@ export default async function RootLayout({
   // the wrong theme, no blocking inline script needed. resolveThemeId
   // degrades an absent/unrecognized cookie value to the default (§2.3).
   const cookieStore = await cookies();
-  const theme = resolveThemeId(cookieStore.get(THEME_COOKIE)?.value);
+  const cookieValue = cookieStore.get(THEME_COOKIE)?.value;
+  const theme = resolveThemeId(cookieValue);
+  // data-mode (§5.4): components/Mark.tsx's glow reads this to apply only on
+  // dark themes. Every shipped theme is dark today, so this is always
+  // "dark" in practice — see resolveThemeMode's own comment.
+  const mode = resolveThemeMode(cookieValue);
 
   return (
-    <html lang="en" data-theme={theme}>
+    <html lang="en" data-theme={theme} data-mode={mode}>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >

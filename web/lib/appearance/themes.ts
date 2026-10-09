@@ -39,3 +39,12 @@ export function resolveThemeId(id: string | null | undefined): string {
   }
   return DEFAULT_THEME_ID;
 }
+
+// §5.4's data-mode attribute: the mode of whatever resolveThemeId resolves
+// to, so a caller never has to look the entry up a second time. Every
+// shipped theme is "dark" today, so this always returns "dark" in practice;
+// it exists so layout.tsx and applyTheme.ts don't duplicate the lookup.
+export function resolveThemeMode(id: string | null | undefined): ThemeMode {
+  const resolvedId = resolveThemeId(id);
+  return THEMES.find((theme) => theme.id === resolvedId)?.mode ?? "dark";
+}
