@@ -11,7 +11,7 @@ The web app is a Next.js (App Router) application. It serves the chat UI, hosts 
 - A persistent, Discord-style guild rail: Lobby, one icon per joined guild, and Friends, with guild browse/join/create behind a `+` popover
 - Guilds: open/application/private visibility, invites (with optional max uses and expiry), join requests and their approval inbox, officer-gated channel creation, per-channel chat with history, and a member roster with rank-based roles and live presence
 - Friends: friend requests (direct or by shareable code), blocking, and 1:1 direct messages with history
-- Settings modal: Profile (display name, avatar, bio, status message, accent color), Appearance (themes `abyss` and `ember`, optionally synced to the account), and Blocked Users
+- Settings modal: Profile (display name, avatar, bio, status message, accent color), Appearance (8 themes — `abyss`, `ember`, `onyx`, `mocha`, `amethyst`, `espresso`, `daylight`, `cloud` — optionally synced to the account), and Blocked Users
 
 ## How It Works
 

@@ -111,6 +111,39 @@
   --color-online: #6fcf6a;
 }
 
+/* First light themes (docs/design/theme-catalog.css, values copied
+   verbatim, diffed against it before this PR — no mismatch). Like the dark
+   batch, both redeclare every token, so neither inherits from Abyss. */
+[data-theme="daylight"] {
+  color-scheme: light;
+  --color-page: #edeffb;
+  --color-surface: #ffffff;
+  --color-raised: #e2e5f6;
+  --color-slate: #4a4e72;
+  --color-fg: #0d0e18;
+  --color-muted: #4d5278;
+  --color-brand: #0d6b63;
+  --color-brand-2: #6d28d9;
+  --color-danger: #b91c1c;
+  --color-warning: #b45309;
+  --color-online: #15803d;
+}
+
+[data-theme="cloud"] {
+  color-scheme: light;
+  --color-page: #f0eee9;
+  --color-surface: #faf9f6;
+  --color-raised: #e6e3dc;
+  --color-slate: #8a857b;
+  --color-fg: #26241f;
+  --color-muted: #5f5b52;
+  --color-brand: #116871;
+  --color-brand-2: #9c512d;
+  --color-danger: #b83729;
+  --color-warning: #b0741e;
+  --color-online: #2f8f5b;
+}
+
 body {
   background-color: var(--color-page);
   color: var(--color-fg);
@@ -120,8 +153,8 @@ body {
    glow suits dark themes and muddies light ones, so it's disabled per
    data-mode rather than baked into the SVG. The class selector's
    specificity beats the filter="..." presentation attribute Mark always
-   sets, so no light theme needs its own override. No shipped theme is
-   light yet, so this rule has no visible effect today. */
+   sets, so no light theme needs its own override. Daylight and Cloud
+   (PR L4) are the first themes this rule actually affects. */
 [data-mode="light"] .cig-mark-glow {
   filter: none;
 }
