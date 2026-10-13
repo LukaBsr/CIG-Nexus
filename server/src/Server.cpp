@@ -40,12 +40,14 @@ Server::Server(uint16_t port) : port_(port), running_(false), listener_(port) {
     friend_handler_.setSessionManager(&session_manager_);
     block_handler_.setSessionManager(&session_manager_);
     dm_handler_.setSessionManager(&session_manager_);
+    dm_read_state_handler_.setSessionManager(&session_manager_);
 
     // shared/protocol/README.md's Rate Limits table — every handler with a
     // limited message type shares the one process-wide RateLimiter.
     chat_handler_.setRateLimiter(&rate_limiter_);
     channel_handler_.setRateLimiter(&rate_limiter_);
     dm_handler_.setRateLimiter(&rate_limiter_);
+    dm_read_state_handler_.setRateLimiter(&rate_limiter_);
     guild_handler_.setRateLimiter(&rate_limiter_);
     invite_handler_.setRateLimiter(&rate_limiter_);
     join_request_handler_.setRateLimiter(&rate_limiter_);
@@ -69,6 +71,7 @@ void Server::setInternalApiClient(std::unique_ptr<http::InternalApiClient> clien
     friend_handler_.setInternalApiClient(internal_api_client_.get());
     block_handler_.setInternalApiClient(internal_api_client_.get());
     dm_handler_.setInternalApiClient(internal_api_client_.get());
+    dm_read_state_handler_.setInternalApiClient(internal_api_client_.get());
 
     // docs/guilds/social-presence-design.md §4.5: constructed here (not at Server
     // construction) because it needs internal_api_client_.get(), which

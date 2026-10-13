@@ -128,8 +128,8 @@ server/
 │   ├── http/            # CurlInternalApiClient (+ internal WireParsers) — calls to Next.js's /internal/* API (server never touches Postgres directly)
 │   ├── persistence/     # MessagePersistenceWorker — chat/channel message persistence
 │   ├── protocol/
-│   │   ├── handlers/   # BlockHandler, ChannelHandler, ChatHandler, DMHandler, FriendHandler,
-│   │   │               # GuildHandler, HelloHandler, IdentifyHandler, InviteHandler, JoinRequestHandler
+│   │   ├── handlers/   # BlockHandler, ChannelHandler, ChatHandler, DMHandler, DMReadStateHandler,
+│   │   │               # FriendHandler, GuildHandler, HelloHandler, IdentifyHandler, InviteHandler, JoinRequestHandler
 │   │   │               # (shared makeError/requireIdentified live in include/protocol/handlers/HandlerSupport.hpp)
 │   │   ├── MessageDispatcher.cpp
 │   │   └── MessageParser.cpp

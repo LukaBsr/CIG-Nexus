@@ -491,3 +491,59 @@ TEST_CASE("CurlInternalApiClient::fetchSessionContext returns nullopt on a 404",
 
     CHECK_FALSE(client.fetchSessionContext("u_unknown").has_value());
 }
+
+TEST_CASE("CurlInternalApiClient::markDmRead posts the expected JSON body and parses the response",
+          "[CurlInternalApiClient]") {
+    TestHttpServer server(200, R"({"marker_seq": 7, "unread": 2})");
+    http::CurlInternalApiClient client(server.baseUrl(), "test-secret");
+
+    const auto result = client.markDmRead("u_1", "u_2", 7);
+    CHECK(result.ok);
+    CHECK(result.marker_seq == 7);
+    CHECK(result.unread == 2);
+
+    const auto request = server.waitForRequest();
+    REQUIRE(request.has_value());
+    CHECK(request->method == "POST");
+    CHECK(request->path == "/internal/dm-read-state");
+    CHECK(request->has_content_type_json);
+    CHECK(request->body.find("\"user_id\":\"u_1\"") != std::string::npos);
+    CHECK(request->body.find("\"peer_id\":\"u_2\"") != std::string::npos);
+    CHECK(request->body.find("\"up_to_message_id\":7") != std::string::npos);
+}
+
+TEST_CASE("CurlInternalApiClient::markDmRead returns ok=false on a 400",
+          "[CurlInternalApiClient]") {
+    TestHttpServer server(400, R"({"error": "invalid user_id, peer_id, or up_to_message_id"})");
+    http::CurlInternalApiClient client(server.baseUrl(), "test-secret");
+
+    const auto result = client.markDmRead("u_1", "u_2", 999);
+    CHECK_FALSE(result.ok);
+}
+
+TEST_CASE("CurlInternalApiClient::fetchUnreadCounts parses the counts array",
+          "[CurlInternalApiClient]") {
+    TestHttpServer server(
+        200, R"({"counts": [{"peer_id": "u_2", "count": 3}, {"peer_id": "u_3", "count": 100}]})");
+    http::CurlInternalApiClient client(server.baseUrl(), "test-secret");
+
+    const auto counts = client.fetchUnreadCounts("u_1");
+    REQUIRE(counts.has_value());
+    REQUIRE(counts->size() == 2);
+    CHECK((*counts)[0].peer_id == "u_2");
+    CHECK((*counts)[0].count == 3);
+    CHECK((*counts)[1].count == 100);
+
+    const auto request = server.waitForRequest();
+    REQUIRE(request.has_value());
+    CHECK(request->method == "GET");
+    CHECK(request->path == "/internal/dm-read-state/unread-counts?user_id=u_1");
+}
+
+TEST_CASE("CurlInternalApiClient::fetchUnreadCounts returns nullopt on a non-200 response",
+          "[CurlInternalApiClient]") {
+    TestHttpServer server(500, R"({"error": "boom"})");
+    http::CurlInternalApiClient client(server.baseUrl(), "test-secret");
+
+    CHECK_FALSE(client.fetchUnreadCounts("u_1").has_value());
+}

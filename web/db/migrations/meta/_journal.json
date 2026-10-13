@@ -64,6 +64,13 @@
       "when": 1785801642758,
       "tag": "0008_cultured_purple_man",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1791904899502,
+      "tag": "0009_powerful_chimera",
+      "breakpoints": true
     }
   ]
 }

@@ -9,6 +9,7 @@
 #include "protocol/handlers/ChannelHandler.hpp"
 #include "protocol/handlers/ChatHandler.hpp"
 #include "protocol/handlers/DMHandler.hpp"
+#include "protocol/handlers/DMReadStateHandler.hpp"
 #include "protocol/handlers/FriendHandler.hpp"
 #include "protocol/handlers/GuildHandler.hpp"
 #include "protocol/handlers/HelloHandler.hpp"
@@ -147,6 +148,7 @@ class Server {
     protocol::FriendHandler friend_handler_;
     protocol::BlockHandler block_handler_;
     protocol::DMHandler dm_handler_;
+    protocol::DMReadStateHandler dm_read_state_handler_;
 
     // In-memory connection/session/guild state
     session::SessionManager session_manager_;

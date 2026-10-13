@@ -134,6 +134,13 @@ class RecordingInternalApiClient : public http::InternalApiClient {
         context.profile.user_id = user_id;
         return context;
     }
+    http::MarkDmReadResult markDmRead(const std::string&, const std::string&, int) override {
+        return {};
+    }
+    std::optional<std::vector<http::WireUnreadCount>>
+    fetchUnreadCounts(const std::string&) override {
+        return std::nullopt;
+    }
 
     // How many leading calls should fail before succeeding — set before
     // enqueueing to exercise the worker's retry loop. A value >= the

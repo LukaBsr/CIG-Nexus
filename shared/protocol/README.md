@@ -1105,9 +1105,39 @@ Client to server: `{ "type": "LIST_DM_CONVERSATIONS" }`. Response (`Scope::DIREC
 }
 ```
 
-Deliberately minimal — no unread counts or message previews.
+Deliberately minimal — no message previews. Unread counts are a separate pair of message types below, not embedded here.
 
 Revised at implementation (`docs/social/friends-dms-design.md` §4.5): the original design shipped each entry with only `peer_id`/`last_message_at` — unrenderable as a conversation list without a name. `username` is mandatory here (unlike `display_name`/`avatar_url`, which are `null` when unset), the same as every other roster/list entry.
+
+#### MARK_DM_READ
+
+Client to server:
+
+```json
+{ "type": "MARK_DM_READ", "user_id": "u_2", "up_to_message_id": 7 }
+```
+
+`user_id` is the peer — never a separate conversation id, same rule as every other message in this section. `up_to_message_id` is a `DM_MESSAGE`'s `message_id` (the shared DM `seq`, §4.2), not the peer's own id. Validation: the caller and `user_id` must have an existing DM conversation (at least one message ever sent between them), and `up_to_message_id` must be a `seq` that actually belongs to it — both failures collapse to the same `MALFORMED_MESSAGE`, deliberately indistinguishable (same posture as `DM_NOT_PERMITTED`). Monotonic: a lower `up_to_message_id` than the caller's current marker for that conversation never moves it backward, but still succeeds — idempotent, not an error, since a retried or out-of-order client call is the ordinary case this matters for.
+
+On success, `Scope::TARGETED` to every connection currently identified as the caller — self-inclusive, same pattern `DM_SEND`'s own broadcast uses for the sender's other open tabs — and **only** the caller, never `user_id`. This is read-state sync across one person's own sessions/devices, not a read receipt the other party would see:
+
+```json
+{ "type": "DM_READ", "user_id": "u_2", "up_to_message_id": 7, "unread": 0 }
+```
+
+`up_to_message_id` here is the caller's *current* marker after the call (unchanged from before if the request's value was behind it); `unread` is the number of messages from `user_id` still after that marker, capped the same way `FETCH_UNREAD_COUNTS` is below.
+
+Rate limited (see Rate Limits below) as a backstop — the web client is expected to debounce its own sends (on scroll/visibility, and on conversation close) well under the limit.
+
+#### FETCH_UNREAD_COUNTS
+
+Client to server: `{ "type": "FETCH_UNREAD_COUNTS" }`. Not part of the `IDENTIFY` burst — the client calls this itself once `IDENTIFY` completes, and again on any reconnect, same timing as `LIST_DM_CONVERSATIONS`. Response (`Scope::DIRECT`):
+
+```json
+{ "type": "UNREAD_COUNTS", "counts": { "u_2": 3, "u_5": 100 } }
+```
+
+An object keyed by peer `user_id`, not an array — an absent key means 0 unread, the same "missing is a real, valid state" shape `LIST_INVITES`/`LIST_DM_CONVERSATIONS` already use elsewhere, so only peers with at least one unread message appear at all. Each count is capped at 100; the client shows "99+" at that cap. Messages from a user the caller has blocked (either direction) still count — blocking doesn't delete history or stop a conversation from being readable, so it doesn't stop it being *unread* either.
 
 ### ERROR
 
@@ -1202,8 +1232,9 @@ In-memory, per-process, per-`user_id`, reset on server restart (`util::RateLimit
 | `CHAT_MESSAGE` | 20 / 10 seconds | |
 | `CHANNEL_MESSAGE` | 20 / 10 seconds | separate bucket per user, not per channel |
 | `DM_SEND` | 20 / 10 seconds | |
+| `MARK_DM_READ` | 10 / 10 seconds | a backstop against a misbehaving client — the web client is expected to debounce its own sends well under this |
 
-Every other message type (`LIST_*`, `JOIN_GUILD`, `LEAVE_*`, `SET_MEMBER_ROLE`, `SET_GUILD_VISIBILITY`, `APPROVE_JOIN_REQUEST`/`REJECT_JOIN_REQUEST`, blocking, `FETCH_HISTORY`, ...) is currently unthrottled.
+Every other message type (`LIST_*`, `JOIN_GUILD`, `LEAVE_*`, `SET_MEMBER_ROLE`, `SET_GUILD_VISIBILITY`, `APPROVE_JOIN_REQUEST`/`REJECT_JOIN_REQUEST`, blocking, `FETCH_HISTORY`, `FETCH_UNREAD_COUNTS`, ...) is currently unthrottled.
 
 ## Behavior Notes
 
@@ -1218,7 +1249,7 @@ Every other message type (`LIST_*`, `JOIN_GUILD`, `LEAVE_*`, `SET_MEMBER_ROLE`, 
 - Valid `CHAT_MESSAGE` responses are broadcast to all identified clients. `BROADCAST` never reaches a connection that hasn't completed `IDENTIFY` — an unauthenticated socket sees no lobby chat and no presence.
 - Non-chat responses are returned only to the originating client.
 - `PRESENCE_UPDATE` is also broadcast to all identified clients, but unlike `CHAT_MESSAGE` it isn't triggered by any client-sent message — it's emitted by the server's own connection-lifecycle handling (a successful `IDENTIFY`, or a detected disconnect) on a 0↔1 connection-count transition (see [PRESENCE_UPDATE](#presence_update)).
-- Guild/channel responses that need to reach more than one connection but not literally everyone (`MEMBER_LEFT`, `GUILD_DELETED`, `CHANNEL_CREATED`, `CHANNEL_DELETED`, `CHANNEL_MESSAGE`, `MEMBER_ROLE_UPDATED`, `GUILD_VISIBILITY_CHANGED`, `JOIN_REQUEST_RECEIVED`, and the approval-path copies of `GUILD_JOINED`/`JOIN_REQUEST_REJECTED`) use a third delivery mode, `TARGETED`: the handler computes the exact set of recipient connections (e.g. "current members of this guild," "connections with this channel active," or "every connection currently identified as this specific user_id") and the server delivers only to that set. This is distinct from `BROADCAST`, which always means every identified client. The Friends messages (`FRIEND_REQUEST_RECEIVED`, `FRIEND_ADDED`, and the copies of `FRIEND_REQUEST_REJECTED`/`FRIEND_REQUEST_CANCELED`/`FRIEND_REMOVED` delivered to the other party) all use the "every connection currently identified as this specific user_id" variant, not a guild-membership-based one, since friendship isn't guild-scoped.
+- Guild/channel responses that need to reach more than one connection but not literally everyone (`MEMBER_LEFT`, `GUILD_DELETED`, `CHANNEL_CREATED`, `CHANNEL_DELETED`, `CHANNEL_MESSAGE`, `MEMBER_ROLE_UPDATED`, `GUILD_VISIBILITY_CHANGED`, `JOIN_REQUEST_RECEIVED`, and the approval-path copies of `GUILD_JOINED`/`JOIN_REQUEST_REJECTED`) use a third delivery mode, `TARGETED`: the handler computes the exact set of recipient connections (e.g. "current members of this guild," "connections with this channel active," or "every connection currently identified as this specific user_id") and the server delivers only to that set. This is distinct from `BROADCAST`, which always means every identified client. The Friends messages (`FRIEND_REQUEST_RECEIVED`, `FRIEND_ADDED`, and the copies of `FRIEND_REQUEST_REJECTED`/`FRIEND_REQUEST_CANCELED`/`FRIEND_REMOVED` delivered to the other party) all use the "every connection currently identified as this specific user_id" variant, not a guild-membership-based one, since friendship isn't guild-scoped. `DM_READ` uses the same variant, but targets the *caller's own* `user_id` (self-inclusive, every one of the caller's own sessions/devices) — never the DM peer's, since it's read-state sync across one person's sessions, not a read receipt the other party would see.
 - A single client action can trigger more than one outgoing message to different recipients with different payloads (`JOIN_VIA_INVITE`'s `application`-mode diversion, `REQUEST_JOIN`, `APPROVE_JOIN_REQUEST`, `REJECT_JOIN_REQUEST`, and every Friends action in the previous bullet) — the dispatcher returns a list of messages per incoming message, not just one, and each is delivered independently per its own `scope`.
 
 ## Security and Limits

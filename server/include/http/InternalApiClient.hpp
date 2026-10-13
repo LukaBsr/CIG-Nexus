@@ -170,6 +170,25 @@ struct AcceptFriendRequestResult {
     std::string username;
 };
 
+// docs/social/friends-dms-design.md §3.7 (MARK_DM_READ). !ok covers both "no
+// conversation at all between these two users" and "up_to_seq doesn't
+// belong to the resolved conversation" — deliberately indistinguishable,
+// same posture as DM_NOT_PERMITTED elsewhere in this design. marker_seq/
+// unread are only meaningful when ok, and marker_seq is the *current*
+// marker after the call — unchanged from before if up_to_seq was behind
+// it (monotonic, never moved backward, still a success).
+struct MarkDmReadResult {
+    bool ok = false;
+    int marker_seq = 0;
+    int unread = 0;
+};
+
+// §3.7 (FETCH_UNREAD_COUNTS).
+struct WireUnreadCount {
+    std::string peer_id; // wire user_id
+    int count = 0;
+};
+
 struct FriendRequestList {
     std::vector<WireFriendRequest> incoming;
     std::vector<WireFriendRequest> outgoing;
@@ -391,6 +410,17 @@ class InternalApiClient {
     // for the one call site (IdentifyHandler) that always needs all three
     // together. See WireSessionContext's comment.
     virtual std::optional<WireSessionContext> fetchSessionContext(const std::string& user_id) = 0;
+
+    // §3.7 (MARK_DM_READ / FETCH_UNREAD_COUNTS). Every id here is a wire
+    // user_id, passed through opaquely exactly like every other DM call
+    // (fetchDmConversations, createMessage's dm_peer_id) — the C++ side
+    // never decodes or re-encodes it.
+    virtual MarkDmReadResult markDmRead(const std::string& user_id, const std::string& peer_id,
+                                        int up_to_message_id) = 0;
+    // nullopt only on a request/transport failure — the web side always
+    // returns an array (possibly empty) for any well-formed wire user_id.
+    virtual std::optional<std::vector<WireUnreadCount>>
+    fetchUnreadCounts(const std::string& user_id) = 0;
 };
 
 } // namespace http

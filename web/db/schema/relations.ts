@@ -2,6 +2,7 @@ import { relations } from "drizzle-orm";
 
 import { channels } from "./channels";
 import { dmConversations } from "./dmConversations";
+import { dmReadState } from "./dmReadState";
 import { friendRequests } from "./friendRequests";
 import { friendships } from "./friendships";
 import { guildInvites } from "./guildInvites";
@@ -27,7 +28,8 @@ export const usersRelations = relations(users, ({ many }) => ({
   blocksMade: many(userBlocks, { relationName: "userBlocksAsBlocker" }),
   blocksReceived: many(userBlocks, { relationName: "userBlocksAsBlocked" }),
   dmConversationsAsUserA: many(dmConversations, { relationName: "dmConversationsAsUserA" }),
-  dmConversationsAsUserB: many(dmConversations, { relationName: "dmConversationsAsUserB" })
+  dmConversationsAsUserB: many(dmConversations, { relationName: "dmConversationsAsUserB" }),
+  dmReadState: many(dmReadState)
 }));
 
 export const dmConversationsRelations = relations(dmConversations, ({ one, many }) => ({
@@ -41,7 +43,16 @@ export const dmConversationsRelations = relations(dmConversations, ({ one, many 
     references: [users.id],
     relationName: "dmConversationsAsUserB"
   }),
-  messages: many(messages)
+  messages: many(messages),
+  readState: many(dmReadState)
+}));
+
+export const dmReadStateRelations = relations(dmReadState, ({ one }) => ({
+  user: one(users, { fields: [dmReadState.userId], references: [users.id] }),
+  dmConversation: one(dmConversations, {
+    fields: [dmReadState.dmConversationId],
+    references: [dmConversations.id]
+  })
 }));
 
 export const userBlocksRelations = relations(userBlocks, ({ one }) => ({

@@ -26,6 +26,11 @@ the plan. Not built, or built differently:
   caller") and its rate limit — see §4.6 for both.
 - Internal API routes are shaped `[requesterId]/[recipientId]` where §1.6
   writes `:requesterId` with a body; `web/app/internal/` is authoritative.
+- **v0.8 update**: DM unread counts (§3.7) are now built —
+  `MARK_DM_READ`/`FETCH_UNREAD_COUNTS`, a `dm_read_state` table, and the
+  internal API/handler/test layers underneath them. This section wasn't
+  in the original design at all; §3.7 documents it as built, not as a
+  retrofit onto an earlier plan.
 
 ## Scope
 
@@ -762,6 +767,128 @@ and "blocked," per §2.6). `USER_NOT_FOUND` is reused from §1.
   read-through/write pattern, only the scoping column differs.
 - `GET /internal/messages/last-sequence?scope=dm` — the third seed-value
   variant (§3.4).
+
+### 3.7 Unread counts
+
+**Server-side only in this PR** — the web client doesn't call any of this
+yet; that's a separate, following PR. Ships as a complete, inert feature:
+nothing a user sees changes until the client is wired up.
+
+**Data model**: a new `dm_read_state` table, one row per `(user_id,
+dm_conversation_id)` a user has ever marked read into — absent means
+"nothing read yet," not 0, the same "missing is a real state" shape §3.4's
+`seq` id-space and `LIST_DM_CONVERSATIONS`'s empty-array case already use.
+
+```sql
+CREATE TABLE dm_read_state (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  dm_conversation_id uuid NOT NULL REFERENCES dm_conversations(id) ON DELETE CASCADE,
+  last_read_seq bigint NOT NULL DEFAULT 0 CHECK (last_read_seq >= 0),
+  updated_at timestamptz NOT NULL DEFAULT now(),
+  UNIQUE (user_id, dm_conversation_id)
+);
+```
+
+`last_read_seq` is a plain integer high-water mark into `messages.seq`'s
+shared DM id-space (§3.4/§4.2) — **never a foreign key to a specific
+message row.** There is no message-deletion feature anywhere in this
+codebase, so a marker pointing at a deleted message isn't reachable today,
+but storing a plain integer means there would be nothing to dangle even if
+one existed later.
+
+**Backfill, on the same migration that creates the table**: a missing row
+means marker 0, which would make every message in every pre-existing
+conversation show as unread the moment this ships. The migration inserts,
+for both participants of every existing `dm_conversations` row, a row at
+that conversation's current max `seq` (0 for a conversation with no
+messages) — "already caught up," not "never read." A conversation created
+after this migration runs gets no row until its first `MARK_DM_READ`,
+which is correct: nothing has been read yet, and that's a different,
+valid absence from the backfilled one.
+
+**Wire shape corrects the original sketch of this feature**: conversations
+are never addressed by a separate id on the wire anywhere in this design
+(§3's opening rule, restated in `shared/protocol/README.md`) — `user_id`
+(the peer) is the only address `MARK_DM_READ` takes, and
+`FETCH_UNREAD_COUNTS`'s response is keyed by peer `user_id` too, never the
+internal `dm_conversation_id` the web client has never seen and shouldn't
+start seeing now. See `shared/protocol/README.md`'s `MARK_DM_READ`/
+`FETCH_UNREAD_COUNTS` sections for the exact payloads.
+
+**Monotonic, not strict**: a `MARK_DM_READ` with a lower `up_to_message_id`
+than the caller's current marker for that conversation never moves it
+backward (`GREATEST` in the upsert), but still succeeds — idempotent, not
+an error, since a retried or out-of-order client call (a fast scroll, two
+tabs racing) is the ordinary case this matters for, not a hostile one.
+
+**Authorization**: `up_to_message_id` must be a `seq` that actually exists
+in the conversation resolved from `(caller, peer)` — not merely a `seq`
+that exists *somewhere*, since `seq` is one id-space shared across every
+DM conversation (§3.4). A conversation that doesn't exist at all and a
+`seq` that belongs to a *different* conversation both fail this same
+existence check, and are reported identically (`MALFORMED_MESSAGE`) — the
+same "one code, deliberately indistinguishable causes" shape
+`DM_NOT_PERMITTED` already uses for `DM_SEND`.
+
+**Cost**: `FETCH_UNREAD_COUNTS` costs exactly one internal HTTP call from
+the C++ server, regardless of how many DM conversations the caller has —
+one SQL statement, a `LATERAL` join bounding each conversation's own count
+to 101 rows scanned (the existing `idx_messages_dm_created
+(dm_conversation_id, seq)` index makes that an index range scan that stops
+early), so a single conversation with thousands of unread messages costs
+the same as one with a hundred. The query starts from `dm_conversations`
+(every conversation the caller participates in), not `dm_read_state` — a
+real bug caught while building this: starting from `dm_read_state` would
+make a brand-new conversation (no read-state row until the first
+`MARK_DM_READ`) invisible to this query, so its very first messages would
+never show up as unread at all. `LEFT JOIN` plus `COALESCE(..., 0)`
+treats a missing row as "nothing read yet," matching the backfill's own
+meaning for that state.
+
+**Blocked senders still count.** Blocking doesn't delete messages or stop
+a conversation from being readable (§2, and `DM_SEND`'s own "existing
+history stays fully readable regardless" note) — it doesn't stop a
+message being *unread* either. Counting it any other way would make the
+badge disagree with what `FETCH_HISTORY` already shows.
+
+**Delivery**: `DM_READ` pushes to every connection identified as the
+*caller*, self-inclusive (the same pattern `DM_SEND`'s own broadcast
+already uses for the sender's other open tabs) — so a badge clears on
+every one of a user's own open tabs/devices at once. It is never sent to
+the peer: this is read-state sync across one person's sessions, not a
+read receipt the other party would see. See `shared/protocol/README.md`'s
+Behavior Notes section for how this fits the existing "every connection
+identified as this specific user_id" `TARGETED` variant.
+
+**File layout**: `MARK_DM_READ`/`FETCH_UNREAD_COUNTS` live in a new
+`DMReadStateHandler`, not `DMHandler` — read-state tracking is a distinct
+enough concern from message delivery (`DM_SEND`/`FETCH_HISTORY`'s DM
+branch/`LIST_DM_CONVERSATIONS`) to earn its own file, per `CLAUDE.md`'s
+"one file, one responsibility" rule, rather than growing `DMHandler` past
+the point of being one coherent job.
+
+**Internal API additions** (alongside §3.6's):
+
+- `POST /internal/dm-read-state` — body `{ user_id, peer_id,
+  up_to_message_id }`. Resolves the conversation read-only (never
+  creates one — marking read must not be able to conjure a conversation
+  that never had a message in it), validates `up_to_message_id` against
+  it, upserts the marker monotonically, and returns `{ marker_seq,
+  unread }` for the *current* (possibly unchanged) marker.
+- `GET /internal/dm-read-state/unread-counts?user_id=` — returns `{
+  counts: [{ peer_id, count }, ...] }`, only entries with `count > 0`.
+
+### Not now (known tradeoffs)
+
+- No document-title unread count. Left for a later, separate decision.
+- No real-time cross-device *theme* sync is relevant here, but the
+  parallel is worth naming: like `docs/settings/appearance-design.md`
+  §3.5's sync, this doesn't change what a *disconnected* device shows —
+  only connections that are actually open when `MARK_DM_READ` runs get
+  the `DM_READ` push. A reconnecting client rebuilds its counts from
+  `FETCH_UNREAD_COUNTS`, called once `IDENTIFY` completes, same timing as
+  `LIST_DM_CONVERSATIONS`.
 
 ---
 

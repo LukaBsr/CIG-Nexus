@@ -10,4 +10,5 @@ export * from "./friendRequests";
 export * from "./friendships";
 export * from "./userBlocks";
 export * from "./dmConversations";
+export * from "./dmReadState";
 export * from "./relations";
