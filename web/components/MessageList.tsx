@@ -47,12 +47,12 @@ function MessageListItem({ message, onViewProfile }: MessageListItemProps) {
         <button
           onClick={() => onViewProfile(message.userId)}
           aria-label={`View ${message.displayName ?? message.username}'s profile`}
-          className="mt-0.5 shrink-0 rounded-full"
+          className="shrink-0 rounded-full"
         >
-          <Avatar url={message.avatarUrl} name={message.displayName ?? message.username} size={28} />
+          <Avatar url={message.avatarUrl} name={message.displayName ?? message.username} size={40} />
         </button>
       ) : (
-        <Avatar url={message.avatarUrl} name={message.displayName ?? message.username} size={28} className="mt-0.5" />
+        <Avatar url={message.avatarUrl} name={message.displayName ?? message.username} size={40} />
       )}
       <div className="min-w-0 flex-1">
         <div className="flex items-baseline gap-2 font-mono text-xs text-muted">
