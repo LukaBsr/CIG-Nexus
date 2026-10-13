@@ -40,7 +40,7 @@ export function MemberList({ members, onlineUserIds, myUserId, onBlock, onViewPr
         {sorted.map((m) => (
           <li
             key={m.userId}
-            className="flex items-center gap-2 rounded-md px-1.5 py-1 transition-colors hover:bg-surface/60"
+            className="flex items-center gap-2 rounded-md px-1.5 py-1.5 transition-colors hover:bg-surface/60"
           >
             <PresenceDot online={onlineUserIds.has(m.userId)} />
             {/* docs/social/friends-dms-design.md §4.6's self-view exception —
@@ -51,12 +51,12 @@ export function MemberList({ members, onlineUserIds, myUserId, onBlock, onViewPr
               aria-label={`View ${m.displayName ?? m.username}'s profile`}
               className="shrink-0 rounded-full"
             >
-              <Avatar url={m.avatarUrl} name={m.displayName ?? m.username} size={20} />
+              <Avatar url={m.avatarUrl} name={m.displayName ?? m.username} size={32} />
             </button>
             <span className="min-w-0 flex-1 truncate font-mono text-sm text-fg/90">
               {m.displayName ?? m.username}
             </span>
-            <span className={`shrink-0 font-mono text-[10px] uppercase ${roleLabelColor(m.roleRank)}`}>
+            <span className={`shrink-0 font-mono text-xs uppercase ${roleLabelColor(m.roleRank)}`}>
               {m.roleLabel}
             </span>
             {m.userId !== myUserId && (
