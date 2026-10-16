@@ -1,5 +1,7 @@
 #include "protocol/MessageDispatcher.hpp"
 
+#include "protocol/MessageBuilders.hpp"
+
 #include <stdexcept>
 
 namespace protocol {
@@ -14,7 +16,11 @@ std::vector<Message> MessageDispatcher::dispatch(const Message& message, int fd)
         throw std::runtime_error("Unknown message type: " + message.type);
     }
 
-    return it->second(message, fd);
+    std::vector<Message> responses = it->second(message, fd);
+    for (Message& response : responses) {
+        tag_error_with_request_type(response, message.type);
+    }
+    return responses;
 }
 
 } // namespace protocol

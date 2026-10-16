@@ -28,6 +28,19 @@ inline Message make_error_message(const std::string& code, const std::string& me
     return response;
 }
 
+// shared/protocol/README.md's ERROR section: an ERROR answering a client
+// request names that request's type as request_type, so the client can
+// tell which of its requests failed (e.g. a background MARK_DM_READ vs. a
+// user action). Only a DIRECT ERROR is a reply to the requester; anything
+// else is left alone. Applied centrally — MessageDispatcher::dispatch() and
+// Server's unknown-type path — never by individual handlers.
+inline void tag_error_with_request_type(Message& response, const std::string& request_type) {
+    if (response.type == "ERROR" && response.scope == Scope::DIRECT &&
+        response.payload.is_object()) {
+        response.payload["request_type"] = request_type;
+    }
+}
+
 // docs/social/friends-dms-design.md §4.5: display_name/avatar_url are
 // present-but-possibly-null on the wire (matching the max_uses/expires_at
 // precedent in InviteHandler.cpp), not omitted when unset — a client can
