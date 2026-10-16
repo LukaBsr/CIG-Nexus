@@ -31,7 +31,7 @@ jobs:
       - name: Install dependencies
         run: |
           cd web
-          npm install
+          npm ci
 
       # continue-on-error: pre-existing, already-tracked lint failure
       # (lib/gateway.ts:4's `any`, see docs/frontend-rebuild-plan.md) predates
