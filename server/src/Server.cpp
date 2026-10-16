@@ -41,6 +41,7 @@ Server::Server(uint16_t port) : port_(port), running_(false), listener_(port) {
     block_handler_.setSessionManager(&session_manager_);
     dm_handler_.setSessionManager(&session_manager_);
     dm_read_state_handler_.setSessionManager(&session_manager_);
+    dm_read_state_handler_.setDmHandler(&dm_handler_);
 
     // shared/protocol/README.md's Rate Limits table — every handler with a
     // limited message type shares the one process-wide RateLimiter.

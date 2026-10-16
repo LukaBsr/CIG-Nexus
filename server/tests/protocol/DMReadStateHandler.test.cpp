@@ -1,5 +1,6 @@
 #include <catch2/catch_test_macros.hpp>
 
+#include "protocol/handlers/DMHandler.hpp"
 #include "protocol/handlers/DMReadStateHandler.hpp"
 #include "session/SessionManager.hpp"
 #include "util/RateLimiter.hpp"
@@ -22,12 +23,19 @@ struct Fixture {
     session::SessionManager sessions;
     test_helpers::FakeInternalApiClient api;
     util::RateLimiter limiter;
+    protocol::DMHandler dm_handler;
     protocol::DMReadStateHandler handler;
 
     Fixture() {
         handler.setSessionManager(&sessions);
         handler.setInternalApiClient(&api);
         handler.setRateLimiter(&limiter);
+        handler.setDmHandler(&dm_handler);
+        // Default high enough that every existing test's up_to_message_id
+        // (small literals like 1, 5, 7, 99) passes the bound check without
+        // needing to seed it itself. Tests of the bound check seed a
+        // specific, lower value instead.
+        dm_handler.seedMessageCounter(1000);
     }
 
     session::Session& identify(int fd, const std::string& username) {
@@ -67,12 +75,67 @@ TEST_CASE("DMReadStateHandler MARK_DM_READ requires user_id and an integer up_to
 TEST_CASE("DMReadStateHandler MARK_DM_READ maps the internal API's !ok to MALFORMED_MESSAGE") {
     Fixture f;
     f.identify(1, "alice");
-    f.api.mark_dm_read_returns = {}; // ok = false: no such conversation, or seq outside it
+    f.api.mark_dm_read_returns = {}; // ok = false: no conversation at all with that peer
 
     const auto response = f.handler.handleMarkDmRead(
         make_message("MARK_DM_READ", {{"user_id", "u_2"}, {"up_to_message_id", 99}}), 1);
 
     REQUIRE(response.payload["code"] == "MALFORMED_MESSAGE");
+}
+
+// --- MARK_DM_READ: up_to_message_id bound check -------------------------
+//
+// Reproduces, at the mechanism level, the race DM_SEND's async persistence
+// creates: a client can receive DM_MESSAGE with a message_id before that
+// message's row exists in Postgres. These tests show the bound check uses
+// dm_handler_'s live counter, never the (here, entirely absent) database —
+// FakeInternalApiClient never touches real persistence, so a value passing
+// this check is, by construction, independent of whether any row for it
+// exists anywhere. The actual Postgres-timing reproduction (insert nothing
+// into messages, call markDmRead anyway) lives in
+// web/lib/internal/dmReadState.test.ts, the only layer with a real database
+// to race against.
+
+TEST_CASE("DMReadStateHandler MARK_DM_READ rejects an up_to_message_id higher than any the "
+          "server has issued") {
+    Fixture f;
+    f.identify(1, "alice");
+    f.dm_handler.seedMessageCounter(5);
+
+    const auto response = f.handler.handleMarkDmRead(
+        make_message("MARK_DM_READ", {{"user_id", "u_2"}, {"up_to_message_id", 6}}), 1);
+
+    REQUIRE(response.payload["code"] == "MALFORMED_MESSAGE");
+    REQUIRE(f.api.mark_dm_read_call_count == 0); // rejected before ever reaching the internal API
+}
+
+TEST_CASE("DMReadStateHandler MARK_DM_READ rejects a non-positive up_to_message_id") {
+    Fixture f;
+    f.identify(1, "alice");
+
+    REQUIRE(f.handler
+                .handleMarkDmRead(
+                    make_message("MARK_DM_READ", {{"user_id", "u_2"}, {"up_to_message_id", 0}}), 1)
+                .payload["code"] == "MALFORMED_MESSAGE");
+    REQUIRE(f.handler
+                .handleMarkDmRead(
+                    make_message("MARK_DM_READ", {{"user_id", "u_2"}, {"up_to_message_id", -1}}), 1)
+                .payload["code"] == "MALFORMED_MESSAGE");
+}
+
+TEST_CASE("DMReadStateHandler MARK_DM_READ accepts an up_to_message_id exactly at the highest "
+          "issued one — the value a client would have from a DM_MESSAGE it just received, "
+          "whether or not that message is persisted yet") {
+    Fixture f;
+    f.identify(1, "alice");
+    f.dm_handler.seedMessageCounter(5);
+    f.api.mark_dm_read_returns = {true, 5, 0};
+
+    const auto response = f.handler.handleMarkDmRead(
+        make_message("MARK_DM_READ", {{"user_id", "u_2"}, {"up_to_message_id", 5}}), 1);
+
+    REQUIRE(response.type == "DM_READ");
+    REQUIRE(f.api.mark_dm_read_call_count == 1);
 }
 
 // --- MARK_DM_READ: success, delivery ------------------------------------

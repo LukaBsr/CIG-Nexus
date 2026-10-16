@@ -1,6 +1,7 @@
 #include "protocol/handlers/DMReadStateHandler.hpp"
 
 #include "http/InternalApiClient.hpp"
+#include "protocol/handlers/DMHandler.hpp"
 #include "protocol/handlers/HandlerSupport.hpp"
 #include "session/SessionManager.hpp"
 #include "util/RateLimiter.hpp"
@@ -19,6 +20,10 @@ void DMReadStateHandler::setInternalApiClient(http::InternalApiClient* internal_
 
 void DMReadStateHandler::setRateLimiter(util::RateLimiter* rate_limiter) {
     rate_limiter_ = rate_limiter;
+}
+
+void DMReadStateHandler::setDmHandler(const DMHandler* dm_handler) {
+    dm_handler_ = dm_handler;
 }
 
 // docs/social/friends-dms-design.md §3.7. On success, pushes DM_READ to
@@ -52,6 +57,27 @@ Message DMReadStateHandler::handleMarkDmRead(const Message& message, int fd) con
     const std::string peer_id = message.payload["user_id"].get<std::string>();
     const int up_to_message_id = message.payload["up_to_message_id"].get<int>();
 
+    // Bound check, not a Postgres existence check: DM_SEND broadcasts
+    // DM_MESSAGE synchronously but persists it asynchronously
+    // (fire-and-forget, §3.4/§4.5's Option B) — a client can legitimately
+    // send MARK_DM_READ for a message_id it just received before that
+    // write lands. dm_handler_'s counter is incremented synchronously, in
+    // this same single-threaded loop, so it's never behind a message_id a
+    // client has actually been given, unlike a query against the row
+    // DM_SEND hasn't persisted yet. This only bounds the value; it
+    // doesn't confirm up_to_message_id belongs to *this* conversation —
+    // deliberately, since a marker only affects the caller's own read
+    // state for a conversation they're already confirmed to have (the
+    // internal API call below still resolves and requires that), so a
+    // bogus-but-in-range value from an unrelated conversation can't leak
+    // or affect anyone else, only mis-set the caller's own marker.
+    if (!dm_handler_) {
+        return makeError("INTERNAL_ERROR", "DM read-state unavailable");
+    }
+    if (up_to_message_id <= 0 || up_to_message_id > dm_handler_->highestIssuedMessageId()) {
+        return makeError("MALFORMED_MESSAGE", "up_to_message_id has not been issued yet");
+    }
+
     // shared/protocol/README.md's Rate Limits table: 10 / 10 seconds — a
     // backstop against a misbehaving client; the web client is expected to
     // debounce its own sends well below this.
@@ -64,16 +90,14 @@ Message DMReadStateHandler::handleMarkDmRead(const Message& message, int fd) con
         return makeError("INTERNAL_ERROR", "DM read-state unavailable");
     }
 
-    // !ok covers both "no conversation at all between these two users" and
-    // "up_to_message_id doesn't belong to the resolved conversation" —
-    // deliberately indistinguishable, same posture DM_NOT_PERMITTED
-    // already uses for DM_SEND, and the same single-error-code collapse
-    // AcceptFriendRequestResult's own !ok already gets in FriendHandler.
+    // !ok means no conversation at all exists between these two users —
+    // the up_to_message_id bound was already checked above. Same
+    // single-error-code collapse AcceptFriendRequestResult's own !ok
+    // already gets in FriendHandler.
     const http::MarkDmReadResult result =
         internal_api_client_->markDmRead(session->user_id, peer_id, up_to_message_id);
     if (!result.ok) {
-        return makeError("MALFORMED_MESSAGE",
-                         "No such DM conversation, or up_to_message_id does not belong to it");
+        return makeError("MALFORMED_MESSAGE", "No such DM conversation with that user");
     }
 
     Message response;

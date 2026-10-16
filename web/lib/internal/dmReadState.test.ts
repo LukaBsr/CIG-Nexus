@@ -45,23 +45,51 @@ describe("markDmRead", () => {
     });
   });
 
-  it("rejects an up_to_message_id that doesn't belong to the resolved conversation", async () => {
+  // The race this reproduces: DM_SEND (server/src/protocol/handlers/
+  // DMHandler.cpp) broadcasts DM_MESSAGE synchronously, with the
+  // message_id already assigned, then enqueues persistence to
+  // MessagePersistenceWorker — fire-and-forget, bounded retry
+  // (§3.4/§4.5's Option B). A client can legitimately send MARK_DM_READ
+  // for a message_id it just received before that worker's write lands.
+  // markDmRead must not reject that: DMReadStateHandler (C++) already
+  // bounds up_to_message_id against the server's own in-memory counter —
+  // the one source of truth that's never behind a message_id a client
+  // has actually been given — before ever calling this function, so this
+  // layer only needs a conversation to exist, not a persisted row for
+  // this exact message.
+  it("accepts an up_to_message_id for a message that hasn't been persisted yet (still in the fire-and-forget persistence queue)", async () => {
+    const a = await insertUser("1");
+    const b = await insertUser("2");
+    const conversationId = await resolveOrCreateDmConversationId(a.id, b.id);
+    await sendMessage(conversationId, b.id); // one real, persisted message
+    const notYetPersistedSeq = nextSeq++; // the next message_id DM_SEND would hand out — no row for it
+
+    expect(await markDmRead(toUserWireId(a.id), toUserWireId(b.id), notYetPersistedSeq)).toEqual({
+      ok: true,
+      markerSeq: notYetPersistedSeq,
+      unread: 0
+    });
+  });
+
+  // Documents the deliberate narrowing of what this layer validates (the
+  // bound check moved to DMReadStateHandler, C++): once a conversation
+  // exists, this function trusts up_to_message_id as given, even one
+  // that happens to be a real seq from a *different* conversation. Safe
+  // because a marker only ever affects the caller's own read state for
+  // their own conversation with this peer — it can't leak or alter
+  // anyone else's data, only mis-set the caller's own marker.
+  it("accepts an up_to_message_id that is a real seq from a different conversation, once a conversation with this peer exists", async () => {
     const a = await insertUser("1");
     const b = await insertUser("2");
     const c = await insertUser("3");
     await resolveOrCreateDmConversationId(a.id, b.id);
     const otherConversation = await resolveOrCreateDmConversationId(a.id, c.id);
-    // A real seq, but it belongs to (a, c), not (a, b) — must not validate
-    // against the whole messages table, only the resolved conversation.
     const foreignSeq = await sendMessage(otherConversation, a.id);
 
     expect(await markDmRead(toUserWireId(a.id), toUserWireId(b.id), foreignSeq)).toEqual({
-      ok: false,
-      reason: "invalid"
-    });
-    expect(await markDmRead(toUserWireId(a.id), toUserWireId(b.id), 99999)).toEqual({
-      ok: false,
-      reason: "invalid"
+      ok: true,
+      markerSeq: foreignSeq,
+      unread: 0
     });
   });
 

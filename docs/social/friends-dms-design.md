@@ -822,14 +822,43 @@ backward (`GREATEST` in the upsert), but still succeeds — idempotent, not
 an error, since a retried or out-of-order client call (a fast scroll, two
 tabs racing) is the ordinary case this matters for, not a hostile one.
 
-**Authorization**: `up_to_message_id` must be a `seq` that actually exists
-in the conversation resolved from `(caller, peer)` — not merely a `seq`
-that exists *somewhere*, since `seq` is one id-space shared across every
-DM conversation (§3.4). A conversation that doesn't exist at all and a
-`seq` that belongs to a *different* conversation both fail this same
-existence check, and are reported identically (`MALFORMED_MESSAGE`) — the
-same "one code, deliberately indistinguishable causes" shape
-`DM_NOT_PERMITTED` already uses for `DM_SEND`.
+**Authorization and the persistence race.** The first version of this
+validated `up_to_message_id` by checking it exists in `messages`, scoped
+to the conversation resolved from `(caller, peer)`. That's wrong: `DM_SEND`
+broadcasts `DM_MESSAGE` synchronously, with `message_id` already assigned,
+then persists it asynchronously (fire-and-forget, bounded retry, §4.5's
+Option B) — a client can legitimately send `MARK_DM_READ` for a
+`message_id` it just received before that write lands, and a Postgres
+check would wrongly reject it as malformed. Found and fixed before this
+shipped (not after): the bound now checked is `0 < up_to_message_id <=`
+the highest `message_id` the C++ server has issued for any DM so far —
+`DMHandler`'s own in-memory counter, which is authoritative because it's
+incremented synchronously, in the same single-threaded loop that handles
+every protocol message, so it is never behind a `message_id` a client has
+actually been given, unlike a query against a row that same message
+hasn't been written yet. This bound check doesn't confirm
+`up_to_message_id` belongs to *this* conversation specifically, only that
+the server issued it for *some* DM (`seq` is one id-space shared across
+every DM conversation, §3.4) — deliberately: a marker only ever affects
+the caller's own read state for a conversation they're already confirmed
+to have (the web layer still requires that to exist), so a value from an
+unrelated conversation can't leak or alter anyone else's data, only
+mis-set the caller's own marker. A conversation that doesn't exist at all
+and an out-of-range `up_to_message_id` both fail and are reported
+identically (`MALFORMED_MESSAGE`) — the same "one code, deliberately
+indistinguishable causes" shape `DM_NOT_PERMITTED` already uses for
+`DM_SEND`.
+
+**Known limitation, not fixed by the above:** the bound check only
+confirms `up_to_message_id` was *issued*, not that the conversation it
+belongs to already has a row — for a conversation's very first message,
+both `dm_conversations` and `messages` are created together by the same
+persistence write, so there's a narrower version of the same race where
+the conversation itself doesn't exist yet when `MARK_DM_READ` arrives.
+Not addressed here: relaxing "a conversation must already exist" would
+let any two users create a dangling read-state row for a conversation
+that never had a message, which is a different, broader design question
+this PR wasn't asked to resolve.
 
 **Cost**: `FETCH_UNREAD_COUNTS` costs exactly one internal HTTP call from
 the C++ server, regardless of how many DM conversations the caller has —
@@ -873,9 +902,11 @@ the point of being one coherent job.
 - `POST /internal/dm-read-state` — body `{ user_id, peer_id,
   up_to_message_id }`. Resolves the conversation read-only (never
   creates one — marking read must not be able to conjure a conversation
-  that never had a message in it), validates `up_to_message_id` against
-  it, upserts the marker monotonically, and returns `{ marker_seq,
-  unread }` for the *current* (possibly unchanged) marker.
+  that never had a message in it); the caller (`DMReadStateHandler`)
+  has already bound-checked `up_to_message_id` against its own counter
+  before this is ever called, so this layer only requires the
+  conversation to exist. Upserts the marker monotonically, and returns
+  `{ marker_seq, unread }` for the *current* (possibly unchanged) marker.
 - `GET /internal/dm-read-state/unread-counts?user_id=` — returns `{
   counts: [{ peer_id, count }, ...] }`, only entries with `count > 0`.
 

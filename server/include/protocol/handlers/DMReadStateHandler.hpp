@@ -17,6 +17,8 @@ class RateLimiter;
 
 namespace protocol {
 
+class DMHandler;
+
 // DM unread counts: MARK_DM_READ, FETCH_UNREAD_COUNTS (see
 // docs/social/friends-dms-design.md §3.7). Kept separate from DMHandler
 // (which owns DM_SEND/FETCH_HISTORY's DM branch/LIST_DM_CONVERSATIONS) —
@@ -35,6 +37,13 @@ class DMReadStateHandler {
     void setSessionManager(session::SessionManager* session_manager);
     void setInternalApiClient(http::InternalApiClient* internal_api_client);
     void setRateLimiter(util::RateLimiter* rate_limiter);
+    // §3.7: for MARK_DM_READ's up_to_message_id bound check — see
+    // DMHandler::highestIssuedMessageId's own comment for why this,
+    // rather than a Postgres existence check, is the race-free source of
+    // truth. A sibling-handler dependency is a small layering wart,
+    // accepted deliberately over either extracting a shared counter class
+    // for this one need or duplicating DMHandler's atomic.
+    void setDmHandler(const DMHandler* dm_handler);
 
     Message handleMarkDmRead(const Message& message, int fd) const;
     Message handleFetchUnreadCounts(const Message& message, int fd) const;
@@ -43,6 +52,7 @@ class DMReadStateHandler {
     session::SessionManager* session_manager_ = nullptr;
     http::InternalApiClient* internal_api_client_ = nullptr;
     util::RateLimiter* rate_limiter_ = nullptr;
+    const DMHandler* dm_handler_ = nullptr;
 };
 
 } // namespace protocol

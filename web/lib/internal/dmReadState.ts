@@ -52,14 +52,19 @@ export type MarkDmReadResult =
 // §3.7 (MARK_DM_READ). Monotonic: a lower up_to_seq than the current
 // marker never moves it backward (GREATEST in the upsert), but still
 // succeeds — idempotent, not an error, since a retried or out-of-order
-// client call is the ordinary case this matters for. up_to_seq must be a
-// seq that actually exists in the resolved conversation between these two
-// users; a conversation that doesn't exist at all and a seq that belongs
-// to a different conversation (seq is one id-space shared across every
-// DM, §4.2) both fail the same existence check and are reported
-// identically — the caller's handler maps "invalid" to MALFORMED_MESSAGE
-// either way, same "one code, deliberately indistinguishable causes"
-// shape DM_NOT_PERMITTED already uses.
+// client call is the ordinary case this matters for.
+//
+// Does NOT verify up_to_seq against the messages table — the caller
+// (DMReadStateHandler, C++) already bounds it against the server's own
+// in-memory DM sequence counter before ever calling this. A Postgres
+// check here would race DM_SEND's fire-and-forget persistence
+// (§3.4/§4.5's Option B): a client can legitimately send MARK_DM_READ for
+// a message_id it just received over the wire before that message's row
+// exists in this table, and rejecting it then would be wrong, not safe.
+// The only check left here is that a conversation exists at all between
+// these two users — a peer with no conversation ever (not even one still
+// in the persistence queue pointed at a conversation id that also
+// doesn't exist yet) has nothing to mark read.
 export async function markDmRead(
   callerWireId: string,
   peerWireId: string,
@@ -73,14 +78,6 @@ export async function markDmRead(
 
   const conversationId = await findExistingDmConversationId(callerId, peerId);
   if (!conversationId) {
-    return { ok: false, reason: "invalid" };
-  }
-
-  const [messageExists] = await db
-    .select({ seq: messages.seq })
-    .from(messages)
-    .where(and(eq(messages.dmConversationId, conversationId), eq(messages.seq, upToSeq)));
-  if (!messageExists) {
     return { ok: false, reason: "invalid" };
   }
 
