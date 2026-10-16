@@ -41,6 +41,15 @@ class DMHandler {
     // ChannelHandler::seedMessageCounter.
     void seedMessageCounter(std::optional<int> last_seq);
 
+    // §3.7: the authoritative upper bound DMReadStateHandler validates
+    // MARK_DM_READ's up_to_message_id against. Authoritative because it's
+    // incremented synchronously, in-process, by the same single-threaded
+    // loop that handles every protocol message — unlike a check against
+    // Postgres, which can lag behind a DM_SEND that has already broadcast
+    // (persistence is fire-and-forget, §3.4/§4.5's Option B), this value
+    // is never behind a message_id a client has actually received.
+    int highestIssuedMessageId() const { return message_counter_.load(); }
+
     Message handleDmSend(const Message& message, int fd) const;
     Message handleFetchHistory(const Message& message, int fd) const;
     Message handleListDmConversations(const Message& message, int fd) const;

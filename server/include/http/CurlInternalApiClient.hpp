@@ -87,6 +87,11 @@ class CurlInternalApiClient : public InternalApiClient {
 
     std::optional<WireSessionContext> fetchSessionContext(const std::string& user_id) override;
 
+    MarkDmReadResult markDmRead(const std::string& user_id, const std::string& peer_id,
+                                int up_to_message_id) override;
+    std::optional<std::vector<WireUnreadCount>>
+    fetchUnreadCounts(const std::string& user_id) override;
+
   private:
     struct HttpResponse {
         long status = 0;

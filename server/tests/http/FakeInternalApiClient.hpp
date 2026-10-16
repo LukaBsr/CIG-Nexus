@@ -278,6 +278,19 @@ class FakeInternalApiClient : public http::InternalApiClient {
         return http::WireSessionContext{*profile, blocks_to_return, friends_to_return};
     }
 
+    http::MarkDmReadResult markDmRead(const std::string&, const std::string&, int) override {
+        ++mark_dm_read_call_count;
+        return mark_dm_read_returns;
+    }
+
+    std::optional<std::vector<http::WireUnreadCount>>
+    fetchUnreadCounts(const std::string&) override {
+        if (fail_fetch_unread_counts) {
+            return std::nullopt;
+        }
+        return unread_counts_to_return;
+    }
+
     std::chrono::milliseconds session_context_delay{0};
 
     // Test control: flip one of these to exercise a handler's "internal API
@@ -312,6 +325,7 @@ class FakeInternalApiClient : public http::InternalApiClient {
     bool fail_fetch_user_profile = false;
     bool fail_fetch_dm_conversations = false;
     bool fail_fetch_guild_ids_for_user = false;
+    bool fail_fetch_unread_counts = false;
     http::Catalog catalog_to_return;
     std::vector<std::string> revoked_ids_to_return;
     std::vector<http::WireMessage> created_messages;
@@ -346,6 +360,8 @@ class FakeInternalApiClient : public http::InternalApiClient {
     // the requested user_id, so existing IDENTIFY-flow tests that don't
     // care about display_name/avatar_url don't need to configure this.
     std::optional<http::WireUserProfile> user_profile_to_return;
+    http::MarkDmReadResult mark_dm_read_returns;
+    std::vector<http::WireUnreadCount> unread_counts_to_return;
 
     // Call counters — used by rate-limiting tests to assert the internal
     // API is never reached once a caller is limited, not just that the
@@ -358,6 +374,7 @@ class FakeInternalApiClient : public http::InternalApiClient {
     int add_friend_by_code_call_count = 0;
     int regenerate_friend_code_call_count = 0;
     int fetch_session_context_call_count = 0;
+    int mark_dm_read_call_count = 0;
 
   private:
     int next_guild_id_ = 1;

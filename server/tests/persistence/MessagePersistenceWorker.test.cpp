@@ -121,6 +121,13 @@ class RecordingInternalApiClient : public http::InternalApiClient {
     std::optional<http::WireSessionContext> fetchSessionContext(const std::string&) override {
         return std::nullopt;
     }
+    http::MarkDmReadResult markDmRead(const std::string&, const std::string&, int) override {
+        return {};
+    }
+    std::optional<std::vector<http::WireUnreadCount>>
+    fetchUnreadCounts(const std::string&) override {
+        return std::nullopt;
+    }
 
     bool createMessage(const std::optional<std::string>& channel_id,
                        const std::optional<std::string>& dm_peer_id, const std::string& user_id,

@@ -823,4 +823,54 @@ CurlInternalApiClient::fetchSessionContext(const std::string& user_id) {
     }
 }
 
+MarkDmReadResult CurlInternalApiClient::markDmRead(const std::string& user_id,
+                                                   const std::string& peer_id,
+                                                   int up_to_message_id) {
+    const nlohmann::json body{
+        {"user_id", user_id}, {"peer_id", peer_id}, {"up_to_message_id", up_to_message_id}};
+    const auto response = request("POST", "/internal/dm-read-state", body.dump());
+    if (!response || response->status != 200) {
+        return MarkDmReadResult{};
+    }
+    try {
+        const auto json = nlohmann::json::parse(response->body);
+        if (!json.is_object() || !json.contains("marker_seq") ||
+            !json["marker_seq"].is_number_integer() || !json.contains("unread") ||
+            !json["unread"].is_number_integer()) {
+            return MarkDmReadResult{};
+        }
+        return MarkDmReadResult{true, json["marker_seq"].get<int>(), json["unread"].get<int>()};
+    } catch (const nlohmann::json::exception&) {
+        return MarkDmReadResult{};
+    }
+}
+
+std::optional<std::vector<WireUnreadCount>>
+CurlInternalApiClient::fetchUnreadCounts(const std::string& user_id) {
+    const auto response =
+        request("GET", "/internal/dm-read-state/unread-counts?user_id=" + urlEncode(user_id), "");
+    if (!response || response->status != 200) {
+        return std::nullopt;
+    }
+
+    std::vector<WireUnreadCount> counts;
+    try {
+        const auto json = nlohmann::json::parse(response->body);
+        if (!json.is_object() || !json.contains("counts") || !json["counts"].is_array()) {
+            return std::nullopt;
+        }
+        for (const auto& c : json["counts"]) {
+            if (!c.is_object() || !c.contains("peer_id") || !c["peer_id"].is_string() ||
+                !c.contains("count") || !c["count"].is_number_integer()) {
+                continue;
+            }
+            counts.push_back(
+                WireUnreadCount{c["peer_id"].get<std::string>(), c["count"].get<int>()});
+        }
+    } catch (const nlohmann::json::exception&) {
+        return std::nullopt;
+    }
+    return counts;
+}
+
 } // namespace http

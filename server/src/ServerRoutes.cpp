@@ -202,4 +202,14 @@ void Server::registerRoutes() {
         "LIST_DM_CONVERSATIONS", [this](const protocol::Message& msg, int fd) {
             return std::vector<protocol::Message>{dm_handler_.handleListDmConversations(msg, fd)};
         });
+
+    dispatcher_.registerHandler("MARK_DM_READ", [this](const protocol::Message& msg, int fd) {
+        return std::vector<protocol::Message>{dm_read_state_handler_.handleMarkDmRead(msg, fd)};
+    });
+
+    dispatcher_.registerHandler("FETCH_UNREAD_COUNTS",
+                                [this](const protocol::Message& msg, int fd) {
+                                    return std::vector<protocol::Message>{
+                                        dm_read_state_handler_.handleFetchUnreadCounts(msg, fd)};
+                                });
 }
