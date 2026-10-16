@@ -1149,9 +1149,12 @@ Server to client:
 {
   "type": "ERROR",
   "code": "MALFORMED_MESSAGE",
-  "message": "CHAT_MESSAGE content must not be empty"
+  "message": "CHAT_MESSAGE content must not be empty",
+  "request_type": "CHAT_MESSAGE"
 }
 ```
+
+`request_type` is the `type` of the client request this `ERROR` answers, so a client can tell which of its requests failed — e.g. silently retry a background `MARK_DM_READ` without showing a user-facing error, while still surfacing a failed `DM_SEND`. It is present on every `ERROR` sent in reply to a request, including `PROTOCOL_VIOLATION` for an unknown message type (where it echoes the unknown type as sent). It is absent when there is no request to name: a frame that isn't JSON, isn't an object, or has no string `type` gets no `ERROR` at all (the server logs and drops it), and an unprompted `ERROR` such as `SESSION_CONTEXT_UNAVAILABLE` (see [Asynchronous IDENTIFY Hydration](#asynchronous-identify-hydration)) carries none. Additive: `code` and `message` are unchanged, and a client that ignores `request_type` behaves exactly as before. Set centrally by the server's dispatcher, not per handler, so a new message type gets it automatically. The gateway's own `GATEWAY_ERROR` (see `docs/architecture/gateway-transport.md`) is not a server `ERROR` and does not carry it.
 
 Current error codes used by the implementation:
 

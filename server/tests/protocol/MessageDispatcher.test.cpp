@@ -1,5 +1,6 @@
 #include <catch2/catch_test_macros.hpp>
 
+#include "protocol/MessageBuilders.hpp"
 #include "protocol/MessageDispatcher.hpp"
 
 TEST_CASE("MessageDispatcher dispatches to registered handler") {
@@ -101,4 +102,54 @@ TEST_CASE("MessageDispatcher supports a handler returning zero messages") {
     const auto responses = dispatcher.dispatch(message, -1);
 
     REQUIRE(responses.empty());
+}
+
+// shared/protocol/README.md's ERROR section: every ERROR answering a client
+// request carries that request's type as request_type, so a client can tell
+// which of its requests failed. Stamped here, centrally, not per handler.
+TEST_CASE("MessageDispatcher stamps request_type on a handler's ERROR response") {
+    protocol::MessageDispatcher dispatcher;
+
+    dispatcher.registerHandler("MARK_DM_READ", [](const protocol::Message&, int /*fd*/) {
+        return std::vector<protocol::Message>{
+            protocol::make_error_message("MALFORMED_MESSAGE", "No such DM conversation")};
+    });
+
+    protocol::Message message;
+    message.type = "MARK_DM_READ";
+    message.payload = {{"type", "MARK_DM_READ"}};
+
+    const auto responses = dispatcher.dispatch(message, -1);
+
+    REQUIRE(responses.size() == 1);
+    REQUIRE(responses[0].payload["type"] == "ERROR");
+    REQUIRE(responses[0].payload["code"] == "MALFORMED_MESSAGE");
+    REQUIRE(responses[0].payload["request_type"] == "MARK_DM_READ");
+}
+
+TEST_CASE("MessageDispatcher leaves non-ERROR and non-DIRECT responses unstamped") {
+    protocol::MessageDispatcher dispatcher;
+
+    dispatcher.registerHandler("PING", [](const protocol::Message&, int /*fd*/) {
+        protocol::Message pong;
+        pong.type = "PONG";
+        pong.payload = {{"type", "PONG"}};
+
+        protocol::Message targeted_error =
+            protocol::make_error_message("SOMETHING", "sent to someone else");
+        targeted_error.scope = protocol::Scope::TARGETED;
+        targeted_error.target_fds = {7};
+
+        return std::vector<protocol::Message>{pong, targeted_error};
+    });
+
+    protocol::Message message;
+    message.type = "PING";
+    message.payload = {{"type", "PING"}};
+
+    const auto responses = dispatcher.dispatch(message, -1);
+
+    REQUIRE(responses.size() == 2);
+    REQUIRE_FALSE(responses[0].payload.contains("request_type"));
+    REQUIRE_FALSE(responses[1].payload.contains("request_type"));
 }

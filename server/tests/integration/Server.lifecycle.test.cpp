@@ -63,6 +63,67 @@ TEST_CASE("Server returns PROTOCOL_VIOLATION for unknown message type") {
     auto parsed = nlohmann::json::parse(response);
     REQUIRE(parsed["type"] == "ERROR");
     REQUIRE(parsed["code"] == "PROTOCOL_VIOLATION");
+    REQUIRE(parsed["request_type"] == "POKE");
+}
+
+// ----------------------------------------------------------------------------
+// shared/protocol/README.md's ERROR section: request_type end to end — a
+// handler-originated ERROR carries the failing request's type, and a frame
+// whose type can't be read gets no ERROR at all (so nothing to attribute).
+// ----------------------------------------------------------------------------
+
+TEST_CASE("Server tags a handler-originated ERROR with the request's type") {
+    Server server(0);
+    std::thread t([&server] { server.start(); });
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+
+    int fd = tcp_connect(server.bound_port());
+    REQUIRE(fd >= 0);
+
+    send_framed(fd, R"({"type":"HELLO","version":"0.1","client":"web"})");
+    REQUIRE(nlohmann::json::parse(recv_framed(fd))["type"] == "WELCOME");
+
+    // Never IDENTIFYed, so DMReadStateHandler itself returns NOT_IDENTIFIED.
+    send_framed(fd, R"({"type":"MARK_DM_READ","user_id":"u_2","up_to_message_id":1})");
+    std::string response = recv_framed(fd);
+
+    ::close(fd);
+    server.stop();
+    t.join();
+
+    REQUIRE(!response.empty());
+    auto parsed = nlohmann::json::parse(response);
+    REQUIRE(parsed["type"] == "ERROR");
+    REQUIRE(parsed["code"] == "NOT_IDENTIFIED");
+    REQUIRE(parsed["request_type"] == "MARK_DM_READ");
+}
+
+TEST_CASE("Server sends no ERROR, and so no request_type, for an unparseable request") {
+    Server server(0);
+    std::thread t([&server] { server.start(); });
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+
+    int fd = tcp_connect(server.bound_port());
+    REQUIRE(fd >= 0);
+
+    send_framed(fd, R"({"type":"HELLO","version":"0.1","client":"web"})");
+    REQUIRE(nlohmann::json::parse(recv_framed(fd))["type"] == "WELCOME");
+
+    // Neither has a readable type. Then a known-bad request: the first frame
+    // back must be ITS error, proving nothing was sent for the two above.
+    send_framed(fd, "not json at all");
+    send_framed(fd, R"({"data":"no type field"})");
+    send_framed(fd, R"({"type":"POKE"})");
+    std::string response = recv_framed(fd);
+
+    ::close(fd);
+    server.stop();
+    t.join();
+
+    REQUIRE(!response.empty());
+    auto parsed = nlohmann::json::parse(response);
+    REQUIRE(parsed["type"] == "ERROR");
+    REQUIRE(parsed["request_type"] == "POKE");
 }
 
 // ----------------------------------------------------------------------------
