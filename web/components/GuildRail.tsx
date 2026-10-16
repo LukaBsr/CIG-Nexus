@@ -1,8 +1,10 @@
+import { unreadLabel } from "@/lib/dm/unreadCounts";
 import type { Guild } from "@/lib/types";
 
 import { GuildBrowsePopover } from "./GuildBrowsePopover";
 import { GuildIcon } from "./GuildIcon";
 import { Mark } from "./Mark";
+import { UnreadBadge } from "./UnreadBadge";
 
 export type RailView = "lobby" | "guild" | "friends";
 
@@ -15,6 +17,8 @@ interface GuildRailProps {
   onSelectLobby: () => void;
   onSelectGuild: (guildId: string) => void;
   onSelectFriends: () => void;
+  // Sum of every DM conversation's unread count (§3.7).
+  unreadDmTotal: number;
   onJoinGuild: (guildId: string) => void;
   onRequestJoin: (guildId: string) => void;
   onCreateGuild: (name: string) => void;
@@ -42,12 +46,11 @@ function PeopleIcon() {
 // horizontal Lobby/Guilds/Friends TabGroup with a persistent Discord-
 // style vertical icon rail: a pinned Lobby icon, one icon per guild the
 // user belongs to (existing LIST_GUILDS order — no drag-to-reorder),
-// then a pinned Friends icon. Deliberately no unread/mention badges
-// anywhere on the rail itself, consistent with LIST_DM_CONVERSATIONS'
-// own "deliberately minimal, no unread counts" decision
-// (docs/social/friends-dms-design.md §3.5) — the existing incoming-
-// friend-request count (FriendRequestsPopover) still shows, just inside
-// the Friends view once you're in it, not duplicated onto this icon.
+// then a pinned Friends icon. The Friends icon carries one badge: the
+// total of unread DMs (docs/social/friends-dms-design.md §3.7). There are
+// no guild unread/mention badges, and the incoming-friend-request count
+// (FriendRequestsPopover) still shows only inside the Friends view, not
+// duplicated onto this icon.
 export function GuildRail({
   guilds,
   myGuildIds,
@@ -57,6 +60,7 @@ export function GuildRail({
   onSelectLobby,
   onSelectGuild,
   onSelectFriends,
+  unreadDmTotal,
   onJoinGuild,
   onRequestJoin,
   onCreateGuild
@@ -115,7 +119,7 @@ export function GuildRail({
 
       <button
         onClick={onSelectFriends}
-        aria-label="Friends"
+        aria-label={unreadDmTotal > 0 ? `Friends, ${unreadLabel(unreadDmTotal)}` : "Friends"}
         title="Friends"
         className={`relative flex h-11 w-11 shrink-0 items-center justify-center transition-all ${
           activeView === "friends" ? "rounded-xl bg-brand/20 text-brand" : "rounded-full bg-surface text-muted hover:rounded-xl hover:text-fg"
@@ -123,6 +127,7 @@ export function GuildRail({
       >
         {activeView === "friends" && <RailActiveIndicator />}
         <PeopleIcon />
+        <UnreadBadge count={unreadDmTotal} className="absolute -top-1 -right-1.5 ring-2 ring-page" />
       </button>
     </nav>
   );

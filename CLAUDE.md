@@ -153,6 +153,7 @@ web/
     ├── types.ts         # Wire* / camelCase type pairs and mappers
     ├── auth/            # Session-token issuance/verification (web side)
     ├── internal/        # Postgres access backing app/internal/* routes (catalog, friends, blocks, DMs, ...)
+    ├── dm/               # DM unread counts (pure state functions) + MARK_DM_READ scheduler
     ├── settings/         # Settings modal section registry
     ├── appearance/        # Theme tokens/registry
     └── user/             # Profile display-name/avatar resolution (§4.5)

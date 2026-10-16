@@ -6,6 +6,7 @@ import { FriendRequestsPopover } from "./FriendRequestsPopover";
 import { MessageList } from "./MessageList";
 import { PresenceDot } from "./PresenceDot";
 import { TextInputWithSubmit } from "./TextInputWithSubmit";
+import { UnreadBadge } from "./UnreadBadge";
 
 interface FriendsViewProps {
   friends: Friend[];
@@ -23,6 +24,8 @@ interface FriendsViewProps {
   dmConversations: DmConversation[];
   activeDmPeerId: string | null;
   dmMessages: DmMessage[];
+  // Peer user_id -> unread count (docs/social/friends-dms-design.md §3.7).
+  unreadCounts: Record<string, number>;
   onOpenDm: (peerId: string) => void;
   onSendDm: (content: string) => void;
   dmInput: string;
@@ -49,6 +52,7 @@ export function FriendsView({
   dmConversations,
   activeDmPeerId,
   dmMessages,
+  unreadCounts,
   onOpenDm,
   onSendDm,
   dmInput,
@@ -123,11 +127,12 @@ export function FriendsView({
                     </button>
                     <button
                       onClick={() => onOpenDm(c.peerId)}
-                      className={`min-w-0 flex-1 truncate text-left font-mono text-sm ${
+                      className={`flex min-w-0 flex-1 items-center gap-2 text-left font-mono text-sm ${
                         c.peerId === activeDmPeerId ? "text-brand" : "text-fg/90"
                       }`}
                     >
-                      {c.displayName ?? c.username}
+                      <span className="min-w-0 flex-1 truncate">{c.displayName ?? c.username}</span>
+                      <UnreadBadge count={unreadCounts[c.peerId] ?? 0} />
                     </button>
                   </li>
                 ))}

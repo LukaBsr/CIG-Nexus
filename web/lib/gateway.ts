@@ -263,3 +263,14 @@ export function fetchDmHistory(peerId: string, beforeSeq: number | null, limit: 
 export function listDmConversations(): void {
   send({ type: "LIST_DM_CONVERSATIONS" });
 }
+
+// docs/social/friends-dms-design.md §3.7. upToMessageId is a DM_MESSAGE
+// message_id (the shared DM seq); the server answers with DM_READ to every
+// one of our own sessions, or an ERROR whose request_type is MARK_DM_READ.
+export function markDmRead(peerId: string, upToMessageId: number): void {
+  send({ type: "MARK_DM_READ", user_id: peerId, up_to_message_id: upToMessageId });
+}
+
+export function fetchUnreadCounts(): void {
+  send({ type: "FETCH_UNREAD_COUNTS" });
+}

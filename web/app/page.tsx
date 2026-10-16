@@ -14,6 +14,7 @@ import { ProfileView } from "@/components/ProfileView";
 import { SettingsModal } from "@/components/SettingsModal";
 import { TextInputWithSubmit } from "@/components/TextInputWithSubmit";
 import { useGatewayConnection } from "@/hooks/useGatewayConnection";
+import { totalUnread } from "@/lib/dm/unreadCounts";
 import { OFFICER_RANK } from "@/lib/roles";
 
 function PlusIcon() {
@@ -33,6 +34,7 @@ function PlusIcon() {
 }
 
 export default function Home() {
+  const [view, setView] = useState<"lobby" | "guild" | "friends">("lobby");
   const {
     status,
     myUserId,
@@ -78,11 +80,11 @@ export default function Home() {
     dmConversations,
     activeDmPeerId,
     dmMessages,
+    unreadCounts,
     openDm,
     sendDm
-  } = useGatewayConnection();
+  } = useGatewayConnection({ dmViewOpen: view === "friends" });
 
-  const [view, setView] = useState<"lobby" | "guild" | "friends">("lobby");
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   // docs/social/friends-dms-design.md §4.6 — which section Settings opens
   // to; undefined = the default (Appearance). Set explicitly on every open
@@ -162,6 +164,7 @@ export default function Home() {
         onSelectLobby={() => setView("lobby")}
         onSelectGuild={handleSelectGuild}
         onSelectFriends={() => setView("friends")}
+        unreadDmTotal={totalUnread(unreadCounts)}
         onJoinGuild={joinGuild}
         onRequestJoin={requestJoin}
         onCreateGuild={createGuild}
@@ -380,6 +383,7 @@ export default function Home() {
             dmConversations={dmConversations}
             activeDmPeerId={activeDmPeerId}
             dmMessages={dmMessages}
+            unreadCounts={unreadCounts}
             onOpenDm={openDm}
             onSendDm={sendDm}
             dmInput={dmInput}
