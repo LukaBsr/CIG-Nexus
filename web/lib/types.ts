@@ -340,10 +340,30 @@ export interface WireMessageHistory {
   has_more: boolean;
 }
 
+// §3.7 (FETCH_UNREAD_COUNTS). Keyed by peer user_id; an absent key means
+// 0. Each count is capped at 100 by the server.
+export interface WireUnreadCounts {
+  type: "UNREAD_COUNTS";
+  counts: Record<string, number>;
+}
+
+// §3.7 (MARK_DM_READ's result), pushed to every one of the reader's own
+// sessions — never to the peer. up_to_message_id is the reader's current
+// marker; unread is what's still unread from user_id after it.
+export interface WireDmRead {
+  type: "DM_READ";
+  user_id: string;
+  up_to_message_id: number;
+  unread: number;
+}
+
+// shared/protocol/README.md's ERROR section: request_type is the type of
+// the request this ERROR answers, absent on an unprompted ERROR.
 export interface WireError {
   type: "ERROR";
   code: string;
   message: string;
+  request_type?: string;
 }
 
 // Every message type the server may push unprompted, i.e. everything
@@ -389,6 +409,8 @@ export type WireInboundMessage =
   | WireDmMessage
   | WireDmConversationList
   | WireMessageHistory
+  | WireUnreadCounts
+  | WireDmRead
   | WireError;
 
 // camelCase types components actually consume. useGatewayConnection

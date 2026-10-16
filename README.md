@@ -57,7 +57,7 @@ CIG Nexus Server (C++)
 - Session-token `IDENTIFY` — no client-chosen username
 - Global lobby chat, plus a persistent Discord-style guild rail (Lobby, one icon per joined guild, Friends; guild browse/create behind a `+` popover): create/join guilds (open, application, or private visibility), invites, join requests, officer-gated channel creation, per-channel chat
 - Guild member roster with rank-based roles (Crew / Officer / Captain) and live online/offline presence
-- Friends view: friend requests (direct or by code), blocking, and 1:1 direct messages with history
+- Friends view: friend requests (direct or by code), blocking, and 1:1 direct messages with history and unread counts (per conversation, plus a total on the rail's Friends icon, synced across your open tabs)
 - Settings modal: customizable profile (display name and avatar are shown in rosters and messages; bio, status message and accent color are stored and editable but not displayed anywhere yet), Appearance theme switching, blocked-users list
 
 ### Gateway

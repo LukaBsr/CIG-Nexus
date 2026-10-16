@@ -15,6 +15,7 @@ import {
   createInvite as sendCreateInvite,
   fetchDmHistory as sendFetchDmHistory,
   fetchFriendCode as sendFetchFriendCode,
+  fetchUnreadCounts as sendFetchUnreadCounts,
   joinChannel as sendJoinChannel,
   joinGuild as sendJoinGuild,
   listBlocks as sendListBlocks,
@@ -25,6 +26,7 @@ import {
   listGuilds,
   listJoinRequests as sendListJoinRequests,
   listMembers,
+  markDmRead as sendMarkDmRead,
   regenerateFriendCode as sendRegenerateFriendCode,
   rejectFriendRequest as sendRejectFriendRequest,
   rejectJoinRequest as sendRejectJoinRequest,
@@ -36,6 +38,16 @@ import {
   sendFriendRequest as sendSendFriendRequest,
   unblockUser as sendUnblockUser
 } from "@/lib/gateway";
+import { createMarkReadScheduler, type MarkReadScheduler } from "@/lib/dm/markReadScheduler";
+import {
+  applyDmRead,
+  applyUnreadCounts,
+  classifyDmMessage,
+  type HighestSeen,
+  incrementUnread,
+  noteSeen,
+  type UnreadCounts
+} from "@/lib/dm/unreadCounts";
 import {
   mapBlock,
   mapChannel,
@@ -116,8 +128,36 @@ export interface UseGatewayConnectionResult {
   dmConversations: DmConversation[];
   activeDmPeerId: string | null;
   dmMessages: DmMessage[];
+  unreadCounts: UnreadCounts;
   openDm: (peerId: string) => void;
   sendDm: (content: string) => void;
+}
+
+export interface UseGatewayConnectionOptions {
+  // Whether the Friends view (where a DM thread is shown) is on screen.
+  // The view lives in app/page.tsx, not here; without this, an open DM
+  // left behind while browsing a guild would be marked read unseen.
+  dmViewOpen: boolean;
+}
+
+// docs/social/friends-dms-design.md §3.7: the user is reading the active
+// DM thread only while the tab is visible and the window focused.
+function isPageAttended(): boolean {
+  return document.visibilityState === "visible" && document.hasFocus();
+}
+
+// Every "the user is now looking at it" trigger — the conversation's
+// history arriving, the Friends view opening, the tab regaining
+// visibility/focus — funnels through here.
+function markActiveThreadIfAttended(
+  scheduler: MarkReadScheduler,
+  activePeerId: string | null,
+  threadMaxMessageId: number,
+  dmViewOpen: boolean
+): void {
+  if (activePeerId && threadMaxMessageId > 0 && dmViewOpen && isPageAttended()) {
+    scheduler.request(activePeerId, threadMaxMessageId);
+  }
 }
 
 // Owns the WebSocket connection's entire lifecycle: opening it
@@ -126,7 +166,7 @@ export interface UseGatewayConnectionResult {
 // component (docs/frontend-rebuild-plan.md, "Wire-message casing
 // convention"). Components read only the camelCase state and action
 // dispatchers this hook returns — never a raw wire message.
-export function useGatewayConnection(): UseGatewayConnectionResult {
+export function useGatewayConnection({ dmViewOpen }: UseGatewayConnectionOptions): UseGatewayConnectionResult {
   const [status, setStatus] = useState<ConnectionStatus>("disconnected");
   const [myUserId, setMyUserId] = useState<string | null>(null);
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
@@ -163,6 +203,10 @@ export function useGatewayConnection(): UseGatewayConnectionResult {
   const [dmConversations, setDmConversations] = useState<DmConversation[]>([]);
   const [activeDmPeerId, setActiveDmPeerId] = useState<string | null>(null);
   const [dmMessages, setDmMessages] = useState<DmMessage[]>([]);
+  // §3.7: peer user_id -> unread count, shown as badges in FriendsView and
+  // summed on GuildRail's Friends icon.
+  const [unreadCounts, setUnreadCounts] = useState<UnreadCounts>({});
+  const [markReadScheduler] = useState(() => createMarkReadScheduler(sendMarkDmRead));
 
   const [lastError, setLastError] = useState<string | null>(null);
   const [lastCreatedInvite, setLastCreatedInvite] = useState<Invite | null>(null);
@@ -174,6 +218,11 @@ export function useGatewayConnection(): UseGatewayConnectionResult {
   const activeGuildIdRef = useRef<string | null>(null);
   const activeChannelIdRef = useRef<string | null>(null);
   const activeDmPeerIdRef = useRef<string | null>(null);
+  const dmViewOpenRef = useRef(dmViewOpen);
+  // Highest message_id in the active DM thread (either sender) — what
+  // MARK_DM_READ marks up to.
+  const activeThreadMaxIdRef = useRef(0);
+  const highestSeenRef = useRef<HighestSeen>({});
 
   useEffect(() => {
     myUserIdRef.current = myUserId;
@@ -192,6 +241,33 @@ export function useGatewayConnection(): UseGatewayConnectionResult {
   }, [activeDmPeerId]);
 
   useEffect(() => {
+    dmViewOpenRef.current = dmViewOpen;
+    markActiveThreadIfAttended(
+      markReadScheduler,
+      activeDmPeerIdRef.current,
+      activeThreadMaxIdRef.current,
+      dmViewOpen
+    );
+  }, [dmViewOpen, markReadScheduler]);
+
+  useEffect(() => {
+    const onAttentionChange = () =>
+      markActiveThreadIfAttended(
+        markReadScheduler,
+        activeDmPeerIdRef.current,
+        activeThreadMaxIdRef.current,
+        dmViewOpenRef.current
+      );
+    document.addEventListener("visibilitychange", onAttentionChange);
+    window.addEventListener("focus", onAttentionChange);
+    return () => {
+      document.removeEventListener("visibilitychange", onAttentionChange);
+      window.removeEventListener("focus", onAttentionChange);
+      markReadScheduler.dispose();
+    };
+  }, [markReadScheduler]);
+
+  useEffect(() => {
     connect(
       (msg) => {
         switch (msg.type) {
@@ -207,6 +283,11 @@ export function useGatewayConnection(): UseGatewayConnectionResult {
             sendFetchFriendCode();
             sendListBlocks();
             sendListDmConversations();
+            // §3.7: the server's count replaces ours on every (re)identify.
+            // Accepted limitation: a DM_MESSAGE arriving while this request
+            // is in flight can be double counted or lost; it self-heals at
+            // the next DM_READ or reconnect.
+            sendFetchUnreadCounts();
             break;
 
           case "CHAT_MESSAGE":
@@ -474,13 +555,34 @@ export function useGatewayConnection(): UseGatewayConnectionResult {
           // sendDm() could have just targeted), gets appended; a message
           // for a different, non-active conversation just refreshes the
           // conversation list's ordering instead.
-          case "DM_MESSAGE":
+          //
+          // §3.7: separately, a peer's message is either counted as unread
+          // or, if the user is reading that thread right now, marked read.
+          case "DM_MESSAGE": {
             if (msg.user_id === activeDmPeerIdRef.current || msg.user_id === myUserIdRef.current) {
               setDmMessages((prev) => [...prev, mapDmMessage(msg)]);
+              activeThreadMaxIdRef.current = Math.max(activeThreadMaxIdRef.current, msg.message_id);
             } else {
               sendListDmConversations();
             }
+            const isBeingRead =
+              msg.user_id === activeDmPeerIdRef.current && dmViewOpenRef.current && isPageAttended();
+            const action = classifyDmMessage(
+              { senderId: msg.user_id, messageId: msg.message_id },
+              myUserIdRef.current,
+              highestSeenRef.current,
+              isBeingRead
+            );
+            if (action !== "ignore") {
+              highestSeenRef.current = noteSeen(highestSeenRef.current, msg.user_id, msg.message_id);
+            }
+            if (action === "increment") {
+              setUnreadCounts((prev) => incrementUnread(prev, msg.user_id));
+            } else if (action === "mark-read") {
+              markReadScheduler.request(msg.user_id, msg.message_id);
+            }
             break;
+          }
 
           case "DM_CONVERSATION_LIST":
             setDmConversations(msg.conversations.map(mapDmConversation));
@@ -489,10 +591,41 @@ export function useGatewayConnection(): UseGatewayConnectionResult {
           case "MESSAGE_HISTORY":
             if (msg.peer_id !== undefined && msg.peer_id === activeDmPeerIdRef.current) {
               setDmMessages(msg.messages.map(mapHistoryMessageToDmMessage));
+              activeThreadMaxIdRef.current = msg.messages.reduce(
+                (max, m) => Math.max(max, m.message_id),
+                activeThreadMaxIdRef.current
+              );
+              // The conversation just became readable on screen.
+              markActiveThreadIfAttended(
+                markReadScheduler,
+                activeDmPeerIdRef.current,
+                activeThreadMaxIdRef.current,
+                dmViewOpenRef.current
+              );
             }
             break;
 
+          case "UNREAD_COUNTS":
+            setUnreadCounts((prev) => applyUnreadCounts(prev, msg.counts));
+            break;
+
+          // §3.7: from this tab's MARK_DM_READ or another of our sessions' —
+          // either way it's the authoritative count, which is what clears a
+          // badge on every open tab.
+          case "DM_READ":
+            setUnreadCounts((prev) => applyDmRead(prev, msg.user_id, msg.unread));
+            highestSeenRef.current = noteSeen(highestSeenRef.current, msg.user_id, msg.up_to_message_id);
+            markReadScheduler.onDmRead(msg.user_id, msg.up_to_message_id);
+            break;
+
           case "ERROR":
+            // MARK_DM_READ runs in the background, so its failure (e.g. a
+            // conversation's first message not persisted yet) is retried
+            // silently, never shown. Every other ERROR surfaces as before.
+            if (msg.request_type === "MARK_DM_READ") {
+              markReadScheduler.onError();
+              break;
+            }
             setLastError(msg.message ?? msg.code ?? "Unknown error");
             break;
 
@@ -504,7 +637,7 @@ export function useGatewayConnection(): UseGatewayConnectionResult {
         setStatus(newStatus);
       }
     );
-  }, []);
+  }, [markReadScheduler]);
 
   return {
     status,
@@ -563,9 +696,14 @@ export function useGatewayConnection(): UseGatewayConnectionResult {
     dmConversations,
     activeDmPeerId,
     dmMessages,
+    unreadCounts,
     openDm: (peerId) => {
       setActiveDmPeerId(peerId);
       setDmMessages([]);
+      // Synchronously, not via the effect: a late MESSAGE_HISTORY for the
+      // previous peer must not count toward this thread's max id.
+      activeDmPeerIdRef.current = peerId;
+      activeThreadMaxIdRef.current = 0;
       sendFetchDmHistory(peerId, null, 50);
     },
     sendDm: (content) => {

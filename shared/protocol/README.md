@@ -1127,7 +1127,7 @@ On success, `Scope::TARGETED` to every connection currently identified as the ca
 
 `up_to_message_id` here is the caller's *current* marker after the call (unchanged from before if the request's value was behind it); `unread` is the number of messages from `user_id` still after that marker, capped the same way `FETCH_UNREAD_COUNTS` is below.
 
-Rate limited (see Rate Limits below) as a backstop — the web client is expected to debounce its own sends (on scroll/visibility, and on conversation close) well under the limit.
+Rate limited (see Rate Limits below) as a backstop — a client is expected to debounce its own sends well under the limit. The web client (the reference implementation, `docs/social/friends-dms-design.md` §3.7) marks the open conversation read up to its newest `message_id` when the conversation is opened, when a new message arrives while that conversation is open and the tab visible and focused, and when the tab becomes visible or the window regains focus. Sends are debounced ~1.5s with at most one in flight; an `ERROR` whose `request_type` is `MARK_DM_READ` is retried once after ~2s, silently, then dropped until the next trigger.
 
 #### FETCH_UNREAD_COUNTS
 

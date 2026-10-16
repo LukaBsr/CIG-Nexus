@@ -30,7 +30,8 @@ the plan. Not built, or built differently:
   `MARK_DM_READ`/`FETCH_UNREAD_COUNTS`, a `dm_read_state` table, and the
   internal API/handler/test layers underneath them. This section wasn't
   in the original design at all; §3.7 documents it as built, not as a
-  retrofit onto an earlier plan.
+  retrofit onto an earlier plan. The web client half followed in a
+  separate PR — see §3.7's "Web client" subsection.
 
 ## Scope
 
@@ -770,9 +771,8 @@ and "blocked," per §2.6). `USER_NOT_FOUND` is reused from §1.
 
 ### 3.7 Unread counts
 
-**Server-side only in this PR** — the web client doesn't call any of this
-yet; that's a separate, following PR. Ships as a complete, inert feature:
-nothing a user sees changes until the client is wired up.
+Built in two PRs: the server side first (shipped inert), then the web
+client — see "Web client" at the end of this section.
 
 **Data model**: a new `dm_read_state` table, one row per `(user_id,
 dm_conversation_id)` a user has ever marked read into — absent means
@@ -909,6 +909,47 @@ the point of being one coherent job.
   `{ marker_seq, unread }` for the *current* (possibly unchanged) marker.
 - `GET /internal/dm-read-state/unread-counts?user_id=` — returns `{
   counts: [{ peer_id, count }, ...] }`, only entries with `count > 0`.
+
+**Web client**:
+
+- **State**: `unreadCounts` (peer → count) in `useGatewayConnection`; the
+  logic is pure functions in `web/lib/dm/unreadCounts.ts` (apply counts,
+  classify a live message, apply `DM_READ`, `formatBadge`, `totalUnread`).
+  `FETCH_UNREAD_COUNTS` is sent once `IDENTIFIED` arrives, alongside the
+  other post-identify requests, and `UNREAD_COUNTS` *replaces* the map —
+  the server is authoritative. Accepted limitation: a `DM_MESSAGE`
+  arriving while that request is in flight can be double counted or lost;
+  it self-heals at the next `DM_READ` or reconnect.
+- **Counting a live `DM_MESSAGE`**: never our own; idempotent per peer by
+  `message_id` (one not above the highest already seen from that peer is
+  ignored). If the user is reading that thread — it's the active
+  conversation, the Friends view is showing, the tab is visible and the
+  window focused — it isn't counted and a `MARK_DM_READ` is scheduled
+  instead. The Friends-view condition matters: the active DM survives
+  switching to a guild or the lobby, and without it a hidden thread would
+  be marked read unseen.
+- **Sending `MARK_DM_READ`** (`web/lib/dm/markReadScheduler.ts`):
+  debounced 1.5s, up to the highest `message_id` in the open thread (own
+  messages included — the marker is a high-water mark). Triggers: the
+  conversation's history arriving after it's opened, a message arriving
+  while it's being read, the Friends view opening, and the tab becoming
+  visible or focused again. One request in flight at a time; a request
+  already covered by a `DM_READ` marker is skipped.
+- **Failure is silent**: the scheduler consumes only `ERROR`s whose
+  `request_type` is `MARK_DM_READ` (shared/protocol/README.md's ERROR
+  section) — never the error banner — retries once after 2s, then gives
+  up until the next trigger. This covers the first-message race above.
+  Every other `ERROR` surfaces as before. No ack timeout: the server
+  answers every `MARK_DM_READ` synchronously, so a missing reply means a
+  dead socket, which needs a reload anyway.
+- **`DM_READ`** sets that peer's count to its `unread` — what clears a
+  badge on every one of the user's open tabs.
+- **Display**: `components/UnreadBadge.tsx`, a `bg-brand`/`text-page` pill
+  ("99+" at the server's 100 cap), per conversation in `FriendsView` and
+  the summed total on `GuildRail`'s Friends icon. A conversation with a
+  removed friend stays listed and openable (`LIST_DM_CONVERSATIONS` and
+  the count query both start from `dm_conversations`, not friendships), so
+  every count summed on the rail is clearable from the list.
 
 ### Not now (known tradeoffs)
 
